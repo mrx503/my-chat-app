@@ -2,7 +2,7 @@
 "use client"
 
 import React, { useState } from 'react';
-import { Phone, Video, MoreVertical, ShieldQuestion, ShieldCheck, ShieldOff, Waves } from 'lucide-react';
+import { Phone, Video, MoreVertical, ShieldCheck, Waves } from 'lucide-react';
 import type { Contact } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -15,9 +15,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Input } from './ui/input';
+import { Label } from './ui/label';
 
 interface ChatHeaderProps {
   contact: Contact;
@@ -27,23 +27,44 @@ interface ChatHeaderProps {
 
 export default function ChatHeader({ contact, isEncrypted, setIsEncrypted }: ChatHeaderProps) {
   const [password, setPassword] = useState('');
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-  const correctPassword = "password"; // Hardcoded for now
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [chatPassword, setChatPassword] = useState<string | null>(null);
+
+  const [showCreatePasswordDialog, setShowCreatePasswordDialog] = useState(false);
+  const [showDecryptDialog, setShowDecryptDialog] = useState(false);
 
   const handleMicrowaveClick = () => {
     if (isEncrypted) {
-      // If it's already encrypted, we need to ask for a password to decrypt
-      setShowPasswordDialog(true);
+      // If encrypted, show decrypt dialog
+      setShowDecryptDialog(true);
     } else {
-      // If it's not encrypted, encrypt it directly
+      // If not encrypted, check if password exists
+      if (chatPassword) {
+        // Password exists, just encrypt
+        setIsEncrypted(true);
+      } else {
+        // No password set for this chat yet, show create password dialog
+        setShowCreatePasswordDialog(true);
+      }
+    }
+  };
+
+  const handleCreatePassword = () => {
+    if (password && password === confirmPassword) {
+      setChatPassword(password);
       setIsEncrypted(true);
+      setShowCreatePasswordDialog(false);
+      setPassword('');
+      setConfirmPassword('');
+    } else {
+      alert('Passwords do not match or are empty.');
     }
   };
 
   const handlePasswordSubmit = () => {
-    if (password === correctPassword) {
+    if (password === chatPassword) {
       setIsEncrypted(false);
-      setShowPasswordDialog(false);
+      setShowDecryptDialog(false);
       setPassword('');
     } else {
       alert('Incorrect password');
@@ -80,8 +101,48 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted }: Cha
           </Button>
         </div>
       </header>
+      
+      {/* Create Password Dialog */}
+      <AlertDialog open={showCreatePasswordDialog} onOpenChange={setShowCreatePasswordDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Create a Password</AlertDialogTitle>
+            <AlertDialogDescription>
+              To encrypt this chat, please create a password. You will need this to decrypt the messages later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">Password</Label>
+              <Input 
+                id="new-password"
+                type="password"
+                placeholder="Enter a new password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm Password</Label>
+              <Input 
+                id="confirm-password"
+                type="password"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreatePassword()}
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setPassword(''); setConfirmPassword(''); }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCreatePassword}>Create and Encrypt</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      <AlertDialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+      {/* Decrypt Dialog */}
+      <AlertDialog open={showDecryptDialog} onOpenChange={setShowDecryptDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Enter Password to Decrypt</AlertDialogTitle>
