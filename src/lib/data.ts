@@ -17,7 +17,7 @@ export const contacts: Contact[] = [
 const initialMessages: Message[] = [
     { id: 'msg1', senderId: 'user1', text: 'Hey, how are you?', timestamp: Date.now() - 1000 * 60 * 60 * 2 },
     { id: 'msg2', senderId: 'user0', text: 'I am good, thanks for asking! How about you?', timestamp: Date.now() - 1000 * 60 * 60 * 1 },
-    { id: 'msg3', senderId: 'user1', text: 'Doing great! Just working on the new Murrasil project.', timestamp: Date.now() - 1000 * 60 * 30 },
+    { id: 'msg3', senderId: 'user1', text: 'Doing great! Just working on the new project.', timestamp: Date.now() - 1000 * 60 * 30 },
     { id: 'msg4', senderId: 'user2', text: 'Can we schedule a meeting for tomorrow?', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2 },
     { id: 'msg5', senderId: 'user3', text: 'Did you see the latest designs?', timestamp: Date.now() - 1000 * 60 * 5 },
     { id: 'msg6', senderId: 'user0', text: 'Not yet, could you send them over?', timestamp: Date.now() - 1000 * 60 * 4 },
@@ -39,7 +39,8 @@ export const chats: Chat[] = contacts.map((contact, index) => {
             ...contact,
             lastMessage: lastMessage?.text,
             lastMessageTimestamp: lastMessage?.timestamp,
-            unreadMessages: index % 3 === 0 ? Math.floor(Math.random() * 3) + 1 : 0
+            // Use a deterministic value instead of Math.random() to avoid hydration errors
+            unreadMessages: index % 3 === 0 ? (index % 3) + 1 : 0
         },
         messages: chatMessages,
     };

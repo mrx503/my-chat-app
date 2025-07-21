@@ -9,9 +9,10 @@ import MessageInput from './message-input';
 interface ChatAreaProps {
   chat: Chat;
   onNewMessage: (chatId: string, message: string) => void;
+  sidebar: React.ReactNode;
 }
 
-export default function ChatArea({ chat, onNewMessage }: ChatAreaProps) {
+export default function ChatArea({ chat, onNewMessage, sidebar }: ChatAreaProps) {
   const handleSendMessage = (message: string) => {
     if (message.trim()) {
       onNewMessage(chat.id, message);
@@ -20,7 +21,7 @@ export default function ChatArea({ chat, onNewMessage }: ChatAreaProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <ChatHeader contact={chat.contact} />
+      <ChatHeader contact={chat.contact}>{sidebar}</ChatHeader>
       <MessageList messages={chat.messages} contactAvatar={chat.contact.avatar} />
       <MessageInput onSendMessage={handleSendMessage} />
     </div>
