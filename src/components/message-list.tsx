@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { currentUser } from '@/lib/data';
 import type { Message } from '@/lib/types';
@@ -11,6 +11,20 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 interface MessageListProps {
   messages: Message[];
   contactAvatar: string;
+}
+
+function FormattedTime({ timestamp }: { timestamp: number }) {
+  const [formattedTime, setFormattedTime] = useState('');
+
+  useEffect(() => {
+    setFormattedTime(format(new Date(timestamp), 'p'));
+  }, [timestamp]);
+
+  if (!formattedTime) {
+    return null;
+  }
+
+  return <>{formattedTime}</>;
 }
 
 export default function MessageList({ messages, contactAvatar }: MessageListProps) {
@@ -53,7 +67,7 @@ export default function MessageList({ messages, contactAvatar }: MessageListProp
               >
                 <p className="whitespace-pre-wrap">{message.text}</p>
                 <p className="text-xs mt-1 text-right opacity-70">
-                  {format(new Date(message.timestamp), 'p')}
+                  <FormattedTime timestamp={message.timestamp} />
                 </p>
               </div>
             </div>
