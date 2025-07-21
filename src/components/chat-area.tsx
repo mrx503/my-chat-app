@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -9,10 +10,11 @@ import MessageInput from './message-input';
 interface ChatAreaProps {
   chat: Chat;
   onNewMessage: (chatId: string, message: string) => void;
-  sidebar: React.ReactNode;
+  isEncrypted: boolean;
+  setIsEncrypted: (isEncrypted: boolean) => void;
 }
 
-export default function ChatArea({ chat, onNewMessage, sidebar }: ChatAreaProps) {
+export default function ChatArea({ chat, onNewMessage, isEncrypted, setIsEncrypted }: ChatAreaProps) {
   const handleSendMessage = (message: string) => {
     if (message.trim()) {
       onNewMessage(chat.id, message);
@@ -21,8 +23,16 @@ export default function ChatArea({ chat, onNewMessage, sidebar }: ChatAreaProps)
 
   return (
     <div className="flex flex-col h-full">
-      <ChatHeader contact={chat.contact}>{sidebar}</ChatHeader>
-      <MessageList messages={chat.messages} contactAvatar={chat.contact.avatar} />
+      <ChatHeader 
+        contact={chat.contact} 
+        isEncrypted={isEncrypted}
+        setIsEncrypted={setIsEncrypted}
+      />
+      <MessageList 
+        messages={chat.messages} 
+        contactAvatar={chat.contact.avatar} 
+        isEncrypted={isEncrypted} 
+      />
       <MessageInput onSendMessage={handleSendMessage} />
     </div>
   );
