@@ -1,5 +1,5 @@
-import MurrasilChat from "@/components/murrasil-chat";
+import ChatList from "@/components/chat-list";
 
 export default function Home() {
-  return <MurrasilChat />;
+  return <ChatList />;
 }

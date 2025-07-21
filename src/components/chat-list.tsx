@@ -1,7 +1,8 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Bot, MessageSquareText, Search, Menu } from 'lucide-react';
+import { useRouter, useParams } from 'next/navigation';
+import { MessageSquareText, Search } from 'lucide-react';
 
 import type { Chat } from '@/lib/types';
 import { chats as initialChats } from '@/lib/data';
@@ -9,28 +10,24 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import ChatArea from '@/components/chat-area';
 import { ThemeSwitcher } from './theme-switcher';
 import { ScrollArea } from './ui/scroll-area';
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet"
-import { Button } from './ui/button';
 
-function ChatList({ chats, selectedChat, onChatSelect, searchQuery, onSearchChange }: {
-  chats: Chat[],
-  selectedChat: Chat | null,
-  onChatSelect: (chat: Chat) => void,
-  searchQuery: string,
-  onSearchChange: (query: string) => void
-}) {
+export default function ChatList() {
+  const [chats, setChats] = useState<Chat[]>(initialChats);
+  const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
+  const params = useParams();
+  const selectedChatId = params.chatId as string;
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  const handleChatSelect = (chat: Chat) => {
+    router.push(`/chat/${chat.id}`);
+  };
 
   const filteredChats = chats
     .filter(chat => chat.contact.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -38,7 +35,7 @@ function ChatList({ chats, selectedChat, onChatSelect, searchQuery, onSearchChan
 
   const formatTimestamp = (timestamp?: number) => {
     if (!timestamp) return '';
-    if (!isClient) return ''; // Avoid hydration mismatch
+    if (!isClient) return '';
 
     const date = new Date(timestamp);
     const now = new Date();
@@ -54,7 +51,7 @@ function ChatList({ chats, selectedChat, onChatSelect, searchQuery, onSearchChan
   }
 
   return (
-    <div className="w-[340px] flex-shrink-0 border-r border-border flex flex-col">
+    <div className="w-full md:w-[340px] md:flex-shrink-0 border-r border-border flex flex-col h-screen bg-background">
       <div className="p-4 space-y-4 border-b">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -69,7 +66,7 @@ function ChatList({ chats, selectedChat, onChatSelect, searchQuery, onSearchChan
             placeholder="Search chats..."
             className="pl-9"
             value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
       </div>
@@ -78,10 +75,10 @@ function ChatList({ chats, selectedChat, onChatSelect, searchQuery, onSearchChan
           {filteredChats.map((chat) => (
             <button
               key={chat.id}
-              onClick={() => onChatSelect(chat)}
+              onClick={() => handleChatSelect(chat)}
               className={cn(
                 'w-full text-left flex items-center gap-3 p-3 rounded-lg transition-colors',
-                selectedChat?.id === chat.id ? 'bg-muted' : 'hover:bg-muted/50',
+                selectedChatId === chat.id ? 'bg-muted' : 'hover:bg-muted/50',
               )}
             >
               <Avatar className="h-12 w-12 border-2 border-transparent data-[online=true]:border-green-500" data-online={chat.contact.online}>
@@ -104,72 +101,4 @@ function ChatList({ chats, selectedChat, onChatSelect, searchQuery, onSearchChan
       </ScrollArea>
     </div>
   )
-}
-
-
-export default function MurrasilChat() {
-  const [chats, setChats] = useState<Chat[]>(initialChats);
-  const [selectedChat, setSelectedChat] = useState<Chat | null>(chats[0] || null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  const handleChatSelect = (chat: Chat) => {
-    setSelectedChat(chat);
-    setIsSidebarOpen(false); // Close sidebar on selection in mobile
-  };
-
-  const handleNewMessage = (chatId: string, message: string) => {
-    const newMessage = { id: Date.now().toString(), text: message, senderId: 'user0', timestamp: Date.now() };
-    
-    const updateChat = (chat: Chat) => {
-      if (chat.id === chatId) {
-        return {
-          ...chat,
-          messages: [...chat.messages, newMessage],
-          contact: {
-            ...chat.contact,
-            lastMessage: message,
-            lastMessageTimestamp: newMessage.timestamp,
-          }
-        };
-      }
-      return chat;
-    };
-    
-    setChats(prevChats => prevChats.map(updateChat));
-
-    if (selectedChat?.id === chatId) {
-        setSelectedChat(prev => prev ? updateChat(prev) : null);
-    }
-  }
-
-  const sidebarContent = (
-    <ChatList 
-      chats={chats}
-      selectedChat={selectedChat}
-      onChatSelect={handleChatSelect}
-      searchQuery={searchQuery}
-      onSearchChange={setSearchQuery}
-    />
-  );
-
-
-  return (
-    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
-      <aside className="hidden md:flex">
-        {sidebarContent}
-      </aside>
-      <main className="flex-1 flex flex-col bg-muted/30">
-        {selectedChat ? (
-          <ChatArea chat={selectedChat} onNewMessage={handleNewMessage} sidebar={sidebarContent} />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <Bot size={80} className="text-muted-foreground/50 mb-4" />
-            <h1 className="text-2xl font-semibold">Welcome to duck</h1>
-            <p className="text-muted-foreground">Select a chat to start messaging</p>
-          </div>
-        )}
-      </main>
-    </div>
-  );
 }
