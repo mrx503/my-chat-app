@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import {
   Sheet,
   SheetContent,
+  SheetHeader,
+  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
 
@@ -29,6 +31,9 @@ export default function ChatHeader({ contact, children }: ChatHeaderProps) {
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="p-0 w-[340px]">
+                   <SheetHeader className="p-4 border-b">
+                     <SheetTitle className="text-left">Chats</SheetTitle>
+                   </SheetHeader>
                    {children}
                 </SheetContent>
             </Sheet>
