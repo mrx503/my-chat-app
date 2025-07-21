@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bot, MessageSquareText, Search } from 'lucide-react';
 
 import type { Chat } from '@/lib/types';
@@ -17,40 +17,38 @@ export default function MurrasilChat() {
   const [chats, setChats] = useState<Chat[]>(initialChats);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(chats[0] || null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleChatSelect = (chat: Chat) => {
     setSelectedChat(chat);
   };
 
   const handleNewMessage = (chatId: string, message: string) => {
-    setChats(prevChats => {
-      return prevChats.map(chat => {
-        if (chat.id === chatId) {
-          const newMessages = [...chat.messages, { id: Date.now().toString(), text: message, senderId: 'user0', timestamp: Date.now() }];
-          return {
-            ...chat,
-            messages: newMessages,
-            contact: {
-              ...chat.contact,
-              lastMessage: message,
-              lastMessageTimestamp: Date.now(),
-            }
-          };
-        }
-        return chat;
-      });
-    });
+    const newMessage = { id: Date.now().toString(), text: message, senderId: 'user0', timestamp: Date.now() };
+    
+    const updateChat = (chat: Chat) => {
+      if (chat.id === chatId) {
+        return {
+          ...chat,
+          messages: [...chat.messages, newMessage],
+          contact: {
+            ...chat.contact,
+            lastMessage: message,
+            lastMessageTimestamp: newMessage.timestamp,
+          }
+        };
+      }
+      return chat;
+    };
+    
+    setChats(prevChats => prevChats.map(updateChat));
 
     if (selectedChat?.id === chatId) {
-        setSelectedChat(prev => prev ? ({
-            ...prev,
-            messages: [...prev.messages, { id: Date.now().toString(), text: message, senderId: 'user0', timestamp: Date.now() }],
-            contact: {
-              ...prev.contact,
-              lastMessage: message,
-              lastMessageTimestamp: Date.now(),
-            }
-        }) : null)
+        setSelectedChat(prev => prev ? updateChat(prev) : null);
     }
   }
 
@@ -60,6 +58,12 @@ export default function MurrasilChat() {
 
   const formatTimestamp = (timestamp?: number) => {
     if (!timestamp) return '';
+    
+    // Only format time on the client to avoid hydration mismatch
+    if (!isClient) {
+        return ''; 
+    }
+
     const date = new Date(timestamp);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
