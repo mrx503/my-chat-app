@@ -47,6 +47,7 @@ export default function Home() {
             } else {
                  chatData.contact = {
                     id: contactId,
+                    uid: contactId,
                     name: `User ${contactId.substring(0, 4)}`,
                     email: 'Unknown',
                     avatar: `https://placehold.co/100x100.png`,
@@ -121,22 +122,36 @@ export default function Home() {
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    console.log('File selected:', file);
+  
     if (file && currentUser) {
       const reader = new FileReader();
-      reader.readAsDataURL(file);
+      
+      reader.onloadstart = () => console.log('Starting to read file...');
+      reader.onerror = (error) => console.error('Error reading file:', error);
+      
       reader.onload = async () => {
         const base64 = reader.result as string;
+        console.log('File read successfully:', base64.substring(0, 30) + '...');
+        
         try {
           const userDocRef = doc(db, 'users', currentUser.uid);
+          console.log('Updating user avatar...');
           await updateDoc(userDocRef, { avatar: base64 });
-          updateCurrentUser({ ...currentUser, avatar: base64 });
+          
+          console.log('Avatar updated in Firestore');
+          updateCurrentUser({ avatar: base64 });
           toast({ title: 'Success', description: 'Profile picture updated!' });
         } catch (error) {
           console.error("Error updating avatar:", error);
           toast({ variant: 'destructive', title: 'Error', description: 'Failed to update profile picture.' });
         }
       };
+      
+      reader.readAsDataURL(file);
     }
+    // Reset the input value to allow re-uploading the same file
+    event.target.value = '';
   };
   
   const shortUserId = currentUser?.uid ? `${currentUser.uid.substring(0, 6)}...` : '';
@@ -239,3 +254,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

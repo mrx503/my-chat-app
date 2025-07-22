@@ -30,6 +30,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (userDoc.exists()) {
             setCurrentUser({ uid: user.uid, ...userDoc.data() } as User & { uid: string });
           } else {
+            // This case might happen briefly during sign up before the doc is created.
+            // Or if a user is deleted from Firestore but not Auth.
             setCurrentUser({ uid: user.uid, email: user.email!, name: '', avatar: '' });
           }
           setLoading(false);
@@ -67,7 +69,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const updateCurrentUser = (data: Partial<User>) => {
     if (currentUser) {
-      setCurrentUser(prevUser => ({ ...prevUser!, ...data }));
+      setCurrentUser(prevUser => {
+        if (prevUser) {
+          return { ...prevUser, ...data };
+        }
+        return null;
+      });
     }
   }
 
@@ -90,3 +97,5 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+    
