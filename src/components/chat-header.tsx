@@ -216,3 +216,4 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
     </>
   );
 }
+

@@ -34,3 +34,4 @@ export type Chat = {
   messages: Message[];
   createdAt: Timestamp;
 };
+

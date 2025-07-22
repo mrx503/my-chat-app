@@ -75,3 +75,4 @@ export default function ChatList({ chats, onChatSelect }: ChatListProps) {
     </ScrollArea>
   );
 }
+
