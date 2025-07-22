@@ -1,9 +1,9 @@
 
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, doc, getDoc, addDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Chat, User } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Copy, LogOut, MessageSquarePlus, User as UserIcon } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Copy, LogOut, MessageSquarePlus, Camera } from 'lucide-react';
 
 export default function Home() {
   const { currentUser, logout } = useAuth();
@@ -21,6 +22,7 @@ export default function Home() {
   const [searchUserId, setSearchUserId] = useState('');
   const { toast } = useToast();
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!currentUser) {
@@ -112,6 +114,29 @@ export default function Home() {
       toast({ title: 'Copied!', description: 'Your full user ID has been copied to the clipboard.' });
     }
   };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && currentUser) {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        try {
+          const userDocRef = doc(db, 'users', currentUser.uid);
+          await updateDoc(userDocRef, { avatar: base64 });
+          toast({ title: 'Success', description: 'Profile picture updated!' });
+        } catch (error) {
+          console.error("Error updating avatar:", error);
+          toast({ variant: 'destructive', title: 'Error', description: 'Failed to update profile picture.' });
+        }
+      };
+    }
+  };
   
   const shortUserId = currentUser?.uid ? `${currentUser.uid.substring(0, 6)}...` : '';
 
@@ -142,7 +167,16 @@ export default function Home() {
                 <div className="lg:col-span-1 space-y-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center gap-4">
-                            <UserIcon className="w-10 h-10 text-primary"/>
+                            <div className="relative">
+                                <Avatar className="w-16 h-16" onClick={handleAvatarClick} style={{ cursor: 'pointer' }}>
+                                    <AvatarImage src={currentUser.avatar} alt={currentUser.name || currentUser.email || ''} data-ai-hint="profile picture"/>
+                                    <AvatarFallback>{currentUser.email?.[0].toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <div className="absolute bottom-0 right-0 bg-primary rounded-full p-1 border-2 border-background cursor-pointer" onClick={handleAvatarClick}>
+                                    <Camera className="h-4 w-4 text-primary-foreground"/>
+                                </div>
+                                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                            </div>
                             <div>
                                 <CardTitle>{currentUser.name || currentUser.email}</CardTitle>
                                 <CardDescription>Welcome back!</CardDescription>

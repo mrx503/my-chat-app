@@ -3,23 +3,26 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Chat, Message, User } from '@/lib/types';
 import ChatArea from '@/components/chat-area';
 import { Bot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ChatPage() {
     const params = useParams();
     const router = useRouter();
     const { currentUser } = useAuth();
     const chatId = params.chatId as string;
+    const { toast } = useToast();
 
     const [chat, setChat] = useState<Chat | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [isEncrypted, setIsEncrypted] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [isBlocked, setIsBlocked] = useState(false);
 
     useEffect(() => {
         if (!currentUser) {
@@ -28,12 +31,22 @@ export default function ChatPage() {
         }
         if (!chatId) return;
 
+        // Check for blocked status
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const unsubscribeUser = onSnapshot(userDocRef, (userDoc) => {
+            const userData = userDoc.data();
+            if (userData?.blockedUsers?.includes(chat?.contact?.id)) {
+                setIsBlocked(true);
+            } else {
+                setIsBlocked(false);
+            }
+        });
+
         const chatDocRef = doc(db, 'chats', chatId);
         const unsubscribeChat = onSnapshot(chatDocRef, async (chatDoc) => {
             if (chatDoc.exists()) {
                 const chatData = { id: chatDoc.id, ...chatDoc.data() } as Chat;
 
-                // Security check: ensure current user is part of the chat
                 if (!chatData.users.includes(currentUser.uid)) {
                     console.error("Access denied: User not in chat.");
                     setChat(null);
@@ -50,10 +63,18 @@ export default function ChatPage() {
                         chatData.contact = { id: contactDoc.id, ...contactDoc.data() } as User;
                     }
                     setChat(chatData);
-                    setLoading(false);
+
+                    // Check if the current user is blocked by the contact
+                    const contactData = contactDoc.data();
+                    if(contactData?.blockedUsers?.includes(currentUser.uid)) {
+                        setIsBlocked(true);
+                        toast({ variant: 'destructive', title: 'You are blocked', description: 'You cannot send messages to this user.' });
+                    }
                  }
+                 setLoading(false);
             } else {
                 setLoading(false);
+                router.push('/');
             }
         });
 
@@ -70,13 +91,14 @@ export default function ChatPage() {
         setIsEncrypted(false);
 
         return () => {
+            unsubscribeUser();
             unsubscribeChat();
             unsubscribeMessages();
         };
-    }, [chatId, currentUser, router]);
+    }, [chatId, currentUser, router, chat?.contact?.id, toast]);
 
     const handleNewMessage = async (messageText: string) => {
-        if (!chatId || !messageText.trim() || !currentUser) return;
+        if (!chatId || !messageText.trim() || !currentUser || isBlocked) return;
 
         const messagesColRef = collection(db, 'chats', chatId, 'messages');
         await addDoc(messagesColRef, {
@@ -85,6 +107,36 @@ export default function ChatPage() {
             timestamp: serverTimestamp()
         });
     };
+
+    const handleDeleteChat = async () => {
+        if (!chatId) return;
+        try {
+            await deleteDoc(doc(db, 'chats', chatId));
+            toast({ title: 'Chat Deleted', description: 'The conversation has been removed.' });
+            router.push('/');
+        } catch (error) {
+            console.error("Error deleting chat:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the chat.' });
+        }
+    };
+
+    const handleBlockUser = async () => {
+        if (!currentUser || !chat?.contact.id) return;
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        try {
+            if (isBlocked) {
+                await updateDoc(userDocRef, { blockedUsers: arrayRemove(chat.contact.id) });
+                toast({ title: 'User Unblocked', description: `You can now receive messages from ${chat.contact.name}.` });
+            } else {
+                await updateDoc(userDocRef, { blockedUsers: arrayUnion(chat.contact.id) });
+                toast({ title: 'User Blocked', description: `You will no longer receive messages from ${chat.contact.name}.` });
+            }
+        } catch (error) {
+            console.error("Error blocking user:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not update block status.' });
+        }
+    };
+
 
     if (loading) {
          return (
@@ -114,6 +166,9 @@ export default function ChatPage() {
                   onNewMessage={handleNewMessage}
                   isEncrypted={isEncrypted}
                   setIsEncrypted={setIsEncrypted}
+                  isBlocked={isBlocked}
+                  onDeleteChat={handleDeleteChat}
+                  onBlockUser={handleBlockUser}
                 />
             </main>
         </div>

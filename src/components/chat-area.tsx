@@ -6,15 +6,20 @@ import type { Chat } from '@/lib/types';
 import ChatHeader from './chat-header';
 import MessageList from './message-list';
 import MessageInput from './message-input';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { ShieldAlert } from 'lucide-react';
 
 interface ChatAreaProps {
   chat: Chat;
   onNewMessage: (message: string) => void;
   isEncrypted: boolean;
   setIsEncrypted: (isEncrypted: boolean) => void;
+  isBlocked: boolean;
+  onDeleteChat: () => void;
+  onBlockUser: () => void;
 }
 
-export default function ChatArea({ chat, onNewMessage, isEncrypted, setIsEncrypted }: ChatAreaProps) {
+export default function ChatArea({ chat, onNewMessage, isEncrypted, setIsEncrypted, isBlocked, onDeleteChat, onBlockUser }: ChatAreaProps) {
   const handleSendMessage = (message: string) => {
     if (message.trim()) {
       onNewMessage(message);
@@ -27,13 +32,28 @@ export default function ChatArea({ chat, onNewMessage, isEncrypted, setIsEncrypt
         contact={chat.contact} 
         isEncrypted={isEncrypted}
         setIsEncrypted={setIsEncrypted}
+        onDeleteChat={onDeleteChat}
+        onBlockUser={onBlockUser}
+        isBlocked={isBlocked}
       />
       <MessageList 
         messages={chat.messages} 
         contactAvatar={chat.contact.avatar} 
         isEncrypted={isEncrypted} 
       />
-      <MessageInput onSendMessage={handleSendMessage} />
+      {isBlocked ? (
+         <div className="p-4 border-t bg-background">
+            <Alert variant="destructive">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>User Blocked</AlertTitle>
+                <AlertDescription>
+                    You cannot send messages to this user. Unblock them to continue the conversation.
+                </AlertDescription>
+            </Alert>
+         </div>
+      ) : (
+        <MessageInput onSendMessage={handleSendMessage} />
+      )}
     </div>
   );
 }

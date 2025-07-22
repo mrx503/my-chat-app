@@ -2,7 +2,7 @@
 "use client"
 
 import React, { useState } from 'react';
-import { Phone, Video, MoreVertical, ShieldCheck, Waves } from 'lucide-react';
+import { Phone, Video, MoreVertical, ShieldCheck, Waves, Trash2, ShieldX, Shield } from 'lucide-react';
 import type { Contact } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 
@@ -23,9 +31,12 @@ interface ChatHeaderProps {
   contact: Contact;
   isEncrypted: boolean;
   setIsEncrypted: (isEncrypted: boolean) => void;
+  onDeleteChat: () => void;
+  onBlockUser: () => void;
+  isBlocked: boolean;
 }
 
-export default function ChatHeader({ contact, isEncrypted, setIsEncrypted }: ChatHeaderProps) {
+export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDeleteChat, onBlockUser, isBlocked }: ChatHeaderProps) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [chatPassword, setChatPassword] = useState<string | null>(null);
@@ -35,15 +46,11 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted }: Cha
 
   const handleMicrowaveClick = () => {
     if (isEncrypted) {
-      // If encrypted, show decrypt dialog
       setShowDecryptDialog(true);
     } else {
-      // If not encrypted, check if password exists
       if (chatPassword) {
-        // Password exists, just encrypt
         setIsEncrypted(true);
       } else {
-        // No password set for this chat yet, show create password dialog
         setShowCreatePasswordDialog(true);
       }
     }
@@ -96,11 +103,48 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted }: Cha
           <Button variant="ghost" size="icon">
             <Video className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon">
-            <MoreVertical className="h-5 w-5" />
-          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreVertical className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <AlertDialogTrigger asChild>
+                <DropdownMenuItem className="text-destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <span>Delete Chat</span>
+                </DropdownMenuItem>
+              </AlertDialogTrigger>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onBlockUser}>
+                {isBlocked ? <Shield className="mr-2 h-4 w-4" /> : <ShieldX className="mr-2 h-4 w-4" />}
+                <span>{isBlocked ? 'Unblock' : 'Block'} User</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
         </div>
       </header>
+      
+      {/* Delete Chat Confirmation */}
+       <AlertDialog>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the chat history.
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={onDeleteChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Delete
+                  </AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
       
       {/* Create Password Dialog */}
       <AlertDialog open={showCreatePasswordDialog} onOpenChange={setShowCreatePasswordDialog}>
