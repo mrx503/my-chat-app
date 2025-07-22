@@ -51,7 +51,7 @@ export default function ChatPage() {
                     const unsubscribeContact = onSnapshot(contactDocRef, (contactDoc) => {
                          if (contactDoc.exists()) {
                             const contactData = { id: contactDoc.id, ...contactDoc.data() } as User;
-                            setChat(prev => ({...prev!, contact: contactData}));
+                            setChat(prev => prev ? ({...prev, contact: contactData}) : null);
                             
                             if(contactData.blockedUsers?.includes(currentUser.uid)) {
                                 setAmIBlocked(true);
@@ -100,12 +100,6 @@ export default function ChatPage() {
                 ...doc.data()
             } as Message));
             setMessages(newMessages);
-
-            // Mark messages as read
-            const contactId = chat?.users.find(id => id !== currentUser?.uid);
-            if (contactId) {
-                markMessagesAsRead(contactId);
-            }
         });
 
         setIsEncrypted(false);
@@ -116,6 +110,15 @@ export default function ChatPage() {
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [chatId, currentUser, router, toast]);
+
+    useEffect(() => {
+        // Separate effect to mark messages as read, dependent on chat and currentUser
+        const contactId = chat?.users.find(id => id !== currentUser?.uid);
+        if (contactId) {
+            markMessagesAsRead(contactId);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [messages, chat, currentUser]); // Rerun when messages or chat info changes
 
     const markMessagesAsRead = async (contactId: string) => {
         if (!chatId || !currentUser) return;

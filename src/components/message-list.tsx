@@ -24,7 +24,7 @@ function FormattedTime({ timestamp }: { timestamp: any }) {
         let timeStr = '';
         if (timestamp && typeof timestamp.toDate === 'function') {
             timeStr = new Date(timestamp.toDate()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-        } else {
+        } else if (timestamp) { // Fallback for server-generated timestamps before hydration
             timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         }
         setFormattedTime(timeStr);
@@ -57,13 +57,13 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
     switch (message.type) {
         case 'image':
             return (
-                <div className="relative w-full aspect-square max-w-xs">
+                <div className="relative w-full aspect-square max-w-xs overflow-hidden rounded-lg">
                     <a href={message.fileURL} target="_blank" rel="noopener noreferrer">
                         <Image
                             src={message.fileURL!}
                             alt={message.fileName || 'Sent image'}
                             layout="fill"
-                            className="rounded-lg object-cover"
+                            className="object-cover"
                             data-ai-hint="sent image"
                         />
                     </a>
@@ -84,7 +84,10 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
                 </a>
             );
         default:
-            return <p className="whitespace-pre-wrap break-words">{messageText}</p>;
+             if (messageText) {
+                return <p className="whitespace-pre-wrap break-words">{messageText}</p>;
+            }
+            return null;
     }
 };
 
@@ -125,8 +128,8 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
                     className={cn(
                     'max-w-[70%] rounded-xl shadow-sm break-words group',
                     isCurrentUser
-                        ? `bg-primary text-primary-foreground rounded-br-none ${message.type === 'image' ? 'p-0 bg-transparent shadow-none' : 'p-3'}`
-                        : `bg-background text-foreground rounded-bl-none ${message.type === 'image' ? 'p-0 bg-transparent shadow-none' : 'p-3'}`
+                        ? `bg-primary text-primary-foreground rounded-br-none ${message.type !== 'text' ? 'p-0 bg-transparent shadow-none' : 'p-3'}`
+                        : `bg-background text-foreground rounded-bl-none ${message.type !== 'text' ? 'p-0 bg-transparent shadow-none' : 'p-3'}`
                     )}
                 >
                     <MessageContent message={message} isEncrypted={isEncrypted} />
