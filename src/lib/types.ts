@@ -19,6 +19,7 @@ export type Message = {
   type?: 'text' | 'image' | 'file'; // To distinguish message types
   fileURL?: string; // URL for the file/image
   fileName?: string; // Name of the file
+  status?: 'sent' | 'read';
 };
 
 export type Contact = User & {
@@ -34,4 +35,3 @@ export type Chat = {
   messages: Message[];
   createdAt: Timestamp;
 };
-

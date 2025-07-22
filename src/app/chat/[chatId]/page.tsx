@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
+import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Chat, Message, User } from '@/lib/types';
 import ChatArea from '@/components/chat-area';
@@ -53,7 +53,6 @@ export default function ChatPage() {
                             const contactData = { id: contactDoc.id, ...contactDoc.data() } as User;
                             setChat(prev => ({...prev!, contact: contactData}));
                             
-                            // Check if the current user is blocked by the contact
                             if(contactData.blockedUsers?.includes(currentUser.uid)) {
                                 setAmIBlocked(true);
                                 toast({ variant: 'destructive', title: 'You are blocked', description: 'You cannot send messages to this user.' });
@@ -73,7 +72,6 @@ export default function ChatPage() {
                         }
                     });
 
-                    // Initial fetch for chat contact
                     const initialContactDoc = await getDoc(contactDocRef);
                      if (initialContactDoc.exists()) {
                         chatData.contact = { id: initialContactDoc.id, ...initialContactDoc.data() } as User;
@@ -102,6 +100,12 @@ export default function ChatPage() {
                 ...doc.data()
             } as Message));
             setMessages(newMessages);
+
+            // Mark messages as read
+            const contactId = chat?.users.find(id => id !== currentUser?.uid);
+            if (contactId) {
+                markMessagesAsRead(contactId);
+            }
         });
 
         setIsEncrypted(false);
@@ -110,7 +114,31 @@ export default function ChatPage() {
             unsubscribeChat();
             unsubscribeMessages();
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [chatId, currentUser, router, toast]);
+
+    const markMessagesAsRead = async (contactId: string) => {
+        if (!chatId || !currentUser) return;
+        
+        const messagesToUpdateQuery = query(
+            collection(db, 'chats', chatId, 'messages'),
+            where('senderId', '==', contactId),
+            where('status', '==', 'sent')
+        );
+
+        try {
+            const querySnapshot = await getDocs(messagesToUpdateQuery);
+            if(querySnapshot.empty) return;
+
+            const batch = writeBatch(db);
+            querySnapshot.forEach(docSnapshot => {
+                batch.update(docSnapshot.ref, { status: 'read' });
+            });
+            await batch.commit();
+        } catch (error) {
+            console.error("Error marking messages as read: ", error);
+        }
+    };
 
     const handleNewMessage = async (messageText: string) => {
         if (!chatId || !messageText.trim() || !currentUser || isBlocked || amIBlocked) return;
@@ -121,6 +149,7 @@ export default function ChatPage() {
             senderId: currentUser.uid,
             timestamp: serverTimestamp(),
             type: 'text',
+            status: 'sent',
         });
     };
     
@@ -142,6 +171,7 @@ export default function ChatPage() {
                     type: file.type.startsWith('image/') ? 'image' : 'file',
                     fileURL: base64File,
                     fileName: file.name,
+                    status: 'sent',
                 });
                  toast({ title: 'Success!', description: 'File sent successfully.' });
             } catch (error) {

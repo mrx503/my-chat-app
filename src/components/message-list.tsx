@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
-import { Download } from 'lucide-react';
+import { Download, Check, CheckCheck } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface MessageListProps {
@@ -25,7 +25,6 @@ function FormattedTime({ timestamp }: { timestamp: any }) {
         if (timestamp && typeof timestamp.toDate === 'function') {
             timeStr = new Date(timestamp.toDate()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         } else {
-             // Fallback for locally created messages before they get a server timestamp
             timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         }
         setFormattedTime(timeStr);
@@ -38,6 +37,16 @@ function FormattedTime({ timestamp }: { timestamp: any }) {
     return <>{formattedTime}</>;
 }
 
+const ReadReceipt = ({ status }: { status?: 'sent' | 'read' }) => {
+    if (status === 'sent') {
+        return <Check className="h-4 w-4 ml-1" />;
+    }
+    if (status === 'read') {
+        return <CheckCheck className="h-4 w-4 ml-1 text-blue-500" />;
+    }
+    return null;
+};
+
 const encryptMessage = (text: string) => {
   return text.split('').map(char => char.charCodeAt(0)).join(' ');
 }
@@ -48,7 +57,7 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
     switch (message.type) {
         case 'image':
             return (
-                <div className="relative w-64 h-64">
+                <div className="relative w-full aspect-square max-w-xs">
                     <a href={message.fileURL} target="_blank" rel="noopener noreferrer">
                         <Image
                             src={message.fileURL!}
@@ -67,7 +76,7 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
                         <div className="flex items-center gap-3 py-2 px-3">
                             <Download className="h-6 w-6" />
                             <div className="text-left">
-                                <p className="font-semibold">{message.fileName}</p>
+                                <p className="font-semibold break-all">{message.fileName}</p>
                                 <p className="text-xs text-muted-foreground">Click to download</p>
                             </div>
                         </div>
@@ -80,7 +89,6 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
 };
 
 export default function MessageList({ messages, contactAvatar, isEncrypted }: MessageListProps) {
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const { currentUser } = useAuth();
 
@@ -91,20 +99,20 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
   }, [messages, isEncrypted]);
   
   if (!currentUser) {
-    return null; // or a loading state
+    return null; 
   }
 
   return (
-    <ScrollArea className="flex-1" ref={scrollAreaRef} viewportRef={viewportRef}>
+    <ScrollArea className="flex-1" viewportRef={viewportRef}>
       <div className="p-6 space-y-2">
         {messages.map((message, index) => {
           const isCurrentUser = message.senderId === currentUser.uid;
-          const showAvatar = index === messages.length -1 || messages[index + 1].senderId !== message.senderId;
+          const showAvatar = index === messages.length - 1 || messages[index + 1].senderId !== message.senderId;
           
           return (
             <div
-              key={message.id}
-              className={cn('flex items-end gap-3', isCurrentUser ? 'justify-end' : 'justify-start')}
+              key={message.id || index}
+              className={cn('flex items-end gap-3 w-full', isCurrentUser ? 'justify-end' : 'justify-start')}
             >
               {!isCurrentUser && (
                 <Avatar className={cn('h-8 w-8 self-end', showAvatar ? 'opacity-100' : 'opacity-0')}>
@@ -112,20 +120,21 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
                    {showAvatar && <AvatarFallback>C</AvatarFallback>}
                 </Avatar>
               )}
-              <div
-                className={cn(
-                  'max-w-[70%] rounded-xl shadow-sm break-words group',
-                   isCurrentUser
-                    ? `bg-primary text-primary-foreground rounded-br-none ${message.type === 'image' ? 'p-0 bg-transparent' : 'p-3'}`
-                    : `bg-background text-foreground rounded-bl-none ${message.type === 'image' ? 'p-0' : 'p-3'}`
-                )}
-              >
-                <MessageContent message={message} isEncrypted={isEncrypted} />
-                 {message.type !== 'image' && (
-                    <p className="text-xs mt-1 text-right opacity-70">
-                        <FormattedTime timestamp={message.timestamp} />
-                    </p>
-                )}
+              <div className="w-full flex flex-col" style={{ alignItems: isCurrentUser ? 'flex-end' : 'flex-start' }}>
+                <div
+                    className={cn(
+                    'max-w-[70%] rounded-xl shadow-sm break-words group',
+                    isCurrentUser
+                        ? `bg-primary text-primary-foreground rounded-br-none ${message.type === 'image' ? 'p-0 bg-transparent shadow-none' : 'p-3'}`
+                        : `bg-background text-foreground rounded-bl-none ${message.type === 'image' ? 'p-0 bg-transparent shadow-none' : 'p-3'}`
+                    )}
+                >
+                    <MessageContent message={message} isEncrypted={isEncrypted} />
+                </div>
+                <div className="flex items-center text-xs mt-1 text-right opacity-70">
+                    <FormattedTime timestamp={message.timestamp} />
+                    {isCurrentUser && <ReadReceipt status={message.status} />}
+                </div>
               </div>
             </div>
           );
