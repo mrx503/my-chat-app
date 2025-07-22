@@ -2,7 +2,8 @@
 "use client"
 
 import React, { useState } from 'react';
-import { Phone, Video, MoreVertical, ShieldCheck, Waves, Trash2, ShieldX, Shield } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Phone, Video, MoreVertical, ShieldCheck, Waves, Trash2, ShieldX, Shield, ArrowLeft } from 'lucide-react';
 import type { Contact } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ interface ChatHeaderProps {
 }
 
 export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDeleteChat, onBlockUser, isBlocked }: ChatHeaderProps) {
+  const router = useRouter();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [chatPassword, setChatPassword] = useState<string | null>(null);
@@ -84,6 +86,10 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
       <AlertDialog>
         <header className="flex items-center p-4 border-b bg-background shadow-sm">
           <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.push('/')}>
+                <ArrowLeft className="h-5 w-5" />
+                <span className="sr-only">Back</span>
+            </Button>
             <Avatar className="h-10 w-10">
               <AvatarImage src={contact.avatar} alt={contact.name} data-ai-hint="profile picture" />
               <AvatarFallback>{contact.name ? contact.name.charAt(0) : 'U'}</AvatarFallback>

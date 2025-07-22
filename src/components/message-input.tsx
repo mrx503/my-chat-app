@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState } from 'react';
-import { Send, SmilePlus, Bot, Loader2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Send, SmilePlus, Bot, Loader2, Paperclip } from 'lucide-react';
 import type { VariantProps } from 'class-variance-authority';
 import { analyzeSentiment } from '@/ai/flows/analyze-sentiment';
 import type { AnalyzeSentimentOutput } from '@/ai/flows/analyze-sentiment';
@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge, badgeVariants } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from './ui/input';
 
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
@@ -21,6 +22,7 @@ export default function MessageInput({ onSendMessage }: MessageInputProps) {
   const [analysis, setAnalysis] = useState<AnalyzeSentimentOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAnalyze = async () => {
     if (!message.trim()) return;
@@ -53,6 +55,23 @@ export default function MessageInput({ onSendMessage }: MessageInputProps) {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const handleAttachmentClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      console.log('Selected file:', file.name);
+      // Here you would handle the file upload logic
+      toast({
+        title: "File Selected",
+        description: `${file.name}`,
+      });
+    }
+    event.target.value = ''; 
   };
 
   const sentimentBadgeVariant = (sentiment?: string): VariantProps<typeof badgeVariants>['variant'] => {
@@ -91,9 +110,14 @@ export default function MessageInput({ onSendMessage }: MessageInputProps) {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="pr-32 min-h-[52px] resize-none"
+          className="pr-40 min-h-[52px] resize-none"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+          <Button variant="ghost" size="icon" onClick={handleAttachmentClick}>
+            <Paperclip className="h-5 w-5" />
+            <span className="sr-only">Attach file</span>
+          </Button>
           <Button variant="ghost" size="icon" onClick={handleAnalyze} disabled={isLoading}>
             {isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin" />
