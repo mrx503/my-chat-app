@@ -4,7 +4,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '@/lib/firebase';
 import type { Chat, Message, User } from '@/lib/types';
 import ChatArea from '@/components/chat-area';
 import { Bot } from 'lucide-react';
@@ -119,8 +120,36 @@ export default function ChatPage() {
         await addDoc(messagesColRef, {
             text: messageText,
             senderId: currentUser.uid,
-            timestamp: serverTimestamp()
+            timestamp: serverTimestamp(),
+            type: 'text',
         });
+    };
+    
+    const handleSendFile = async (file: File) => {
+        if (!chatId || !currentUser || isBlocked || amIBlocked) return;
+
+        toast({ title: 'Uploading...', description: 'Please wait while your file is being uploaded.' });
+
+        try {
+            const storageRef = ref(storage, `chat_attachments/${chatId}/${Date.now()}_${file.name}`);
+            const uploadTask = await uploadBytes(storageRef, file);
+            const downloadURL = await getDownloadURL(uploadTask.ref);
+
+            const messagesColRef = collection(db, 'chats', chatId, 'messages');
+            await addDoc(messagesColRef, {
+                text: '',
+                senderId: currentUser.uid,
+                timestamp: serverTimestamp(),
+                type: file.type.startsWith('image/') ? 'image' : 'file',
+                fileURL: downloadURL,
+                fileName: file.name,
+            });
+            
+            toast({ title: 'Success!', description: 'File sent successfully.' });
+        } catch (error) {
+            console.error("Error uploading file:", error);
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload the file.' });
+        }
     };
 
     const handleDeleteChat = async () => {
@@ -179,6 +208,7 @@ export default function ChatPage() {
                 <ChatArea
                   chat={{ ...chat, messages }}
                   onNewMessage={handleNewMessage}
+                  onSendFile={handleSendFile}
                   isEncrypted={isEncrypted}
                   setIsEncrypted={setIsEncrypted}
                   isBlocked={isBlocked || amIBlocked}

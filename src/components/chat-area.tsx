@@ -12,6 +12,7 @@ import { ShieldAlert } from 'lucide-react';
 interface ChatAreaProps {
   chat: Chat;
   onNewMessage: (message: string) => void;
+  onSendFile: (file: File) => void;
   isEncrypted: boolean;
   setIsEncrypted: (isEncrypted: boolean) => void;
   isBlocked: boolean;
@@ -20,7 +21,7 @@ interface ChatAreaProps {
   isSelfBlocked: boolean;
 }
 
-export default function ChatArea({ chat, onNewMessage, isEncrypted, setIsEncrypted, isBlocked, onDeleteChat, onBlockUser, isSelfBlocked }: ChatAreaProps) {
+export default function ChatArea({ chat, onNewMessage, onSendFile, isEncrypted, setIsEncrypted, isBlocked, onDeleteChat, onBlockUser, isSelfBlocked }: ChatAreaProps) {
   const handleSendMessage = (message: string) => {
     if (message.trim()) {
       onNewMessage(message);
@@ -53,7 +54,7 @@ export default function ChatArea({ chat, onNewMessage, isEncrypted, setIsEncrypt
             </Alert>
          </div>
       ) : (
-        <MessageInput onSendMessage={handleSendMessage} />
+        <MessageInput onSendMessage={handleSendMessage} onSendFile={onSendFile} />
       )}
     </div>
   );

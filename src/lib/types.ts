@@ -16,6 +16,9 @@ export type Message = {
   text: string;
   senderId: string; // Firebase Auth UID
   timestamp: Timestamp | Date;
+  type?: 'text' | 'image' | 'file'; // To distinguish message types
+  fileURL?: string; // URL for the file/image
+  fileName?: string; // Name of the file
 };
 
 export type Contact = User & {

@@ -7,6 +7,9 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
+import Image from 'next/image';
+import { Download } from 'lucide-react';
+import { Button } from './ui/button';
 
 interface MessageListProps {
   messages: Message[];
@@ -39,6 +42,42 @@ const encryptMessage = (text: string) => {
   return text.split('').map(char => char.charCodeAt(0)).join(' ');
 }
 
+const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypted: boolean }) => {
+    const messageText = isEncrypted ? encryptMessage(message.text) : message.text;
+
+    switch (message.type) {
+        case 'image':
+            return (
+                <a href={message.fileURL} target="_blank" rel="noopener noreferrer">
+                    <Image
+                        src={message.fileURL!}
+                        alt={message.fileName || 'Sent image'}
+                        width={250}
+                        height={250}
+                        className="rounded-lg object-cover"
+                        data-ai-hint="sent image"
+                    />
+                </a>
+            );
+        case 'file':
+            return (
+                <a href={message.fileURL} target="_blank" rel="noopener noreferrer" download={message.fileName}>
+                    <Button variant="outline" className="h-auto">
+                        <div className="flex items-center gap-3 py-2 px-3">
+                            <Download className="h-6 w-6" />
+                            <div className="text-left">
+                                <p className="font-semibold">{message.fileName}</p>
+                                <p className="text-xs text-muted-foreground">Click to download</p>
+                            </div>
+                        </div>
+                    </Button>
+                </a>
+            );
+        default:
+            return <p className="whitespace-pre-wrap">{messageText}</p>;
+    }
+};
+
 export default function MessageList({ messages, contactAvatar, isEncrypted }: MessageListProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { currentUser } = useAuth();
@@ -62,8 +101,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
         {messages.map((message, index) => {
           const isCurrentUser = message.senderId === currentUser.uid;
           const showAvatar = index === 0 || messages[index - 1].senderId !== message.senderId;
-          const messageText = isEncrypted ? encryptMessage(message.text) : message.text;
-
+          
           return (
             <div
               key={message.id}
@@ -83,7 +121,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
                     : 'bg-background text-foreground rounded-bl-none'
                 )}
               >
-                <p className="whitespace-pre-wrap">{messageText}</p>
+                <MessageContent message={message} isEncrypted={isEncrypted} />
                 <p className="text-xs mt-1 text-right opacity-70">
                   <FormattedTime timestamp={message.timestamp} />
                 </p>

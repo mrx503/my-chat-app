@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useRef } from 'react';
@@ -15,9 +16,10 @@ import { Input } from './ui/input';
 
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
+  onSendFile: (file: File) => void;
 }
 
-export default function MessageInput({ onSendMessage }: MessageInputProps) {
+export default function MessageInput({ onSendMessage, onSendFile }: MessageInputProps) {
   const [message, setMessage] = useState('');
   const [analysis, setAnalysis] = useState<AnalyzeSentimentOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -64,13 +66,9 @@ export default function MessageInput({ onSendMessage }: MessageInputProps) {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      console.log('Selected file:', file.name);
-      // Here you would handle the file upload logic
-      toast({
-        title: "File Selected",
-        description: `${file.name}`,
-      });
+      onSendFile(file);
     }
+    // Reset the input value to allow re-uploading the same file
     event.target.value = ''; 
   };
 
