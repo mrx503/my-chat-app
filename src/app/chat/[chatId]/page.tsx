@@ -29,9 +29,9 @@ export default function ChatPage() {
         if (!chatId) return;
 
         const chatDocRef = doc(db, 'chats', chatId);
-        const unsubscribeChat = onSnapshot(chatDocRef, async (doc) => {
-            if (doc.exists()) {
-                const chatData = { id: doc.id, ...doc.data() } as Chat;
+        const unsubscribeChat = onSnapshot(chatDocRef, async (chatDoc) => {
+            if (chatDoc.exists()) {
+                const chatData = { id: chatDoc.id, ...chatDoc.data() } as Chat;
 
                 // Security check: ensure current user is part of the chat
                 if (!chatData.users.includes(currentUser.uid)) {
@@ -119,4 +119,3 @@ export default function ChatPage() {
         </div>
     );
 }
-
