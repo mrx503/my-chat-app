@@ -40,7 +40,7 @@ export default function ChatArea({ chat, onNewMessage, onSendFile, isEncrypted, 
       />
       <MessageList 
         messages={chat.messages} 
-        contactAvatar={chat.contact.avatar} 
+        contactAvatar={chat.contact?.avatar} 
         isEncrypted={isEncrypted} 
       />
       {isBlocked ? (

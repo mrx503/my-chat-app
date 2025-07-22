@@ -51,7 +51,11 @@ export default function ChatPage() {
                     const unsubscribeContact = onSnapshot(contactDocRef, (contactDoc) => {
                          if (contactDoc.exists()) {
                             const contactData = { id: contactDoc.id, ...contactDoc.data() } as User;
-                            setChat(prev => prev ? ({...prev, contact: contactData}) : null);
+                            setChat(prev => {
+                                const newChat = prev ? {...prev, contact: contactData} : chatData;
+                                newChat.contact = contactData;
+                                return newChat;
+                            });
                             
                             if(contactData.blockedUsers?.includes(currentUser.uid)) {
                                 setAmIBlocked(true);
@@ -83,6 +87,8 @@ export default function ChatPage() {
                         unsubscribeContact();
                         unsubscribeUser();
                     }
+                 } else {
+                     setChat(chatData);
                  }
                  setLoading(false);
             } else {
@@ -112,13 +118,10 @@ export default function ChatPage() {
     }, [chatId, currentUser, router, toast]);
 
     useEffect(() => {
-        // Separate effect to mark messages as read, dependent on chat and currentUser
-        const contactId = chat?.users.find(id => id !== currentUser?.uid);
-        if (contactId) {
-            markMessagesAsRead(contactId);
-        }
+        if (!chat?.contact || !currentUser) return;
+        markMessagesAsRead(chat.contact.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [messages, chat, currentUser]); // Rerun when messages or chat info changes
+    }, [messages, chat?.contact, currentUser]);
 
     const markMessagesAsRead = async (contactId: string) => {
         if (!chatId || !currentUser) return;
@@ -157,7 +160,14 @@ export default function ChatPage() {
     };
     
     const handleSendFile = async (file: File) => {
-        if (!chatId || !currentUser || isBlocked || amIBlocked) return;
+        if (!chatId || !currentUser) {
+             toast({ variant: 'destructive', title: 'Send Failed', description: 'Chat session not found.' });
+             return;
+        }
+        if (isBlocked || amIBlocked) {
+            toast({ variant: 'destructive', title: 'Send Failed', description: 'Cannot send messages in a blocked chat.' });
+            return;
+        }
 
         toast({ title: 'Sending file...', description: 'Please wait.' });
 
