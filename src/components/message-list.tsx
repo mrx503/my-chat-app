@@ -115,7 +115,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
           return (
             <div
               key={message.id || index}
-              className={cn('flex items-end gap-3 w-full', isCurrentUser ? 'justify-end' : 'justify-start')}
+              className={cn('flex items-end gap-3', isCurrentUser ? 'justify-end' : 'justify-start')}
             >
               {!isCurrentUser && (
                 <Avatar className={cn('h-8 w-8 self-end', showAvatar ? 'opacity-100' : 'opacity-0')}>

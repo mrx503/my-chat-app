@@ -159,42 +159,45 @@ export default function ChatPage() {
         });
     };
     
+    const readFileAsBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = (error) => reject(error);
+        });
+    };
+
     const handleSendFile = async (file: File) => {
         if (!chatId || !currentUser) {
-             toast({ variant: 'destructive', title: 'Send Failed', description: 'Chat session not found.' });
-             return;
+            toast({ variant: 'destructive', title: 'Send Failed', description: 'Chat session not found.' });
+            return;
         }
         if (isBlocked || amIBlocked) {
             toast({ variant: 'destructive', title: 'Send Failed', description: 'Cannot send messages in a blocked chat.' });
             return;
         }
-
+    
         toast({ title: 'Sending file...', description: 'Please wait.' });
-
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = async () => {
-            const base64File = reader.result as string;
-            try {
-                const messagesColRef = collection(db, 'chats', chatId, 'messages');
-                await addDoc(messagesColRef, {
-                    text: '',
-                    senderId: currentUser.uid,
-                    timestamp: serverTimestamp(),
-                    type: file.type.startsWith('image/') ? 'image' : 'file',
-                    fileURL: base64File,
-                    fileName: file.name,
-                    status: 'sent',
-                });
-                 toast({ title: 'Success!', description: 'File sent successfully.' });
-            } catch (error) {
-                 console.error("Error sending file:", error);
-                 toast({ variant: 'destructive', title: 'Send Failed', description: 'Could not send the file.' });
-            }
-        };
-        reader.onerror = (error) => {
-            console.error("Error reading file:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not read the file.' });
+    
+        try {
+            const base64File = await readFileAsBase64(file);
+            
+            const messagesColRef = collection(db, 'chats', chatId, 'messages');
+            await addDoc(messagesColRef, {
+                text: '',
+                senderId: currentUser.uid,
+                timestamp: serverTimestamp(),
+                type: file.type.startsWith('image/') ? 'image' : 'file',
+                fileURL: base64File,
+                fileName: file.name,
+                status: 'sent',
+            });
+    
+            toast({ title: 'Success!', description: 'File sent successfully.' });
+        } catch (error) {
+            console.error("Error sending file:", error);
+            toast({ variant: 'destructive', title: 'Send Failed', description: 'Could not send the file.' });
         }
     };
 
