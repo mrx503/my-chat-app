@@ -202,7 +202,7 @@ export default function Home() {
                              <div className="flex items-center justify-between p-3 bg-muted rounded-md">
                                 <span className="text-sm font-mono text-muted-foreground" title={currentUser.uid}>
                                     ID: {shortUserId}
-                                </span>
+                                 </span>
                                 <Button variant="ghost" size="icon" onClick={copyUserId} className="h-8 w-8">
                                     <Copy className="h-4 w-4"/>
                                     <span className="sr-only">Copy User ID</span>
@@ -254,5 +254,4 @@ export default function Home() {
     </div>
   );
 }
-
     
