@@ -9,7 +9,7 @@ import MessageInput from './message-input';
 
 interface ChatAreaProps {
   chat: Chat;
-  onNewMessage: (chatId: string, message: string) => void;
+  onNewMessage: (message: string) => void;
   isEncrypted: boolean;
   setIsEncrypted: (isEncrypted: boolean) => void;
 }
@@ -17,7 +17,7 @@ interface ChatAreaProps {
 export default function ChatArea({ chat, onNewMessage, isEncrypted, setIsEncrypted }: ChatAreaProps) {
   const handleSendMessage = (message: string) => {
     if (message.trim()) {
-      onNewMessage(chat.id, message);
+      onNewMessage(message);
     }
   };
 

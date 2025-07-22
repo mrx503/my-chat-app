@@ -2,7 +2,6 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from 'react';
-import { format } from 'date-fns';
 import { currentUser } from '@/lib/data';
 import type { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -15,18 +14,23 @@ interface MessageListProps {
   isEncrypted: boolean;
 }
 
-function FormattedTime({ timestamp }: { timestamp: number }) {
-  const [formattedTime, setFormattedTime] = useState('');
+function FormattedTime({ timestamp }: { timestamp: any }) {
+    const [formattedTime, setFormattedTime] = useState('');
 
-  useEffect(() => {
-    setFormattedTime(format(new Date(timestamp), 'p'));
-  }, [timestamp]);
+    useEffect(() => {
+        if (timestamp && typeof timestamp.toDate === 'function') {
+            setFormattedTime(new Date(timestamp.toDate()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
+        } else if (timestamp) {
+             // Fallback for locally created messages before they get a server timestamp
+            setFormattedTime(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
+        }
+    }, [timestamp]);
 
-  if (!formattedTime) {
-    return null;
-  }
+    if (!formattedTime) {
+        return null;
+    }
 
-  return <>{formattedTime}</>;
+    return <>{formattedTime}</>;
 }
 
 const encryptMessage = (text: string) => {

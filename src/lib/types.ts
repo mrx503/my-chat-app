@@ -1,3 +1,5 @@
+import { Timestamp } from "firebase/firestore";
+
 export type User = {
   id: string;
   name: string;
@@ -9,17 +11,18 @@ export type Message = {
   id: string;
   text: string;
   senderId: string;
-  timestamp: number;
+  timestamp: Timestamp | Date;
 };
 
 export type Contact = User & {
   lastMessage?: string;
-  lastMessageTimestamp?: number;
+  lastMessageTimestamp?: Timestamp;
   unreadMessages?: number;
 };
 
 export type Chat = {
   id: string;
-  contact: Contact;
+  users: string[]; // array of user IDs
+  contact: Contact; // The other user in the chat
   messages: Message[];
 };
