@@ -17,9 +17,10 @@ interface ChatAreaProps {
   isBlocked: boolean;
   onDeleteChat: () => void;
   onBlockUser: () => void;
+  isSelfBlocked: boolean;
 }
 
-export default function ChatArea({ chat, onNewMessage, isEncrypted, setIsEncrypted, isBlocked, onDeleteChat, onBlockUser }: ChatAreaProps) {
+export default function ChatArea({ chat, onNewMessage, isEncrypted, setIsEncrypted, isBlocked, onDeleteChat, onBlockUser, isSelfBlocked }: ChatAreaProps) {
   const handleSendMessage = (message: string) => {
     if (message.trim()) {
       onNewMessage(message);
@@ -34,7 +35,7 @@ export default function ChatArea({ chat, onNewMessage, isEncrypted, setIsEncrypt
         setIsEncrypted={setIsEncrypted}
         onDeleteChat={onDeleteChat}
         onBlockUser={onBlockUser}
-        isBlocked={isBlocked}
+        isBlocked={isSelfBlocked}
       />
       <MessageList 
         messages={chat.messages} 
@@ -45,9 +46,9 @@ export default function ChatArea({ chat, onNewMessage, isEncrypted, setIsEncrypt
          <div className="p-4 border-t bg-background">
             <Alert variant="destructive">
                 <ShieldAlert className="h-4 w-4" />
-                <AlertTitle>User Blocked</AlertTitle>
+                <AlertTitle>Conversation Blocked</AlertTitle>
                 <AlertDescription>
-                    You cannot send messages to this user. Unblock them to continue the conversation.
+                    {isSelfBlocked ? "You have blocked this user. Unblock them to send messages." : "You cannot reply to this conversation because you are blocked by the user."}
                 </AlertDescription>
             </Alert>
          </div>

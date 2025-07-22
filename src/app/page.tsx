@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, doc, getDoc, addDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Chat, User } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Copy, LogOut, MessageSquarePlus, Camera } from 'lucide-react';
 
 export default function Home() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, updateCurrentUser } = useAuth();
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchUserId, setSearchUserId] = useState('');
@@ -97,7 +97,7 @@ export default function Home() {
 
         const newChatRef = await addDoc(collection(db, 'chats'), {
             users: [currentUser.uid, searchUserId],
-            createdAt: new Date(),
+            createdAt: serverTimestamp(),
         });
         
         router.push(`/chat/${newChatRef.id}`);
@@ -129,6 +129,7 @@ export default function Home() {
         try {
           const userDocRef = doc(db, 'users', currentUser.uid);
           await updateDoc(userDocRef, { avatar: base64 });
+          updateCurrentUser({ ...currentUser, avatar: base64 });
           toast({ title: 'Success', description: 'Profile picture updated!' });
         } catch (error) {
           console.error("Error updating avatar:", error);

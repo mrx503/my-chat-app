@@ -81,69 +81,69 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
 
   return (
     <>
-      <header className="flex items-center p-4 border-b bg-background shadow-sm">
-        <div className="flex items-center gap-4">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={contact.avatar} alt={contact.name} data-ai-hint="profile picture" />
-            <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <div>
-            <h2 className="text-lg font-semibold">{contact.name}</h2>
-            <p className="text-sm text-muted-foreground">{contact.online ? 'Online' : 'Offline'}</p>
+      <AlertDialog>
+        <header className="flex items-center p-4 border-b bg-background shadow-sm">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={contact.avatar} alt={contact.name} data-ai-hint="profile picture" />
+              <AvatarFallback>{contact.name ? contact.name.charAt(0) : 'U'}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h2 className="text-lg font-semibold">{contact.name}</h2>
+              <p className="text-sm text-muted-foreground">{contact.online ? 'Online' : 'Offline'}</p>
+            </div>
           </div>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={handleMicrowaveClick}>
-             {isEncrypted ? <ShieldCheck className="h-5 w-5 text-green-500" /> : <Waves className="h-5 w-5" />}
-             <span className="sr-only">Microwave Chat</span>
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Phone className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Video className="h-5 w-5" />
-          </Button>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <AlertDialogTrigger asChild>
-                <DropdownMenuItem className="text-destructive">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  <span>Delete Chat</span>
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={handleMicrowaveClick}>
+              {isEncrypted ? <ShieldCheck className="h-5 w-5 text-green-500" /> : <Waves className="h-5 w-5" />}
+              <span className="sr-only">Microwave Chat</span>
+            </Button>
+            <Button variant="ghost" size="icon">
+              <Phone className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon">
+              <Video className="h-5 w-5" />
+            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem className="text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    <span>Delete Chat</span>
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onBlockUser}>
+                  {isBlocked ? <Shield className="mr-2 h-4 w-4" /> : <ShieldX className="mr-2 h-4 w-4" />}
+                  <span>{isBlocked ? 'Unblock' : 'Block'} User</span>
                 </DropdownMenuItem>
-              </AlertDialogTrigger>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onBlockUser}>
-                {isBlocked ? <Shield className="mr-2 h-4 w-4" /> : <ShieldX className="mr-2 h-4 w-4" />}
-                <span>{isBlocked ? 'Unblock' : 'Block'} User</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-        </div>
-      </header>
-      
-      {/* Delete Chat Confirmation */}
-       <AlertDialog>
-          <AlertDialogContent>
-              <AlertDialogHeader>
-                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete the chat history.
-                  </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={onDeleteChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      Delete
-                  </AlertDialogAction>
-              </AlertDialogFooter>
-          </AlertDialogContent>
+          </div>
+        </header>
+        
+        {/* Delete Chat Confirmation */}
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the chat history.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={onDeleteChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Delete
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
       
       {/* Create Password Dialog */}

@@ -8,6 +8,7 @@ export type User = {
   email: string;
   avatar: string;
   online?: boolean;
+  blockedUsers?: string[];
 };
 
 export type Message = {

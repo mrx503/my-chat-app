@@ -23,6 +23,7 @@ export default function ChatPage() {
     const [isEncrypted, setIsEncrypted] = useState(false);
     const [loading, setLoading] = useState(true);
     const [isBlocked, setIsBlocked] = useState(false);
+    const [amIBlocked, setAmIBlocked] = useState(false);
 
     useEffect(() => {
         if (!currentUser) {
@@ -31,24 +32,13 @@ export default function ChatPage() {
         }
         if (!chatId) return;
 
-        // Check for blocked status
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        const unsubscribeUser = onSnapshot(userDocRef, (userDoc) => {
-            const userData = userDoc.data();
-            if (userData?.blockedUsers?.includes(chat?.contact?.id)) {
-                setIsBlocked(true);
-            } else {
-                setIsBlocked(false);
-            }
-        });
-
         const chatDocRef = doc(db, 'chats', chatId);
         const unsubscribeChat = onSnapshot(chatDocRef, async (chatDoc) => {
             if (chatDoc.exists()) {
                 const chatData = { id: chatDoc.id, ...chatDoc.data() } as Chat;
 
                 if (!chatData.users.includes(currentUser.uid)) {
-                    console.error("Access denied: User not in chat.");
+                    toast({ variant: 'destructive', title: "Access Denied", description: "You are not a member of this chat." });
                     setChat(null);
                     setLoading(false);
                     router.push('/');
@@ -58,22 +48,48 @@ export default function ChatPage() {
                  const contactId = chatData.users.find(id => id !== currentUser.uid);
                  if(contactId) {
                     const contactDocRef = doc(db, 'users', contactId);
-                    const contactDoc = await getDoc(contactDocRef);
-                    if (contactDoc.exists()) {
-                        chatData.contact = { id: contactDoc.id, ...contactDoc.data() } as User;
-                    }
-                    setChat(chatData);
+                    const unsubscribeContact = onSnapshot(contactDocRef, (contactDoc) => {
+                         if (contactDoc.exists()) {
+                            const contactData = { id: contactDoc.id, ...contactDoc.data() } as User;
+                            setChat(prev => ({...prev!, contact: contactData}));
+                            
+                            // Check if the current user is blocked by the contact
+                            if(contactData.blockedUsers?.includes(currentUser.uid)) {
+                                setAmIBlocked(true);
+                                toast({ variant: 'destructive', title: 'You are blocked', description: 'You cannot send messages to this user.' });
+                            } else {
+                                setAmIBlocked(false);
+                            }
+                        }
+                    });
+                    
+                    const userDocRef = doc(db, 'users', currentUser.uid);
+                    const unsubscribeUser = onSnapshot(userDocRef, (userDoc) => {
+                        const userData = userDoc.data();
+                        if (userData?.blockedUsers?.includes(contactId)) {
+                             setIsBlocked(true);
+                        } else {
+                            setIsBlocked(false);
+                        }
+                    });
 
-                    // Check if the current user is blocked by the contact
-                    const contactData = contactDoc.data();
-                    if(contactData?.blockedUsers?.includes(currentUser.uid)) {
-                        setIsBlocked(true);
-                        toast({ variant: 'destructive', title: 'You are blocked', description: 'You cannot send messages to this user.' });
+                    // Initial fetch for chat contact
+                    const initialContactDoc = await getDoc(contactDocRef);
+                     if (initialContactDoc.exists()) {
+                        chatData.contact = { id: initialContactDoc.id, ...initialContactDoc.data() } as User;
+                    }
+
+                    setChat(chatData);
+                    setLoading(false);
+                    return () => {
+                        unsubscribeContact();
+                        unsubscribeUser();
                     }
                  }
                  setLoading(false);
             } else {
                 setLoading(false);
+                toast({ variant: 'destructive', title: 'Chat not found' });
                 router.push('/');
             }
         });
@@ -91,14 +107,13 @@ export default function ChatPage() {
         setIsEncrypted(false);
 
         return () => {
-            unsubscribeUser();
             unsubscribeChat();
             unsubscribeMessages();
         };
-    }, [chatId, currentUser, router, chat?.contact?.id, toast]);
+    }, [chatId, currentUser, router, toast]);
 
     const handleNewMessage = async (messageText: string) => {
-        if (!chatId || !messageText.trim() || !currentUser || isBlocked) return;
+        if (!chatId || !messageText.trim() || !currentUser || isBlocked || amIBlocked) return;
 
         const messagesColRef = collection(db, 'chats', chatId, 'messages');
         await addDoc(messagesColRef, {
@@ -166,9 +181,10 @@ export default function ChatPage() {
                   onNewMessage={handleNewMessage}
                   isEncrypted={isEncrypted}
                   setIsEncrypted={setIsEncrypted}
-                  isBlocked={isBlocked}
+                  isBlocked={isBlocked || amIBlocked}
                   onDeleteChat={handleDeleteChat}
                   onBlockUser={handleBlockUser}
+                  isSelfBlocked={isBlocked}
                 />
             </main>
         </div>

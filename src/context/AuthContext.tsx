@@ -2,9 +2,9 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 
 interface AuthContextType {
@@ -13,6 +13,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<any>;
   signup: (email: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
+  updateCurrentUser: (data: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,36 +23,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
-        // Get user profile from Firestore
         const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          setCurrentUser({ uid: user.uid, ...userDoc.data() } as User & { uid: string });
-        } else {
-            // This case might happen if user doc creation failed during signup
-            setCurrentUser({ uid: user.uid, email: user.email! } as User & { uid: string });
-        }
+        const unsubscribeSnapshot = onSnapshot(userDocRef, (userDoc) => {
+          if (userDoc.exists()) {
+            setCurrentUser({ uid: user.uid, ...userDoc.data() } as User & { uid: string });
+          } else {
+            setCurrentUser({ uid: user.uid, email: user.email!, name: '', avatar: '' });
+          }
+          setLoading(false);
+        });
+        return () => unsubscribeSnapshot();
       } else {
         setCurrentUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return unsubscribe;
+    return () => unsubscribeAuth();
   }, []);
 
   const signup = async (email: string, password: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const { user } = userCredential;
-    // Create user document in Firestore
-    await setDoc(doc(db, "users", user.uid), {
+    const userDoc = {
         uid: user.uid,
         email: user.email,
-        name: user.email?.split('@')[0] || `User-${user.uid.substring(0,5)}`, // Default name
+        name: user.email?.split('@')[0] || `User-${user.uid.substring(0,5)}`,
         avatar: `https://placehold.co/100x100.png`
-    });
+    };
+    await setDoc(doc(db, "users", user.uid), userDoc);
     return userCredential;
   };
 
@@ -63,12 +65,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return signOut(auth);
   };
 
+  const updateCurrentUser = (data: Partial<User>) => {
+    if (currentUser) {
+      setCurrentUser(prevUser => ({ ...prevUser!, ...data }));
+    }
+  }
+
   const value = {
     currentUser,
     loading,
     login,
     signup,
     logout,
+    updateCurrentUser
   };
 
   return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
