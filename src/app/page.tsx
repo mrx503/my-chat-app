@@ -11,8 +11,8 @@ import ChatList from "@/components/chat-list";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Copy, LogOut, MessageSquarePlus } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Copy, LogOut, MessageSquarePlus, User as UserIcon } from 'lucide-react';
 
 export default function Home() {
   const { currentUser, logout } = useAuth();
@@ -87,7 +87,6 @@ export default function Home() {
             return;
         }
         
-        // Check if chat already exists
         const existingChat = chats.find(chat => chat.users.includes(searchUserId));
         if(existingChat) {
             router.push(`/chat/${existingChat.id}`);
@@ -110,61 +109,98 @@ export default function Home() {
   const copyUserId = () => {
     if (currentUser?.uid) {
       navigator.clipboard.writeText(currentUser.uid);
-      toast({ title: 'Copied!', description: 'Your user ID has been copied to the clipboard.' });
+      toast({ title: 'Copied!', description: 'Your full user ID has been copied to the clipboard.' });
     }
   };
+  
+  const shortUserId = currentUser?.uid ? `${currentUser.uid.substring(0, 6)}...` : '';
 
   if (!currentUser || loading) {
     return (
-        <div className="flex justify-center items-center h-screen">
-            <p>Loading...</p>
+        <div className="flex justify-center items-center h-screen bg-background">
+             <div className="flex flex-col items-center gap-2">
+                <MessageSquarePlus className="w-12 h-12 text-primary animate-pulse" />
+                <p className="text-muted-foreground">Loading your chats...</p>
+            </div>
         </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-screen max-w-4xl mx-auto p-4 md:p-6">
-        <header className="flex items-center justify-between mb-6 pb-4 border-b">
-            <div>
-                <h1 className="text-2xl font-bold">Welcome, {currentUser.email}</h1>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                    <span>Your ID: {currentUser.uid}</span>
-                    <Button variant="ghost" size="icon" onClick={copyUserId} className="h-6 w-6">
-                        <Copy className="h-4 w-4"/>
-                    </Button>
-                </div>
-            </div>
+    <div className="flex flex-col h-screen bg-muted/30">
+        <header className="flex items-center justify-between p-4 bg-background border-b shadow-sm">
+            <h1 className="text-xl font-bold text-primary">duck</h1>
             <Button variant="outline" onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4"/>
                 Logout
             </Button>
         </header>
 
-        <Card className="mb-6">
-            <CardHeader>
-                <CardTitle>Start a New Chat</CardTitle>
-                <CardDescription>Enter the user ID of the person you want to chat with.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="flex gap-2">
-                    <Input 
-                        placeholder="Enter user ID..."
-                        value={searchUserId}
-                        onChange={(e) => setSearchUserId(e.target.value)}
-                    />
-                    <Button onClick={handleSearchAndCreateChat}>
-                       <MessageSquarePlus className="mr-2 h-4 w-4"/> Chat
-                    </Button>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <div className="lg:col-span-1 space-y-6">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center gap-4">
+                            <UserIcon className="w-10 h-10 text-primary"/>
+                            <div>
+                                <CardTitle>{currentUser.name || currentUser.email}</CardTitle>
+                                <CardDescription>Welcome back!</CardDescription>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                             <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+                                <span className="text-sm font-mono text-muted-foreground" title={currentUser.uid}>
+                                    ID: {shortUserId}
+                                </span>
+                                <Button variant="ghost" size="icon" onClick={copyUserId} className="h-8 w-8">
+                                    <Copy className="h-4 w-4"/>
+                                    <span className="sr-only">Copy User ID</span>
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Start a New Chat</CardTitle>
+                            <CardDescription>Enter a user ID to begin a conversation.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex gap-2">
+                                <Input 
+                                    placeholder="Enter user ID..."
+                                    value={searchUserId}
+                                    onChange={(e) => setSearchUserId(e.target.value)}
+                                />
+                                <Button onClick={handleSearchAndCreateChat} aria-label="Start Chat">
+                                   <MessageSquarePlus className="h-4 w-4"/>
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
-            </CardContent>
-        </Card>
-        
-        <h2 className="text-xl font-semibold mb-4">Your Chats</h2>
-        {chats.length > 0 ? (
-             <ChatList chats={chats} onChatSelect={handleChatSelect} />
-        ) : (
-            <p className="text-muted-foreground text-center mt-4">You have no active chats. Start one above!</p>
-        )}
+
+                <div className="lg:col-span-2">
+                    <Card>
+                        <CardHeader>
+                             <CardTitle>Your Chats</CardTitle>
+                             <CardDescription>Select a conversation to continue messaging.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {chats.length > 0 ? (
+                                <ChatList chats={chats} onChatSelect={handleChatSelect} />
+                            ) : (
+                                <div className="text-center py-10">
+                                    <p className="text-muted-foreground">You have no active chats.</p>
+                                    <p className="text-sm text-muted-foreground">Start one by entering a user ID.</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </main>
     </div>
   );
 }
