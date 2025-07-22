@@ -43,7 +43,7 @@ const encryptMessage = (text: string) => {
 }
 
 const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypted: boolean }) => {
-    const messageText = isEncrypted ? encryptMessage(message.text) : message.text;
+    const messageText = isEncrypted && message.text ? encryptMessage(message.text) : message.text;
 
     switch (message.type) {
         case 'image':

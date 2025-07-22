@@ -4,8 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import type { Chat, Message, User } from '@/lib/types';
 import ChatArea from '@/components/chat-area';
 import { Bot } from 'lucide-react';
@@ -128,27 +127,31 @@ export default function ChatPage() {
     const handleSendFile = async (file: File) => {
         if (!chatId || !currentUser || isBlocked || amIBlocked) return;
 
-        toast({ title: 'Uploading...', description: 'Please wait while your file is being uploaded.' });
+        toast({ title: 'Sending file...', description: 'Please wait.' });
 
-        try {
-            const storageRef = ref(storage, `chat_attachments/${chatId}/${Date.now()}_${file.name}`);
-            const uploadTask = await uploadBytes(storageRef, file);
-            const downloadURL = await getDownloadURL(uploadTask.ref);
-
-            const messagesColRef = collection(db, 'chats', chatId, 'messages');
-            await addDoc(messagesColRef, {
-                text: '',
-                senderId: currentUser.uid,
-                timestamp: serverTimestamp(),
-                type: file.type.startsWith('image/') ? 'image' : 'file',
-                fileURL: downloadURL,
-                fileName: file.name,
-            });
-            
-            toast({ title: 'Success!', description: 'File sent successfully.' });
-        } catch (error) {
-            console.error("Error uploading file:", error);
-            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload the file.' });
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            const base64File = reader.result as string;
+            try {
+                const messagesColRef = collection(db, 'chats', chatId, 'messages');
+                await addDoc(messagesColRef, {
+                    text: '',
+                    senderId: currentUser.uid,
+                    timestamp: serverTimestamp(),
+                    type: file.type.startsWith('image/') ? 'image' : 'file',
+                    fileURL: base64File,
+                    fileName: file.name,
+                });
+                 toast({ title: 'Success!', description: 'File sent successfully.' });
+            } catch (error) {
+                 console.error("Error sending file:", error);
+                 toast({ variant: 'destructive', title: 'Send Failed', description: 'Could not send the file.' });
+            }
+        };
+        reader.onerror = (error) => {
+            console.error("Error reading file:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not read the file.' });
         }
     };
 
