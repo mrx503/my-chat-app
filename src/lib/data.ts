@@ -1,7 +1,4 @@
-import type { User } from '@/lib/types';
 
-export const currentUser: User = {
-  id: 'user0',
-  name: 'You',
-  avatar: `https://placehold.co/100x100.png`,
-};
+// This file is no longer needed for mock data,
+// but we can keep it for other potential static data in the future.
+export {};

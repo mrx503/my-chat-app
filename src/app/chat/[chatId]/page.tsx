@@ -2,16 +2,18 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { useParams, useRouter } from 'next/navigation';
+import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Chat, Message, User } from '@/lib/types';
-import { currentUser } from '@/lib/data';
 import ChatArea from '@/components/chat-area';
 import { Bot } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function ChatPage() {
     const params = useParams();
+    const router = useRouter();
+    const { currentUser } = useAuth();
     const chatId = params.chatId as string;
 
     const [chat, setChat] = useState<Chat | null>(null);
@@ -20,24 +22,35 @@ export default function ChatPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (!currentUser) {
+            router.push('/login');
+            return;
+        }
         if (!chatId) return;
 
         const chatDocRef = doc(db, 'chats', chatId);
-        const unsubscribeChat = onSnapshot(chatDocRef, (doc) => {
+        const unsubscribeChat = onSnapshot(chatDocRef, async (doc) => {
             if (doc.exists()) {
                 const chatData = { id: doc.id, ...doc.data() } as Chat;
-                 // We need to fetch the contact details separately
-                 const contactId = chatData.users.find(id => id !== currentUser.id);
+
+                // Security check: ensure current user is part of the chat
+                if (!chatData.users.includes(currentUser.uid)) {
+                    console.error("Access denied: User not in chat.");
+                    setChat(null);
+                    setLoading(false);
+                    router.push('/');
+                    return;
+                }
+                
+                 const contactId = chatData.users.find(id => id !== currentUser.uid);
                  if(contactId) {
                     const contactDocRef = doc(db, 'users', contactId);
-                    const unsubscribeContact = onSnapshot(contactDocRef, (contactDoc) => {
-                        if (contactDoc.exists()) {
-                            chatData.contact = { id: contactDoc.id, ...contactDoc.data() } as User;
-                        }
-                        setChat(chatData);
-                        setLoading(false);
-                    });
-                    return () => unsubscribeContact();
+                    const contactDoc = await getDoc(contactDocRef);
+                    if (contactDoc.exists()) {
+                        chatData.contact = { id: contactDoc.id, ...contactDoc.data() } as User;
+                    }
+                    setChat(chatData);
+                    setLoading(false);
                  }
             } else {
                 setLoading(false);
@@ -54,22 +67,21 @@ export default function ChatPage() {
             setMessages(newMessages);
         });
 
-        // Reset encryption state when chat changes
         setIsEncrypted(false);
 
         return () => {
             unsubscribeChat();
             unsubscribeMessages();
         };
-    }, [chatId]);
+    }, [chatId, currentUser, router]);
 
     const handleNewMessage = async (messageText: string) => {
-        if (!chatId || !messageText.trim()) return;
+        if (!chatId || !messageText.trim() || !currentUser) return;
 
         const messagesColRef = collection(db, 'chats', chatId, 'messages');
         await addDoc(messagesColRef, {
             text: messageText,
-            senderId: currentUser.id,
+            senderId: currentUser.uid,
             timestamp: serverTimestamp()
         });
     };
@@ -84,24 +96,27 @@ export default function ChatPage() {
         );
     }
 
+    if (!chat) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+                <Bot size={80} className="text-muted-foreground/50 mb-4" />
+                <h1 className="text-2xl font-semibold">Chat not found</h1>
+                <p className="text-muted-foreground">The requested chat does not exist or you don't have permission to view it.</p>
+            </div>
+        );
+    }
+
     return (
         <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
             <main className="flex-1 flex flex-col bg-muted/30">
-                {chat ? (
-                    <ChatArea
-                      chat={{ ...chat, messages }}
-                      onNewMessage={handleNewMessage}
-                      isEncrypted={isEncrypted}
-                      setIsEncrypted={setIsEncrypted}
-                    />
-                ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                        <Bot size={80} className="text-muted-foreground/50 mb-4" />
-                        <h1 className="text-2xl font-semibold">Chat not found</h1>
-                        <p className="text-muted-foreground">The requested chat does not exist or could not be loaded.</p>
-                    </div>
-                )}
+                <ChatArea
+                  chat={{ ...chat, messages }}
+                  onNewMessage={handleNewMessage}
+                  isEncrypted={isEncrypted}
+                  setIsEncrypted={setIsEncrypted}
+                />
             </main>
         </div>
     );
 }
+

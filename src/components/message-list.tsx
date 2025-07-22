@@ -2,11 +2,11 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from 'react';
-import { currentUser } from '@/lib/data';
 import type { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/context/AuthContext';
 
 interface MessageListProps {
   messages: Message[];
@@ -18,12 +18,14 @@ function FormattedTime({ timestamp }: { timestamp: any }) {
     const [formattedTime, setFormattedTime] = useState('');
 
     useEffect(() => {
+        let timeStr = '';
         if (timestamp && typeof timestamp.toDate === 'function') {
-            setFormattedTime(new Date(timestamp.toDate()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
-        } else if (timestamp) {
+            timeStr = new Date(timestamp.toDate()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        } else {
              // Fallback for locally created messages before they get a server timestamp
-            setFormattedTime(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
+            timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         }
+        setFormattedTime(timeStr);
     }, [timestamp]);
 
     if (!formattedTime) {
@@ -39,6 +41,7 @@ const encryptMessage = (text: string) => {
 
 export default function MessageList({ messages, contactAvatar, isEncrypted }: MessageListProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -48,12 +51,16 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
       });
     }
   }, [messages, isEncrypted]);
+  
+  if (!currentUser) {
+    return null; // or a loading state
+  }
 
   return (
     <ScrollArea className="flex-1" ref={scrollAreaRef}>
       <div className="p-6 space-y-6">
         {messages.map((message, index) => {
-          const isCurrentUser = message.senderId === currentUser.id;
+          const isCurrentUser = message.senderId === currentUser.uid;
           const showAvatar = index === 0 || messages[index - 1].senderId !== message.senderId;
           const messageText = isEncrypted ? encryptMessage(message.text) : message.text;
 
