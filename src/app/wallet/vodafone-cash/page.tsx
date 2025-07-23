@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Landmark } from 'lucide-react';
+import { ArrowLeft, Landmark, Coins } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { doc, collection, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -24,6 +24,9 @@ export default function VodafoneCashPage() {
     const [amount, setAmount] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+
+    const userCoins = currentUser?.coins ?? 0;
+    const canWithdraw = userCoins >= MIN_WITHDRAWAL_AMOUNT;
 
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -43,6 +46,7 @@ export default function VodafoneCashPage() {
         }
 
         const numericAmount = Number(amount);
+        const currentCoins = currentUser.coins ?? 0;
 
         // --- Start of Critical Validation Block ---
         if (!vodafoneNumber.trim() || !/^\d{11}$/.test(vodafoneNumber.trim())) {
@@ -53,11 +57,15 @@ export default function VodafoneCashPage() {
             setError('Please enter a valid amount.');
             return;
         }
-        if (numericAmount < MIN_WITHDRAWAL_AMOUNT) {
-            setError(`The minimum withdrawal amount is ${MIN_WITHDRAWAL_AMOUNT} coins.`);
+        if (currentCoins < MIN_WITHDRAWAL_AMOUNT) {
+            setError(`You need at least ${MIN_WITHDRAWAL_AMOUNT} coins to make a withdrawal.`);
             return;
         }
-        if (numericAmount > (currentUser.coins ?? 0)) {
+        if (numericAmount < MIN_WITHDRAWAL_AMOUNT) {
+             setError(`The minimum withdrawal amount is ${MIN_WITHDRAWAL_AMOUNT} coins.`);
+            return;
+        }
+        if (numericAmount > currentCoins) {
             setError("You don't have enough coins for this withdrawal.");
             return;
         }
@@ -75,14 +83,14 @@ export default function VodafoneCashPage() {
                     throw new Error("User data not found.");
                 }
                 
-                const currentCoins = userDoc.data().coins ?? 0;
+                const latestCoins = userDoc.data().coins ?? 0;
 
-                if (currentCoins < numericAmount) {
+                if (latestCoins < numericAmount) {
                     throw new Error("You don't have enough coins for this withdrawal.");
                 }
 
                 // 1. Deduct coins from user's balance
-                const newBalance = currentCoins - numericAmount;
+                const newBalance = latestCoins - numericAmount;
                 transaction.update(userDocRef, { coins: newBalance });
 
                 // 2. Create withdrawal request
@@ -98,7 +106,7 @@ export default function VodafoneCashPage() {
             });
 
             // Optimistically update local state
-            updateCurrentUser({ coins: (currentUser.coins ?? 0) - numericAmount });
+            updateCurrentUser({ coins: currentCoins - numericAmount });
 
             toast({
                 title: 'Request Submitted',
@@ -146,7 +154,7 @@ export default function VodafoneCashPage() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Submit a Withdrawal Request</CardTitle>
-                                <CardDescription>Your current balance is {currentUser.coins ?? 0} coins. The minimum withdrawal is {MIN_WITHDRAWAL_AMOUNT} coins.</CardDescription>
+                                <CardDescription>Your current balance is {userCoins} coins. The minimum withdrawal is {MIN_WITHDRAWAL_AMOUNT} coins.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {error && (
@@ -155,11 +163,19 @@ export default function VodafoneCashPage() {
                                         <AlertDescription>{error}</AlertDescription>
                                     </Alert>
                                 )}
+                                 {!canWithdraw && (
+                                    <Alert variant="destructive">
+                                        <Coins className="h-4 w-4" />
+                                        <AlertTitle>Insufficient Balance</AlertTitle>
+                                        <AlertDescription>
+                                            You need at least {MIN_WITHDRAWAL_AMOUNT} coins to make a withdrawal request. Earn more by watching ads in your wallet.
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Email</Label>
                                     <Input id="email" type="email" value={currentUser.email ?? ''} readOnly disabled />
                                     <p className="text-xs text-muted-foreground">This is the email associated with your account.</p>
-
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="vodafone-number">Vodafone Cash Number</Label>
@@ -171,24 +187,26 @@ export default function VodafoneCashPage() {
                                         onChange={(e) => setVodafoneNumber(e.target.value)}
                                         required 
                                         maxLength={11}
+                                        disabled={!canWithdraw}
                                     />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="amount">Amount (in Coins)</Label>
                                     <Input 
                                         id="amount" 
-                                        type="text" // Use text to manage non-numeric input gracefully
+                                        type="text"
                                         pattern="[0-9]*"
                                         inputMode="numeric"
-                                        placeholder={`e.g., ${MIN_WITHDRAWAL_AMOUNT}`}
+                                        placeholder={canWithdraw ? `e.g., ${MIN_WITHDRAWAL_AMOUNT}`: 'Insufficient balance'}
                                         value={amount}
                                         onChange={handleAmountChange}
                                         required 
+                                        disabled={!canWithdraw}
                                     />
                                 </div>
                             </CardContent>
                             <CardFooter>
-                                <Button type="submit" className="w-full" disabled={isLoading}>
+                                <Button type="submit" className="w-full" disabled={isLoading || !canWithdraw}>
                                     {isLoading ? 'Submitting...' : 'Submit Request'}
                                 </Button>
                             </CardFooter>
