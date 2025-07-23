@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Copy, LogOut, MessageSquarePlus, Camera, Coins, Clapperboard } from 'lucide-react';
+import { Copy, LogOut, MessageSquarePlus, Camera, Coins, Clapperboard, Wallet } from 'lucide-react';
 
 export default function Home() {
   const { currentUser, logout, updateCurrentUser } = useAuth();
@@ -240,7 +240,7 @@ export default function Home() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                             <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+                             <div className="flex items-center justify-between p-3 bg-muted rounded-md mb-4">
                                 <span className="text-sm font-mono text-muted-foreground" title={currentUser.uid}>
                                     ID: {shortUserId}
                                  </span>
@@ -249,31 +249,11 @@ export default function Home() {
                                     <span className="sr-only">Copy User ID</span>
                                 </Button>
                             </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <div className="flex items-center gap-3">
-                                <Coins className="h-8 w-8 text-amber-500"/>
-                                <div>
-                                    <CardTitle>My Wallet</CardTitle>
-                                    <CardDescription>Your current coin balance.</CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center justify-between p-4 bg-amber-500/10 rounded-lg">
-                                <span className="text-3xl font-bold text-amber-600">{currentUser.coins || 0}</span>
-                                <Coins className="h-8 w-8 text-amber-500/50"/>
-                            </div>
-                        </CardContent>
-                        <CardFooter>
-                            <Button className="w-full" onClick={handleWatchAd} disabled={isWatchingAd}>
-                                <Clapperboard className="mr-2 h-4 w-4"/>
-                                {isWatchingAd ? 'Watching Ad...' : 'Watch an Ad & Earn Coins'}
+                            <Button className="w-full" onClick={() => router.push('/wallet')}>
+                                <Wallet className="mr-2 h-4 w-4"/>
+                                View Wallet
                             </Button>
-                        </CardFooter>
+                        </CardContent>
                     </Card>
 
                      <Card>
