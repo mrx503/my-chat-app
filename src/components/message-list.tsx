@@ -164,13 +164,15 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                 key={message.id}
                 className={cn(
                   'flex items-end gap-3',
-                  isCurrentUser ? 'justify-end flex-row-reverse' : 'justify-start'
+                  isCurrentUser ? 'justify-end' : 'justify-start'
                 )}
               >
-                <Avatar className="h-8 w-8 self-end">
-                  <AvatarImage src={isCurrentUser ? currentUser.avatar : contactAvatar} alt="Avatar" data-ai-hint="profile picture" />
-                  <AvatarFallback>{isCurrentUser ? currentUser.email?.[0].toUpperCase() : 'C'}</AvatarFallback>
-                </Avatar>
+                {!isCurrentUser && (
+                    <Avatar className="h-8 w-8 self-end">
+                      <AvatarImage src={contactAvatar} alt="Avatar" data-ai-hint="profile picture" />
+                      <AvatarFallback>{'C'}</AvatarFallback>
+                    </Avatar>
+                )}
                 
                 <div className={cn("flex flex-col gap-1", isCurrentUser ? "items-end" : "items-start")}>
                     <DropdownMenu>
@@ -207,6 +209,13 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                     </div>
                 </div>
 
+                {isCurrentUser && (
+                    <Avatar className="h-8 w-8 self-end">
+                      <AvatarImage src={currentUser.avatar} alt="Avatar" data-ai-hint="profile picture" />
+                      <AvatarFallback>{currentUser.email?.[0].toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                )}
+
               </div>
             );
           })}
@@ -234,4 +243,3 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     </>
   );
 }
-
