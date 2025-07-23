@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Landmark } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc, addDoc, collection, serverTimestamp, runTransaction } from 'firebase/firestore';
+import { doc, collection, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -33,38 +33,37 @@ export default function VodafoneCashPage() {
         }
     };
 
-    const validateForm = () => {
-        setError('');
-        const numericAmount = Number(amount);
-
-        if (!vodafoneNumber.trim() || !/^\d{11}$/.test(vodafoneNumber.trim())) {
-            setError('Please enter a valid 11-digit Vodafone number.');
-            return false;
-        }
-        if (!amount || numericAmount <= 0) {
-            setError('Please enter a valid amount.');
-            return false;
-        }
-        if (numericAmount < MIN_WITHDRAWAL_AMOUNT) {
-            setError(`The minimum withdrawal amount is ${MIN_WITHDRAWAL_AMOUNT} coins.`);
-            return false;
-        }
-        if (!currentUser || numericAmount > (currentUser.coins ?? 0)) {
-            setError("You don't have enough coins for this withdrawal.");
-            return false;
-        }
-        
-        return true;
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!currentUser || !validateForm()) {
+        setError('');
+
+        if (!currentUser) {
+            setError('You must be logged in to make a withdrawal.');
             return;
         }
 
-        setIsLoading(true);
         const numericAmount = Number(amount);
+
+        // --- Start of Critical Validation Block ---
+        if (!vodafoneNumber.trim() || !/^\d{11}$/.test(vodafoneNumber.trim())) {
+            setError('Please enter a valid 11-digit Vodafone number.');
+            return;
+        }
+        if (!amount || numericAmount <= 0) {
+            setError('Please enter a valid amount.');
+            return;
+        }
+        if (numericAmount < MIN_WITHDRAWAL_AMOUNT) {
+            setError(`The minimum withdrawal amount is ${MIN_WITHDRAWAL_AMOUNT} coins.`);
+            return;
+        }
+        if (numericAmount > (currentUser.coins ?? 0)) {
+            setError("You don't have enough coins for this withdrawal.");
+            return;
+        }
+        // --- End of Critical Validation Block ---
+
+        setIsLoading(true);
         const userDocRef = doc(db, 'users', currentUser.uid);
         const requestsColRef = collection(db, 'withdrawalRequests');
 
@@ -81,9 +80,6 @@ export default function VodafoneCashPage() {
                 if (currentCoins < numericAmount) {
                     throw new Error("You don't have enough coins for this withdrawal.");
                 }
-                 if (numericAmount < MIN_WITHDRAWAL_AMOUNT) {
-                    throw new Error(`The minimum withdrawal amount is ${MIN_WITHDRAWAL_AMOUNT} coins.`);
-                }
 
                 // 1. Deduct coins from user's balance
                 const newBalance = currentCoins - numericAmount;
@@ -97,7 +93,7 @@ export default function VodafoneCashPage() {
                     vodafoneNumber: vodafoneNumber.trim(),
                     amount: numericAmount,
                     status: 'pending',
-                    createdAt: serverTimestamp(),
+                    createdAt: new Date(),
                 });
             });
 
