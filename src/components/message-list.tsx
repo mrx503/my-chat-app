@@ -60,14 +60,6 @@ const encryptMessage = (text: string) => {
 const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypted: boolean }) => {
     const messageText = isEncrypted && message.text ? encryptMessage(message.text) : message.text;
 
-    const renderText = () => {
-        if (!messageText) return null;
-        const textClasses = message.type === 'image' 
-            ? "absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2 text-xs"
-            : "whitespace-pre-wrap break-words";
-        return <p className={textClasses}>{messageText}</p>;
-    };
-
     switch (message.type) {
         case 'image':
             return (
@@ -81,7 +73,7 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
                             data-ai-hint="sent image"
                         />
                     )}
-                    {renderText()}
+                    {messageText && <p className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2 text-xs">{messageText}</p>}
                 </div>
             );
         case 'file':
@@ -100,7 +92,7 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
                 </a>
             );
         default:
-            return renderText();
+            return <p className="whitespace-pre-wrap break-words">{messageText}</p>;
     }
 };
 
@@ -140,12 +132,10 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
               <div className="w-full flex flex-col" style={{ alignItems: isCurrentUser ? 'flex-end' : 'flex-start' }}>
                 <div
                     className={cn(
-                        'max-w-[70%] rounded-xl shadow-sm break-words group',
+                        'max-w-[70%] rounded-xl shadow-sm break-words group p-3',
                         isCurrentUser
                             ? 'bg-primary text-primary-foreground rounded-br-none'
-                            : 'bg-background text-foreground rounded-bl-none',
-                        // Apply padding unless it's an image without text
-                        message.type === 'image' && !message.text ? 'p-0' : 'p-3'
+                            : 'bg-background text-foreground rounded-bl-none'
                     )}
                 >
                     <MessageContent message={message} isEncrypted={isEncrypted} />
