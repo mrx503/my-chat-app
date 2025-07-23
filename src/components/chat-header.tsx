@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatHeaderProps {
   contact: Contact;
@@ -65,6 +66,7 @@ function formatLastSeen(timestamp?: any) {
 
 export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDeleteChat, onBlockUser, isBlocked }: ChatHeaderProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [chatPassword, setChatPassword] = useState<string | null>(null);
@@ -125,6 +127,13 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
       setPassword('');
     }
   };
+  
+  const handleCallClick = () => {
+    toast({
+        title: "Feature Coming Soon!",
+        description: "Voice and video calls will be available in a future update.",
+    })
+  }
 
   return (
     <>
@@ -149,7 +158,7 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
               {isEncrypted ? <ShieldCheck className="h-5 w-5 text-green-500" /> : <Waves className="h-5 w-5" />}
               <span className="sr-only">Microwave Chat</span>
             </Button>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={handleCallClick}>
               <Phone className="h-5 w-5" />
             </Button>
             
