@@ -21,6 +21,8 @@ export type ReplyTo = {
   messageText: string;
   senderId: string;
   senderName: string;
+  type?: Message['type'];
+  fileName?: string;
 }
 
 export type Message = {

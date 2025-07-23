@@ -160,7 +160,9 @@ export default function ChatPage() {
                 messageId: replyingTo.id,
                 messageText: replyingTo.text,
                 senderId: replyingTo.senderId,
-                senderName: senderName
+                senderName: senderName,
+                type: replyingTo.type,
+                fileName: replyingTo.fileName,
             };
         }
 

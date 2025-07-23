@@ -134,14 +134,23 @@ const MessageWrapper = ({
 
     const isCurrentUser = message.senderId === currentUser?.uid;
     const dragThreshold = isCurrentUser ? -50 : 50;
-    const revealPosition = isCurrentUser ? -160 : 80;
-
+    
+    const getRevealPosition = () => {
+        if (!isCurrentUser) return 80; // Only reply
+        if (message.isDeleted) return 0;
+        
+        let position = -80; // start with reply
+        if (!message.isDeleted) {
+             position -= 80; // add space for delete buttons
+        }
+        return position;
+    }
 
     const handleDragEnd = (event: any, info: any) => {
         const shouldReveal = isCurrentUser ? info.offset.x < dragThreshold : info.offset.x > dragThreshold;
-        if (shouldReveal) {
+        if (shouldReveal && !message.isDeleted) {
             setIsRevealed(true);
-            x.set(revealPosition);
+            x.set(getRevealPosition());
         } else {
             setIsRevealed(false);
             x.set(0);
@@ -177,21 +186,25 @@ const MessageWrapper = ({
                         exit={{ opacity: 0 }}
                     >
                         {isCurrentUser ? (
-                            <div className="flex bg-muted p-2 rounded-lg gap-2 mr-4">
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAction(() => onDeleteRequest('me'))}>
-                                    <User className="h-5 w-5 text-destructive" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAction(() => onDeleteRequest('everyone'))}>
-                                    <Users className="h-5 w-5 text-destructive" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAction(onReplyRequest)}>
-                                    <Reply className="h-5 w-5 text-primary" />
-                                </Button>
+                            <div className="flex bg-transparent p-2 rounded-lg gap-2 mr-4">
+                                {!message.isDeleted && (
+                                    <>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 bg-blue-500/80 hover:bg-blue-500 text-white" onClick={() => handleAction(onReplyRequest)}>
+                                            <Reply className="h-5 w-5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 bg-red-500/80 hover:bg-red-500 text-white" onClick={() => handleAction(() => onDeleteRequest('me'))}>
+                                            <User className="h-5 w-5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 bg-red-500/80 hover:bg-red-500 text-white" onClick={() => handleAction(() => onDeleteRequest('everyone'))}>
+                                            <Users className="h-5 w-5" />
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         ) : (
                             <div className="flex items-center justify-center w-20">
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAction(onReplyRequest)}>
-                                    <CornerUpLeft className="h-5 w-5 text-primary" />
+                                <Button variant="ghost" size="icon" className="h-8 w-8 bg-gray-500/80 hover:bg-gray-500 text-white" onClick={() => handleAction(onReplyRequest)}>
+                                    <CornerUpLeft className="h-5 w-5" />
                                 </Button>
                             </div>
                         )}
@@ -201,8 +214,8 @@ const MessageWrapper = ({
             
             <motion.div
                 {...dragProps}
-                className="relative z-10"
-                animate={{x: isRevealed ? revealPosition: 0}}
+                className="relative z-10 bg-transparent"
+                animate={{x: isRevealed ? getRevealPosition(): 0}}
                 transition={{type: 'spring', stiffness: 300, damping: 30}}
                 onTap={() => {
                     if (isRevealed) {
@@ -282,7 +295,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                                 (message.type === 'image' || message.type === 'audio') && 'p-1 bg-transparent dark:bg-transparent shadow-none',
                             )}
                         >
-                            {message.replyTo && <ReplyContent reply={message.replyTo} />}
+                            {message.replyTo && <ReplyContent reply={message.replyTo} isCurrentUserReply={isCurrentUser} />}
                             <MessageContent message={message} isEncrypted={isEncrypted} />
                         </div>
                         <div className={cn("flex items-center text-xs text-muted-foreground", isCurrentUser ? "justify-end" : "justify-start")}>
