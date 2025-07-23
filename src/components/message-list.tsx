@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { motion, useMotionValue, useTransform } from 'framer-motion';
+import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import ReplyContent from './reply-content';
 
 interface MessageListProps {
@@ -130,67 +130,86 @@ const MessageWrapper = ({
 }) => {
     const { currentUser } = useAuth();
     const x = useMotionValue(0);
+    const [isRevealed, setIsRevealed] = useState(false);
 
     const isCurrentUser = message.senderId === currentUser?.uid;
+    const dragThreshold = isCurrentUser ? -50 : 50;
+    const revealPosition = isCurrentUser ? -160 : 80;
+
 
     const handleDragEnd = (event: any, info: any) => {
-        if (message.isDeleted) return;
-
-        const dragThreshold = 50;
-        if (isCurrentUser) { 
-            if (info.offset.x < -dragThreshold) {
-                onReplyRequest();
-            }
+        const shouldReveal = isCurrentUser ? info.offset.x < dragThreshold : info.offset.x > dragThreshold;
+        if (shouldReveal) {
+            setIsRevealed(true);
+            x.set(revealPosition);
         } else {
-            if (info.offset.x > dragThreshold) {
-                onReplyRequest();
-            }
+            setIsRevealed(false);
+            x.set(0);
         }
+    };
+
+    const handleAction = (action: () => void) => {
+        action();
+        setIsRevealed(false);
         x.set(0);
     };
     
     useEffect(() => {
+        setIsRevealed(false);
         x.set(0);
     }, [message.id, x]);
     
-    const replyOpacity = useTransform(x, isCurrentUser ? [-50, 0] : [0, 50], [1, 0]);
-    const deleteOpacity = useTransform(x, [-160, -50], [1, 0]);
-
     const dragProps = message.isDeleted ? {} : {
         drag: "x" as const,
-        dragConstraints: isCurrentUser ? { left: -160, right: 0 } : { left: 0, right: 80 },
+        dragConstraints: isCurrentUser ? { left: 0, right: 0 } : { left: 0, right: 0 },
         onDragEnd: handleDragEnd,
         style: { x },
     };
 
-
     return (
         <div className="relative w-full overflow-hidden">
-             {/* Action Icons Container */}
-            <div className={cn("absolute inset-y-0 flex items-center", isCurrentUser ? "right-0" : "left-0")}>
-                 {isCurrentUser && !message.isDeleted && (
-                  <motion.div style={{ opacity: deleteOpacity }} className="flex bg-muted p-2 rounded-lg gap-2 mr-4">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteRequest('me')}>
-                          <User className="h-5 w-5 text-destructive" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteRequest('everyone')}>
-                          <Users className="h-5 w-5 text-destructive" />
-                      </Button>
-                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onReplyRequest}>
-                          <Reply className="h-5 w-5 text-primary" />
-                      </Button>
-                  </motion.div>
+            <AnimatePresence>
+                {isRevealed && (
+                    <motion.div 
+                        className={cn("absolute inset-y-0 flex items-center", isCurrentUser ? "right-0" : "left-0")}
+                        initial={{ opacity: 0}}
+                        animate={{ opacity: 1}}
+                        exit={{ opacity: 0 }}
+                    >
+                        {isCurrentUser ? (
+                            <div className="flex bg-muted p-2 rounded-lg gap-2 mr-4">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAction(() => onDeleteRequest('me'))}>
+                                    <User className="h-5 w-5 text-destructive" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAction(() => onDeleteRequest('everyone'))}>
+                                    <Users className="h-5 w-5 text-destructive" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAction(onReplyRequest)}>
+                                    <Reply className="h-5 w-5 text-primary" />
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center w-20">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAction(onReplyRequest)}>
+                                    <CornerUpLeft className="h-5 w-5 text-primary" />
+                                </Button>
+                            </div>
+                        )}
+                    </motion.div>
                 )}
-                 {!isCurrentUser && !message.isDeleted && (
-                     <motion.div style={{ opacity: replyOpacity }} className="flex items-center justify-center w-20">
-                         <CornerUpLeft className="h-5 w-5 text-primary" />
-                     </motion.div>
-                 )}
-            </div>
+            </AnimatePresence>
             
             <motion.div
                 {...dragProps}
                 className="relative z-10 bg-background"
+                animate={{x: isRevealed ? revealPosition: 0}}
+                transition={{type: 'spring', stiffness: 300, damping: 30}}
+                onTap={() => {
+                    if (isRevealed) {
+                        setIsRevealed(false);
+                        x.set(0);
+                    }
+                }}
             >
                 {children}
             </motion.div>
