@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
-import { Check, CheckCheck, Trash2, File, User, Users, CornerUpLeft } from 'lucide-react';
+import { Check, CheckCheck, File, User, Users, CornerUpLeft } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   AlertDialog,
@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { motion, useAnimation, useMotionValue, useTransform } from 'framer-motion';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 import ReplyContent from './reply-content';
 
 interface MessageListProps {
@@ -132,10 +132,10 @@ const MessageWrapper = ({
     const x = useMotionValue(0);
 
     const handleDragEnd = (event: any, info: any) => {
-        if (info.offset.x < -50) { // Threshold to trigger actions
-            x.set(-160); // Snap to open position
+        if (info.offset.x < -50) { 
+            x.set(-160); 
         } else {
-            x.set(0); // Snap back to closed
+            x.set(0); 
         }
     };
     
@@ -159,7 +159,6 @@ const MessageWrapper = ({
         );
     }
     
-    // Reset position when message changes or on interaction elsewhere
     useEffect(() => {
         x.set(0);
     }, [message.id, x]);
@@ -171,17 +170,19 @@ const MessageWrapper = ({
                  className="absolute right-0 top-0 h-full flex items-center pr-4"
                  style={{ opacity: useTransform(x, [-160, 0], [1, 0]) }}
             >
-                <div className="flex bg-muted p-2 rounded-lg gap-2">
-                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onReplyRequest}>
-                        <CornerUpLeft className="h-5 w-5 text-primary" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteRequest('me')}>
-                        <User className="h-5 w-5 text-destructive" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteRequest('everyone')}>
-                        <Users className="h-5 w-5 text-destructive" />
-                    </Button>
-                </div>
+                {!message.isDeleted && (
+                  <div className="flex bg-muted p-2 rounded-lg gap-2">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onReplyRequest}>
+                          <CornerUpLeft className="h-5 w-5 text-primary" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteRequest('me')}>
+                          <User className="h-5 w-5 text-destructive" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteRequest('everyone')}>
+                          <Users className="h-5 w-5 text-destructive" />
+                      </Button>
+                  </div>
+                )}
             </motion.div>
             <motion.div
                 drag={message.isDeleted ? false : 'x'}
