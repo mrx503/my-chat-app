@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -146,7 +147,7 @@ const MessageWrapper = ({ message, children, onDeleteRequest }: { message: Messa
                 </div>
             </motion.div>
             <motion.div
-                drag="x"
+                drag={message.isDeleted ? false : 'x'}
                 dragConstraints={{ left: -160, right: 0 }}
                 onDragEnd={handleDragEnd}
                 animate={controls}
