@@ -21,8 +21,8 @@ export type Message = {
   text: string;
   senderId: string; // Firebase Auth UID
   timestamp: Timestamp | Date;
-  type?: 'text' | 'image' | 'file'; // To distinguish message types
-  fileURL?: string; // URL for the file/image
+  type?: 'text' | 'image' | 'file' | 'audio'; // To distinguish message types
+  fileURL?: string; // URL for the file/image/audio
   fileName?: string; // Name of the file
   status?: 'sent' | 'read';
   deletedFor?: string[]; // Array of user UIDs for whom the message is deleted

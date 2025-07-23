@@ -1,8 +1,8 @@
 
 "use client"
 
-import React, { useState, useRef } from 'react';
-import { Send, SmilePlus, Bot, Loader2, Paperclip } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, SmilePlus, Bot, Loader2, Paperclip, Mic, StopCircle } from 'lucide-react';
 import type { VariantProps } from 'class-variance-authority';
 import { analyzeSentiment } from '@/ai/flows/analyze-sentiment';
 import type { AnalyzeSentimentOutput } from '@/ai/flows/analyze-sentiment';
@@ -17,14 +17,60 @@ import { Input } from './ui/input';
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
   onSendFile: (file: File) => void;
+  onSendVoiceMessage: (audioBase64: string) => void;
 }
 
-export default function MessageInput({ onSendMessage, onSendFile }: MessageInputProps) {
+export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMessage }: MessageInputProps) {
   const [message, setMessage] = useState('');
   const [analysis, setAnalysis] = useState<AnalyzeSentimentOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  const handleMicClick = async () => {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        
+        mediaRecorder.ondataavailable = (event) => {
+          audioChunksRef.current.push(event.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = () => {
+            const base64String = reader.result as string;
+            onSendVoiceMessage(base64String);
+          };
+          audioChunksRef.current = [];
+          // Stop all media tracks to release the microphone
+          stream.getTracks().forEach(track => track.stop());
+        };
+        
+        mediaRecorder.start();
+        setIsRecording(true);
+      } catch (error) {
+        console.error("Error accessing microphone:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Microphone Error',
+          description: 'Could not access the microphone. Please check your browser permissions.',
+        });
+      }
+    }
+  };
+
 
   const handleAnalyze = async () => {
     if (!message.trim()) return;
@@ -108,9 +154,9 @@ export default function MessageInput({ onSendMessage, onSendFile }: MessageInput
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="pr-40 min-h-[52px] resize-none"
+          className="pr-48 min-h-[52px] resize-none"
         />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
           <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
           <Button variant="ghost" size="icon" onClick={handleAttachmentClick}>
             <Paperclip className="h-5 w-5" />
@@ -123,6 +169,14 @@ export default function MessageInput({ onSendMessage, onSendFile }: MessageInput
               <SmilePlus className="h-5 w-5" />
             )}
             <span className="sr-only">Analyze Sentiment</span>
+          </Button>
+          <Button variant="ghost" size="icon" onClick={handleMicClick}>
+            {isRecording ? (
+                <StopCircle className="h-5 w-5 text-red-500 animate-pulse" />
+            ) : (
+                <Mic className="h-5 w-5" />
+            )}
+            <span className="sr-only">{isRecording ? 'Stop recording' : 'Start recording'}</span>
           </Button>
           <Button size="icon" onClick={handleSendMessage} disabled={!message.trim()}>
             <Send className="h-5 w-5" />

@@ -13,6 +13,7 @@ interface ChatAreaProps {
   chat: Chat;
   onNewMessage: (message: string) => void;
   onSendFile: (file: File) => void;
+  onSendVoiceMessage: (audioBase64: string) => void;
   onDeleteMessage: (messageId: string, type: 'me' | 'everyone') => void;
   isEncrypted: boolean;
   setIsEncrypted: (isEncrypted: boolean) => void;
@@ -22,7 +23,7 @@ interface ChatAreaProps {
   isSelfBlocked: boolean;
 }
 
-export default function ChatArea({ chat, onNewMessage, onSendFile, onDeleteMessage, isEncrypted, setIsEncrypted, isBlocked, onDeleteChat, onBlockUser, isSelfBlocked }: ChatAreaProps) {
+export default function ChatArea({ chat, onNewMessage, onSendFile, onSendVoiceMessage, onDeleteMessage, isEncrypted, setIsEncrypted, isBlocked, onDeleteChat, onBlockUser, isSelfBlocked }: ChatAreaProps) {
   const handleSendMessage = (message: string) => {
     if (message.trim()) {
       onNewMessage(message);
@@ -56,7 +57,11 @@ export default function ChatArea({ chat, onNewMessage, onSendFile, onDeleteMessa
             </Alert>
          </div>
       ) : (
-        <MessageInput onSendMessage={handleSendMessage} onSendFile={onSendFile} />
+        <MessageInput 
+          onSendMessage={handleSendMessage} 
+          onSendFile={onSendFile}
+          onSendVoiceMessage={onSendVoiceMessage}
+        />
       )}
     </div>
   );

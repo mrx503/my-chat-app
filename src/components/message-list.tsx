@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
-import { Download, Check, CheckCheck, Trash2 } from 'lucide-react';
+import { Download, Check, CheckCheck, Trash2, File } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -16,7 +16,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -100,7 +99,7 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
                 <a href={message.fileURL} target="_blank" rel="noopener noreferrer" download={message.fileName}>
                     <Button variant="outline" className="h-auto">
                         <div className="flex items-center gap-3 py-2 px-3">
-                            <Download className="h-6 w-6" />
+                            <File className="h-6 w-6" />
                             <div className="text-left">
                                 <p className="font-semibold break-all">{message.fileName}</p>
                                 <p className="text-xs text-muted-foreground">Click to download</p>
@@ -108,6 +107,11 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
                         </div>
                     </Button>
                 </a>
+            );
+        case 'audio':
+            if (!message.fileURL) return null;
+            return (
+                <audio controls src={message.fileURL} className="max-w-xs" />
             );
         default:
             return <p className="whitespace-pre-wrap break-words">{messageText}</p>;
@@ -174,7 +178,8 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                                     isCurrentUser
                                         ? 'bg-primary text-primary-foreground rounded-br-none'
                                         : 'bg-background text-foreground rounded-bl-none',
-                                    message.isDeleted && 'bg-transparent shadow-none'
+                                    message.isDeleted && 'bg-transparent shadow-none',
+                                     message.type === 'image' && !message.text ? 'p-1' : '',
                                 )}
                             >
                                 <MessageContent message={message} isEncrypted={isEncrypted} />

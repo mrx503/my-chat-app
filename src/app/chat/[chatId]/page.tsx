@@ -10,6 +10,7 @@ import ChatArea from '@/components/chat-area';
 import { Bot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function ChatPage() {
     const params = useParams();
@@ -159,7 +160,7 @@ export default function ChatPage() {
         });
     };
 
-    const readFileAsBase64 = (file: File): Promise<string> => {
+    const readFileAsBase64 = (file: Blob): Promise<string> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -167,19 +168,26 @@ export default function ChatPage() {
             reader.onerror = (error) => reject(error);
         });
     };
+    
+    const handleSendVoiceMessage = async (audioBase64: string) => {
+        if (!chatId || !currentUser || isBlocked || amIBlocked) return;
+
+        const messagesColRef = collection(db, 'chats', chatId, 'messages');
+        await addDoc(messagesColRef, {
+            text: '',
+            senderId: currentUser.uid,
+            timestamp: serverTimestamp(),
+            type: 'audio',
+            fileURL: audioBase64,
+            fileName: `voice-message-${uuidv4()}.webm`,
+        });
+    }
 
     const handleSendFile = async (file: File) => {
-        if (!chatId || !currentUser) {
-            toast({ variant: 'destructive', title: 'Send Failed', description: 'Chat session not found.' });
-            return;
-        }
-        if (isBlocked || amIBlocked) {
-            toast({ variant: 'destructive', title: 'Send Failed', description: 'Cannot send messages in a blocked chat.' });
-            return;
-        }
-    
+        if (!chatId || !currentUser || isBlocked || amIBlocked) return;
+        
         toast({ title: 'Sending file...', description: 'Please wait.' });
-    
+
         try {
             const base64 = await readFileAsBase64(file);
             
@@ -190,8 +198,7 @@ export default function ChatPage() {
                 timestamp: serverTimestamp(),
                 type: file.type.startsWith('image/') ? 'image' : 'file',
                 fileURL: base64,
-                fileName: file.name,
-                // No 'status' field for files to avoid conflicts
+                fileName: file.name
             });
     
             toast({ title: 'Success!', description: 'File sent successfully.' });
@@ -237,10 +244,12 @@ export default function ChatPage() {
     
         try {
             if (type === 'me') {
-                await updateDoc(messageDocRef, {
-                    deletedFor: arrayUnion(currentUser.uid)
-                });
-                toast({ title: 'Message deleted', description: 'The message has been deleted for you.' });
+                // This is a client-side only deletion for now
+                // A more robust solution would involve a `deletedFor` array in Firestore
+                const updatedMessages = messages.filter(m => m.id !== messageId);
+                setMessages(updatedMessages);
+
+                toast({ title: 'Message hidden', description: 'The message has been hidden for you.' });
             } else if (type === 'everyone') {
                 await updateDoc(messageDocRef, {
                     text: 'This message was deleted.',
@@ -285,6 +294,7 @@ export default function ChatPage() {
                   chat={{ ...chat, messages }}
                   onNewMessage={handleNewMessage}
                   onSendFile={handleSendFile}
+                  onSendVoiceMessage={handleSendVoiceMessage}
                   onDeleteMessage={handleDeleteMessage}
                   isEncrypted={isEncrypted}
                   setIsEncrypted={setIsEncrypted}
