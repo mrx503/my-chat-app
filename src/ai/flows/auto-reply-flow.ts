@@ -45,7 +45,7 @@ const autoReplyFlow = ai.defineFlow(
   {
     name: 'autoReplyFlow',
     inputSchema: AutoReplyInputSchema,
-    outputSchema: Auto-ReplyOutputSchema,
+    outputSchema: AutoReplyOutputSchema,
   },
   async input => {
     const {output} = await prompt(input);
