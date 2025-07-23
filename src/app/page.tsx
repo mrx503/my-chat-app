@@ -185,7 +185,7 @@ export default function Home() {
       await updateDoc(userDocRef, {
         coins: increment(coinsEarned)
       });
-      // No need to call updateCurrentUser, onSnapshot will do it
+      updateCurrentUser({ coins: (currentUser.coins || 0) + coinsEarned });
       toast({ title: 'Congratulations!', description: `You earned ${coinsEarned} coins!` });
     } catch (error) {
       console.error("Error updating coins:", error);

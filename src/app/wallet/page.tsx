@@ -23,7 +23,7 @@ const ServiceCard = ({ icon, title, description, action, disabled }: { icon: Rea
             </div>
         </CardHeader>
         <CardFooter>
-            <Button className="w-full" variant="secondary" onClick={action} disabled={disabled}>
+            <Button className="w-full" variant="secondary" onClick={action} disabled={disabled || !action}>
                 {action && !disabled ? 'Redeem' : 'Coming Soon'}
             </Button>
         </CardFooter>
@@ -31,7 +31,7 @@ const ServiceCard = ({ icon, title, description, action, disabled }: { icon: Rea
 );
 
 export default function WalletPage() {
-    const { currentUser } = useAuth();
+    const { currentUser, updateCurrentUser } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
     const [isWatchingAd, setIsWatchingAd] = useState(false);
@@ -51,6 +51,7 @@ export default function WalletPage() {
           await updateDoc(userDocRef, {
             coins: increment(coinsEarned)
           });
+          updateCurrentUser({ coins: (currentUser.coins || 0) + coinsEarned });
           toast({ title: 'Congratulations!', description: `You earned ${coinsEarned} coins!` });
         } catch (error) {
           console.error("Error updating coins:", error);
