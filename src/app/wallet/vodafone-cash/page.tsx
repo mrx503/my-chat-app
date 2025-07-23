@@ -163,6 +163,7 @@ export default function VodafoneCashPage() {
                                     <Label htmlFor="email">Email</Label>
                                     <Input id="email" type="email" value={currentUser.email ?? ''} readOnly disabled />
                                     <p className="text-xs text-muted-foreground">This is the email associated with your account.</p>
+
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="vodafone-number">Vodafone Cash Number</Label>
