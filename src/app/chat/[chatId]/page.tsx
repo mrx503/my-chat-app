@@ -116,7 +116,10 @@ export default function ChatPage() {
             if(latestMessage && latestMessage.senderId !== currentUser?.uid && latestMessage.id !== lastProcessedMessageId.current) {
                 lastProcessedMessageId.current = latestMessage.id;
                 if(isAutoReplyActive) {
-                    handleAutoReply(latestMessage.text);
+                    // Check if the incoming message is an auto-reply itself
+                    if (!latestMessage.isAutoReply) {
+                        handleAutoReply(latestMessage.text);
+                    }
                 }
             }
         });
@@ -142,6 +145,7 @@ export default function ChatPage() {
                     timestamp: serverTimestamp(),
                     type: 'text',
                     status: 'sent',
+                    isAutoReply: true, // Mark this message as an auto-reply
                 });
             }
         } catch (error) {
