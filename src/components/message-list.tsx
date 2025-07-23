@@ -62,19 +62,16 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
 
     switch (message.type) {
         case 'image':
+             if (!message.fileURL) return null;
             return (
-                 <div className="relative w-full max-w-xs aspect-video rounded-lg overflow-hidden">
-                    {message.fileURL && (
-                        <Image
-                            src={message.fileURL}
-                            alt={message.fileName || 'Sent image'}
-                            fill
-                            className="object-cover"
-                            data-ai-hint="sent image"
-                        />
-                    )}
-                    {messageText && <p className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2 text-xs">{messageText}</p>}
-                </div>
+                <Image
+                    src={message.fileURL}
+                    alt={message.fileName || 'Sent image'}
+                    width={240}
+                    height={135}
+                    className="rounded-md object-cover"
+                    data-ai-hint="sent image"
+                />
             );
         case 'file':
             if (!message.fileURL) return null;
