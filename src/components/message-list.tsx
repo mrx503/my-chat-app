@@ -62,19 +62,17 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
 
     switch (message.type) {
         case 'image':
-             if (!message.fileURL) return null;
+            if (!message.fileURL) return null;
             return (
-                 <a href={message.fileURL} target="_blank" rel="noopener noreferrer" className="block w-full max-w-xs">
-                    <div className="relative aspect-video rounded-lg overflow-hidden">
-                        <Image
-                            src={message.fileURL}
-                            alt={message.fileName || 'Sent image'}
-                            fill
-                            className="object-cover"
-                            data-ai-hint="sent image"
-                        />
-                    </div>
-                </a>
+                <div className="relative w-full max-w-xs aspect-video rounded-lg overflow-hidden">
+                    <Image
+                        src={message.fileURL}
+                        alt={message.fileName || 'Sent image'}
+                        fill
+                        className="object-cover"
+                        data-ai-hint="sent image"
+                    />
+                </div>
             );
         case 'file':
             if (!message.fileURL) return null;
@@ -139,7 +137,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
                         isCurrentUser
                             ? 'bg-primary text-primary-foreground rounded-br-none'
                             : 'bg-background text-foreground rounded-bl-none',
-                        { 'p-1 bg-transparent': message.type === 'image' }
+                        { 'p-1 bg-transparent shadow-none': message.type === 'image' }
                     )}
                 >
                     <MessageContent message={message} isEncrypted={isEncrypted} />
