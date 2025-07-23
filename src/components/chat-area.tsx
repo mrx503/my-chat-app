@@ -2,13 +2,14 @@
 "use client";
 
 import React from 'react';
-import type { Chat } from '@/lib/types';
+import type { Chat, Message } from '@/lib/types';
 import ChatHeader from './chat-header';
 import MessageList from './message-list';
 import MessageInput from './message-input';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ReplyPreview from './reply-preview';
 
 interface ChatAreaProps extends React.HTMLAttributes<HTMLDivElement> {
   chat: Chat;
@@ -16,6 +17,9 @@ interface ChatAreaProps extends React.HTMLAttributes<HTMLDivElement> {
   onSendFile: (file: File) => void;
   onSendVoiceMessage: (audioBase64: string) => void;
   onDeleteMessage: (messageId: string, type: 'me' | 'everyone') => void;
+  onReplyToMessage: (message: Message) => void;
+  replyingTo: Message | null;
+  setReplyingTo: (message: Message | null) => void;
   isEncrypted: boolean;
   setIsEncrypted: (isEncrypted: boolean) => void;
   isBlocked: boolean;
@@ -24,7 +28,12 @@ interface ChatAreaProps extends React.HTMLAttributes<HTMLDivElement> {
   isSelfBlocked: boolean;
 }
 
-export default function ChatArea({ chat, onNewMessage, onSendFile, onSendVoiceMessage, onDeleteMessage, isEncrypted, setIsEncrypted, isBlocked, onDeleteChat, onBlockUser, isSelfBlocked, className }: ChatAreaProps) {
+export default function ChatArea({ 
+    chat, onNewMessage, onSendFile, onSendVoiceMessage, onDeleteMessage, 
+    onReplyToMessage, replyingTo, setReplyingTo, 
+    isEncrypted, setIsEncrypted, isBlocked, onDeleteChat, onBlockUser, isSelfBlocked, className 
+}: ChatAreaProps) {
+    
   const handleSendMessage = (message: string) => {
     if (message.trim()) {
       onNewMessage(message);
@@ -45,6 +54,7 @@ export default function ChatArea({ chat, onNewMessage, onSendFile, onSendVoiceMe
         messages={chat.messages} 
         contactAvatar={chat.contact?.avatar} 
         onDeleteMessage={onDeleteMessage}
+        onReplyToMessage={onReplyToMessage}
         isEncrypted={isEncrypted} 
       />
       {isBlocked ? (
@@ -58,11 +68,19 @@ export default function ChatArea({ chat, onNewMessage, onSendFile, onSendVoiceMe
             </Alert>
          </div>
       ) : (
-        <MessageInput 
-          onSendMessage={handleSendMessage} 
-          onSendFile={onSendFile}
-          onSendVoiceMessage={onSendVoiceMessage}
-        />
+        <div className="flex flex-col">
+            {replyingTo && (
+                <ReplyPreview 
+                    message={replyingTo}
+                    onCancelReply={() => setReplyingTo(null)}
+                />
+            )}
+            <MessageInput 
+              onSendMessage={handleSendMessage} 
+              onSendFile={onSendFile}
+              onSendVoiceMessage={onSendVoiceMessage}
+            />
+        </div>
       )}
     </div>
   );

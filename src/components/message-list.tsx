@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
-import { Check, CheckCheck, Trash2, File, User, Users } from 'lucide-react';
+import { Check, CheckCheck, Trash2, File, User, Users, CornerUpLeft } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   AlertDialog,
@@ -22,12 +22,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { motion, useAnimation, useMotionValue, useTransform } from 'framer-motion';
+import ReplyContent from './reply-content';
 
 interface MessageListProps {
   messages: Message[];
   contactAvatar: string;
   isEncrypted: boolean;
   onDeleteMessage: (messageId: string, type: 'me' | 'everyone') => void;
+  onReplyToMessage: (message: Message) => void;
 }
 
 function FormattedTime({ timestamp }: { timestamp: any }) {
@@ -115,33 +117,68 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
     }
 };
 
-const MessageWrapper = ({ message, children, onDeleteRequest }: { message: Message; children: React.ReactNode; onDeleteRequest: (type: 'me' | 'everyone') => void }) => {
+const MessageWrapper = ({ 
+    message, 
+    children, 
+    onDeleteRequest, 
+    onReplyRequest 
+}: { 
+    message: Message; 
+    children: React.ReactNode; 
+    onDeleteRequest: (type: 'me' | 'everyone') => void;
+    onReplyRequest: () => void;
+}) => {
     const { currentUser } = useAuth();
-    const controls = useAnimation();
     const x = useMotionValue(0);
 
     const handleDragEnd = (event: any, info: any) => {
-        if (info.offset.x < -100) {
-            controls.start({ x: -160 });
+        if (info.offset.x < -50) { // Threshold to trigger actions
+            x.set(-160); // Snap to open position
         } else {
-            controls.start({ x: 0 });
+            x.set(0); // Snap back to closed
         }
     };
     
     if (message.senderId !== currentUser?.uid) {
-        return <>{children}</>;
+        const [isHovered, setIsHovered] = useState(false);
+        return (
+            <div 
+                className="relative"
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+            >
+                {children}
+                {isHovered && !message.isDeleted && (
+                    <div className="absolute top-1/2 -translate-y-1/2 left-full ml-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onReplyRequest}>
+                            <CornerUpLeft className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
+            </div>
+        );
     }
+    
+    // Reset position when message changes or on interaction elsewhere
+    useEffect(() => {
+        x.set(0);
+    }, [message.id, x]);
+
 
     return (
         <div className="relative w-full overflow-hidden">
             <motion.div
-                className="absolute right-0 top-0 h-full flex items-center justify-end pr-4"
+                 className="absolute right-0 top-0 h-full flex items-center pr-4"
+                 style={{ opacity: useTransform(x, [-160, 0], [1, 0]) }}
             >
                 <div className="flex bg-muted p-2 rounded-lg gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => onDeleteRequest('me')}>
+                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onReplyRequest}>
+                        <CornerUpLeft className="h-5 w-5 text-primary" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteRequest('me')}>
                         <User className="h-5 w-5 text-destructive" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => onDeleteRequest('everyone')}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteRequest('everyone')}>
                         <Users className="h-5 w-5 text-destructive" />
                     </Button>
                 </div>
@@ -150,7 +187,6 @@ const MessageWrapper = ({ message, children, onDeleteRequest }: { message: Messa
                 drag={message.isDeleted ? false : 'x'}
                 dragConstraints={{ left: -160, right: 0 }}
                 onDragEnd={handleDragEnd}
-                animate={controls}
                 style={{ x }}
                 className="relative z-10 bg-background"
             >
@@ -160,7 +196,7 @@ const MessageWrapper = ({ message, children, onDeleteRequest }: { message: Messa
     );
 };
 
-export default function MessageList({ messages, contactAvatar, isEncrypted, onDeleteMessage }: MessageListProps) {
+export default function MessageList({ messages, contactAvatar, isEncrypted, onDeleteMessage, onReplyToMessage }: MessageListProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const { currentUser } = useAuth();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -185,6 +221,10 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     }
   };
 
+  const handleReplyRequest = (message: Message) => {
+    onReplyToMessage(message);
+  }
+
   if (!currentUser) {
     return null; 
   }
@@ -200,20 +240,17 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
             
             const messageBubble = (
                  <div
-                    key={message.id}
                     className={cn(
-                        'flex items-end gap-3 w-full',
-                        isCurrentUser ? 'justify-end' : 'justify-start'
+                        'flex items-end gap-3 w-fit max-w-xl group',
+                        isCurrentUser ? 'ml-auto flex-row-reverse' : 'mr-auto'
                     )}
                 >
-                    {!isCurrentUser && (
-                        <Avatar className="h-8 w-8 self-end">
-                          <AvatarImage src={contactAvatar} alt="Avatar" data-ai-hint="profile picture" />
-                          <AvatarFallback>{'C'}</AvatarFallback>
-                        </Avatar>
-                    )}
+                    <Avatar className="h-8 w-8 self-end">
+                      <AvatarImage src={isCurrentUser ? currentUser.avatar : contactAvatar} alt="Avatar" data-ai-hint="profile picture" />
+                      <AvatarFallback>{isCurrentUser ? currentUser.email?.[0].toUpperCase() : 'C'}</AvatarFallback>
+                    </Avatar>
                     
-                    <div className="flex flex-col gap-1 max-w-md">
+                    <div className="flex flex-col gap-1">
                         <div
                             className={cn(
                                 'rounded-xl shadow-sm break-words p-3',
@@ -224,6 +261,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                                 (message.type === 'image' || message.type === 'audio') && 'p-1 bg-transparent dark:bg-transparent shadow-none',
                             )}
                         >
+                            {message.replyTo && <ReplyContent reply={message.replyTo} />}
                             <MessageContent message={message} isEncrypted={isEncrypted} />
                         </div>
                         <div className={cn("flex items-center text-xs text-muted-foreground", isCurrentUser ? "justify-end" : "justify-start")}>
@@ -231,13 +269,6 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                             {isCurrentUser && <ReadReceipt status={message.status} />}
                         </div>
                     </div>
-
-                    {isCurrentUser && (
-                        <Avatar className="h-8 w-8 self-end">
-                          <AvatarImage src={currentUser.avatar} alt="Avatar" data-ai-hint="profile picture" />
-                          <AvatarFallback>{currentUser.email?.[0].toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                    )}
                 </div>
             );
             
@@ -246,6 +277,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                     key={message.id} 
                     message={message} 
                     onDeleteRequest={(type) => handleDeleteRequest(message.id, type)}
+                    onReplyRequest={() => handleReplyRequest(message)}
                  >
                     {messageBubble}
                  </MessageWrapper>

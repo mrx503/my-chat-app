@@ -16,6 +16,13 @@ export type User = {
   blockedUsers?: string[];
 };
 
+export type ReplyTo = {
+  messageId: string;
+  messageText: string;
+  senderId: string;
+  senderName: string;
+}
+
 export type Message = {
   id: string;
   text: string;
@@ -27,6 +34,7 @@ export type Message = {
   status?: 'sent' | 'read';
   deletedFor?: string[]; // Array of user UIDs for whom the message is deleted
   isDeleted?: boolean; // True if deleted for everyone
+  replyTo?: ReplyTo;
 };
 
 export type Contact = User & {

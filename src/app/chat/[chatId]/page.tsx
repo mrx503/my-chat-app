@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Chat, Message, User } from '@/lib/types';
+import type { Chat, Message, User, ReplyTo } from '@/lib/types';
 import ChatArea from '@/components/chat-area';
 import { Bot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -21,6 +21,7 @@ export default function ChatPage() {
 
     const [chat, setChat] = useState<Chat | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
+    const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const [isEncrypted, setIsEncrypted] = useState(false);
     const [loading, setLoading] = useState(true);
     const [isBlocked, setIsBlocked] = useState(false);
@@ -151,13 +152,27 @@ export default function ChatPage() {
         if (!chatId || !messageText.trim() || !currentUser || isBlocked || amIBlocked) return;
 
         const messagesColRef = collection(db, 'chats', chatId, 'messages');
+        
+        let replyToObject: ReplyTo | null = null;
+        if (replyingTo) {
+            const senderName = replyingTo.senderId === currentUser.uid ? 'You' : chat?.contact.name || '...';
+            replyToObject = {
+                messageId: replyingTo.id,
+                messageText: replyingTo.text,
+                senderId: replyingTo.senderId,
+                senderName: senderName
+            };
+        }
+
         await addDoc(messagesColRef, {
             text: messageText,
             senderId: currentUser.uid,
             timestamp: serverTimestamp(),
             type: 'text',
             status: 'sent',
+            ...(replyingTo && { replyTo: replyToObject })
         });
+        setReplyingTo(null);
     };
     
     const compressImage = (file: File, quality = 0.7): Promise<string> => {
@@ -269,8 +284,6 @@ export default function ChatPage() {
     
         try {
             if (type === 'me') {
-                // This is a client-side only deletion for now
-                // A more robust solution would involve a `deletedFor` array in Firestore
                 const updatedMessages = messages.filter(m => m.id !== messageId);
                 setMessages(updatedMessages);
 
@@ -291,6 +304,9 @@ export default function ChatPage() {
         }
     };
 
+    const handleReplyToMessage = (message: Message) => {
+        setReplyingTo(message);
+    };
 
     if (loading) {
          return (
@@ -320,6 +336,9 @@ export default function ChatPage() {
                 onSendFile={handleSendFile}
                 onSendVoiceMessage={handleSendVoiceMessage}
                 onDeleteMessage={handleDeleteMessage}
+                onReplyToMessage={handleReplyToMessage}
+                replyingTo={replyingTo}
+                setReplyingTo={setReplyingTo}
                 isEncrypted={isEncrypted}
                 setIsEncrypted={setIsEncrypted}
                 isBlocked={isBlocked || amIBlocked}

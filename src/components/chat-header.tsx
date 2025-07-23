@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Phone, Video, MoreVertical, ShieldCheck, Waves, Trash2, ShieldX, Shield, ArrowLeft } from 'lucide-react';
+import { Phone, MoreVertical, ShieldCheck, Waves, Trash2, ShieldX, Shield, ArrowLeft } from 'lucide-react';
 import type { Contact } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -151,9 +151,6 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
             </Button>
             <Button variant="ghost" size="icon">
               <Phone className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <Video className="h-5 w-5" />
             </Button>
             
             <DropdownMenu>
