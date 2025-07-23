@@ -54,3 +54,14 @@ export type Chat = {
   messages: Message[];
   createdAt: Timestamp;
 };
+
+export type WithdrawalRequest = {
+    id?: string;
+    userId: string;
+    email: string;
+    vodafoneNumber: string;
+    amount: number;
+    status: 'pending' | 'approved' | 'rejected';
+    createdAt: Timestamp;
+    updatedAt?: Timestamp;
+};

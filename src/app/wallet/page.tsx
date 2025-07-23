@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { doc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-const ServiceCard = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) => (
+const ServiceCard = ({ icon, title, description, action, disabled }: { icon: React.ReactNode, title: string, description: string, action?: () => void, disabled?: boolean }) => (
     <Card>
         <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
             <div className="bg-primary/10 p-3 rounded-full">
@@ -23,8 +23,8 @@ const ServiceCard = ({ icon, title, description }: { icon: React.ReactNode, titl
             </div>
         </CardHeader>
         <CardFooter>
-            <Button className="w-full" variant="secondary" disabled>
-                Coming Soon
+            <Button className="w-full" variant="secondary" onClick={action} disabled={disabled}>
+                {disabled && action ? 'Coming Soon' : 'Redeem'}
             </Button>
         </CardFooter>
     </Card>
@@ -61,7 +61,6 @@ export default function WalletPage() {
     };
 
     if (!currentUser) {
-        // You might want to redirect to login if there's no user
         return (
             <div className="flex justify-center items-center h-screen">
                 <p>Loading or not logged in...</p>
@@ -106,16 +105,19 @@ export default function WalletPage() {
                                 icon={<Landmark className="h-6 w-6 text-primary"/>}
                                 title="Vodafone Cash"
                                 description="Transfer coins to your Vodafone Cash wallet."
+                                action={() => router.push('/wallet/vodafone-cash')}
                            />
                            <ServiceCard 
                                 icon={<CreditCard className="h-6 w-6 text-primary"/>}
                                 title="Fakka Cards"
                                 description="Get small denomination scratch cards."
+                                disabled
                            />
                             <ServiceCard 
                                 icon={<Smartphone className="h-6 w-6 text-primary"/>}
                                 title="Mobile Top-Up"
                                 description="Recharge mobile credit for any operator."
+                                disabled
                            />
                         </div>
                     </div>
