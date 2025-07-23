@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
-import { Check, CheckCheck, File, User, Users, CornerUpLeft } from 'lucide-react';
+import { Check, CheckCheck, File, User, Users, CornerUpLeft, Reply } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   AlertDialog,
@@ -137,11 +137,11 @@ const MessageWrapper = ({
         if (message.isDeleted) return;
 
         const dragThreshold = 50;
-        if (isCurrentUser) { // Can drag left
+        if (isCurrentUser) { 
             if (info.offset.x < -dragThreshold) {
                 onReplyRequest();
             }
-        } else { // Can drag right
+        } else {
             if (info.offset.x > dragThreshold) {
                 onReplyRequest();
             }
@@ -158,15 +158,10 @@ const MessageWrapper = ({
 
     const dragProps = message.isDeleted ? {} : {
         drag: "x" as const,
-        dragConstraints: isCurrentUser ? { left: 0, right: 0 } : { left: 0, right: 0 },
-        onDragEnd,
+        dragConstraints: isCurrentUser ? { left: -160, right: 0 } : { left: 0, right: 80 },
+        onDragEnd: handleDragEnd,
         style: { x },
     };
-    if (isCurrentUser && !message.isDeleted) {
-        dragProps.dragConstraints = { left: -160, right: 0 };
-    } else if (!isCurrentUser && !message.isDeleted) {
-        dragProps.dragConstraints = { left: 0, right: 80 };
-    }
 
 
     return (
@@ -180,6 +175,9 @@ const MessageWrapper = ({
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteRequest('everyone')}>
                           <Users className="h-5 w-5 text-destructive" />
+                      </Button>
+                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onReplyRequest}>
+                          <Reply className="h-5 w-5 text-primary" />
                       </Button>
                   </motion.div>
                 )}
@@ -311,4 +309,3 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     </>
   );
 }
-
