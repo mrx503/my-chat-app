@@ -43,7 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (userDoc.exists()) {
             setCurrentUser({ uid: user.uid, ...userDoc.data() } as User & { uid: string });
           } else {
-            setCurrentUser({ uid: user.uid, email: user.email!, name: '', avatar: '' });
+            setCurrentUser({ uid: user.uid, email: user.email!, name: '', avatar: '', coins: 0 });
           }
           setLoading(false);
         });
@@ -80,7 +80,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         privacySettings: {
             showLastSeen: true,
             showOnlineStatus: true,
-        }
+        },
+        coins: 0,
     };
     await setDoc(doc(db, "users", user.uid), userDoc);
     return userCredential;

@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Chat, User } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Copy, LogOut, MessageSquarePlus, Camera } from 'lucide-react';
+import { Copy, LogOut, MessageSquarePlus, Camera, Coins, Clapperboard } from 'lucide-react';
 
 export default function Home() {
   const { currentUser, logout, updateCurrentUser } = useAuth();
@@ -23,6 +23,7 @@ export default function Home() {
   const { toast } = useToast();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isWatchingAd, setIsWatchingAd] = useState(false);
 
   useEffect(() => {
     if (!currentUser) {
@@ -51,6 +52,7 @@ export default function Home() {
                     name: `User ${contactId.substring(0, 4)}`,
                     email: 'Unknown',
                     avatar: `https://placehold.co/100x100.png`,
+                    coins: 0,
                 };
             }
         } else {
@@ -61,6 +63,7 @@ export default function Home() {
                 name: 'Unknown User',
                 email: 'Unknown',
                 avatar: `https://placehold.co/100x100.png`,
+                coins: 0,
             };
         }
         
@@ -166,6 +169,31 @@ export default function Home() {
     }
     event.target.value = '';
   };
+
+  const handleWatchAd = async () => {
+    if (!currentUser) return;
+    setIsWatchingAd(true);
+    toast({ title: 'Watching Ad...', description: 'Please wait while the ad plays.' });
+
+    // Simulate ad delay
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    const coinsEarned = Math.floor(Math.random() * 10) + 1;
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    
+    try {
+      await updateDoc(userDocRef, {
+        coins: increment(coinsEarned)
+      });
+      // No need to call updateCurrentUser, onSnapshot will do it
+      toast({ title: 'Congratulations!', description: `You earned ${coinsEarned} coins!` });
+    } catch (error) {
+      console.error("Error updating coins:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not update your coin balance.' });
+    } finally {
+      setIsWatchingAd(false);
+    }
+  };
   
   const shortUserId = currentUser?.uid ? `${currentUser.uid.substring(0, 6)}...` : '';
 
@@ -222,6 +250,30 @@ export default function Home() {
                                 </Button>
                             </div>
                         </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center gap-3">
+                                <Coins className="h-8 w-8 text-amber-500"/>
+                                <div>
+                                    <CardTitle>My Wallet</CardTitle>
+                                    <CardDescription>Your current coin balance.</CardDescription>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center justify-between p-4 bg-amber-500/10 rounded-lg">
+                                <span className="text-3xl font-bold text-amber-600">{currentUser.coins || 0}</span>
+                                <Coins className="h-8 w-8 text-amber-500/50"/>
+                            </div>
+                        </CardContent>
+                        <CardFooter>
+                            <Button className="w-full" onClick={handleWatchAd} disabled={isWatchingAd}>
+                                <Clapperboard className="mr-2 h-4 w-4"/>
+                                {isWatchingAd ? 'Watching Ad...' : 'Watch an Ad & Earn Coins'}
+                            </Button>
+                        </CardFooter>
                     </Card>
 
                      <Card>

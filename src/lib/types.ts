@@ -14,6 +14,7 @@ export type User = {
     showLastSeen?: boolean;
   };
   blockedUsers?: string[];
+  coins: number;
 };
 
 export type ReplyTo = {
