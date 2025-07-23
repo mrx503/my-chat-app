@@ -84,13 +84,12 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
         case 'image':
              if (!message.fileURL) return null;
             return (
-                <div className="relative w-60 h-36 rounded-md overflow-hidden">
+                <div className="relative w-60 h-48 rounded-md overflow-hidden">
                     <Image
                         src={message.fileURL}
                         alt={message.fileName || 'Sent image'}
-                        width={240}
-                        height={135}
-                        className="object-cover rounded-md"
+                        layout="fill"
+                        className="object-contain rounded-md"
                         data-ai-hint="sent image"
                     />
                 </div>
