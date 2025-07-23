@@ -65,6 +65,9 @@ export default function VodafoneCashPage() {
         const requestsColRef = collection(db, 'withdrawalRequests');
 
         try {
+            // Create a new document reference with an auto-generated ID
+            const newRequestRef = doc(requestsColRef);
+
             await runTransaction(db, async (transaction) => {
                 const userDoc = await transaction.get(userDocRef);
                 if (!userDoc.exists() || userDoc.data().coins < numericAmount) {
@@ -75,8 +78,8 @@ export default function VodafoneCashPage() {
                 const newBalance = userDoc.data().coins - numericAmount;
                 transaction.update(userDocRef, { coins: newBalance });
 
-                // 2. Create withdrawal request
-                transaction.set(addDoc(requestsColRef, {}).ref, {
+                // 2. Create withdrawal request using the new reference
+                transaction.set(newRequestRef, {
                     userId: currentUser.uid,
                     email: currentUser.email,
                     vodafoneNumber: vodafoneNumber.trim(),
