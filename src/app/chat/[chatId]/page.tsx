@@ -191,7 +191,7 @@ export default function ChatPage() {
                 type: file.type.startsWith('image/') ? 'image' : 'file',
                 fileURL: base64,
                 fileName: file.name,
-                status: 'sent',
+                // No 'status' field for files to avoid conflicts
             });
     
             toast({ title: 'Success!', description: 'File sent successfully.' });
