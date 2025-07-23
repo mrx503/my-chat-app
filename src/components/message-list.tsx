@@ -84,12 +84,13 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
         case 'image':
              if (!message.fileURL) return null;
             return (
-                <div className="relative w-full max-w-xs aspect-video rounded-lg overflow-hidden">
+                <div className="relative w-60 h-36 rounded-md overflow-hidden">
                     <Image
                         src={message.fileURL}
                         alt={message.fileName || 'Sent image'}
-                        fill
-                        className="object-cover"
+                        width={240}
+                        height={135}
+                        className="object-cover rounded-md"
                         data-ai-hint="sent image"
                     />
                 </div>
@@ -155,34 +156,33 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     <>
       <ScrollArea className="flex-1" viewportRef={viewportRef}>
         <div className="p-4 space-y-4">
-          {visibleMessages.map((message, index) => {
+          {visibleMessages.map((message) => {
             const isCurrentUser = message.senderId === currentUser.uid;
-            const showAvatar = index === visibleMessages.length - 1 || visibleMessages[index + 1].senderId !== message.senderId;
             
             return (
               <div
-                key={message.id || index}
+                key={message.id}
                 className={cn(
-                  'flex items-end gap-3 group', 
+                  'flex items-end gap-3 group',
                   isCurrentUser ? 'justify-end flex-row-reverse' : 'justify-start'
                 )}
               >
-                <Avatar className={cn('h-8 w-8 self-end', showAvatar ? 'opacity-100' : 'opacity-0')}>
-                   {showAvatar && <AvatarImage src={isCurrentUser ? currentUser.avatar : contactAvatar} alt="Avatar" data-ai-hint="profile picture"/>}
-                   {showAvatar && <AvatarFallback>{isCurrentUser ? currentUser.email?.[0].toUpperCase() : 'C'}</AvatarFallback>}
+                <Avatar className="h-8 w-8 self-end">
+                  <AvatarImage src={isCurrentUser ? currentUser.avatar : contactAvatar} alt="Avatar" data-ai-hint="profile picture" />
+                  <AvatarFallback>{isCurrentUser ? currentUser.email?.[0].toUpperCase() : 'C'}</AvatarFallback>
                 </Avatar>
-
-                 <div className="flex flex-col" style={{ alignItems: isCurrentUser ? 'flex-end' : 'flex-start' }}>
+                
+                <div className={cn("flex flex-col", isCurrentUser ? "items-end" : "items-start")}>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                           <div
+                            <div
                                 className={cn(
-                                    'max-w-[70%] rounded-xl shadow-sm break-words p-3 cursor-pointer',
+                                    'max-w-md rounded-xl shadow-sm break-words p-3 cursor-pointer',
                                     isCurrentUser
                                         ? 'bg-primary text-primary-foreground rounded-br-none'
-                                        : 'bg-background text-foreground rounded-bl-none',
+                                        : 'bg-card text-card-foreground rounded-bl-none',
                                     message.isDeleted && 'bg-transparent shadow-none',
-                                    message.type === 'image' && 'p-1',
+                                    (message.type === 'image' || message.type === 'audio') && 'p-1 bg-transparent dark:bg-transparent shadow-none',
                                 )}
                             >
                                 <MessageContent message={message} isEncrypted={isEncrypted} />
@@ -206,6 +206,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                         {isCurrentUser && <ReadReceipt status={message.status} />}
                     </div>
                 </div>
+
               </div>
             );
           })}
