@@ -201,7 +201,7 @@ const MessageWrapper = ({
             
             <motion.div
                 {...dragProps}
-                className="relative z-10 bg-background"
+                className="relative z-10"
                 animate={{x: isRevealed ? revealPosition: 0}}
                 transition={{type: 'spring', stiffness: 300, damping: 30}}
                 onTap={() => {
