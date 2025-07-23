@@ -64,8 +64,8 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
         case 'image':
              if (!message.fileURL) return null;
             return (
-                 <div className="relative w-full aspect-video max-w-xs overflow-hidden rounded-lg">
-                    <a href={message.fileURL} target="_blank" rel="noopener noreferrer">
+                 <a href={message.fileURL} target="_blank" rel="noopener noreferrer" className="block w-full max-w-xs">
+                    <div className="relative aspect-video rounded-lg overflow-hidden">
                         <Image
                             src={message.fileURL}
                             alt={message.fileName || 'Sent image'}
@@ -73,8 +73,8 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
                             className="object-cover"
                             data-ai-hint="sent image"
                         />
-                    </a>
-                </div>
+                    </div>
+                </a>
             );
         case 'file':
             if (!message.fileURL) return null;
@@ -135,11 +135,11 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
               <div className="w-full flex flex-col" style={{ alignItems: isCurrentUser ? 'flex-end' : 'flex-start' }}>
                 <div
                     className={cn(
-                    'max-w-[70%] rounded-xl shadow-sm break-words group',
-                    isCurrentUser
-                        ? 'bg-primary text-primary-foreground rounded-br-none'
-                        : 'bg-background text-foreground rounded-bl-none',
-                     message.type === 'image' ? 'p-1 bg-transparent' : 'p-3'
+                        'max-w-[70%] rounded-xl p-3 shadow-sm break-words group',
+                        isCurrentUser
+                            ? 'bg-primary text-primary-foreground rounded-br-none'
+                            : 'bg-background text-foreground rounded-bl-none',
+                        { 'p-1': message.type === 'image' }
                     )}
                 >
                     <MessageContent message={message} isEncrypted={isEncrypted} />
