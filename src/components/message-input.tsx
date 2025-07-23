@@ -1,16 +1,13 @@
 
 "use client"
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, SmilePlus, Bot, Loader2, Paperclip, Mic, StopCircle, X } from 'lucide-react';
-import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
+import React, { useState, useRef } from 'react';
+import { Send, Bot, Paperclip, Mic, StopCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from './ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 
 interface MessageInputProps {
@@ -23,10 +20,8 @@ interface MessageInputProps {
 
 export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMessage, isAutoReplyActive, onToggleAutoReply }: MessageInputProps) {
   const [message, setMessage] = useState('');
-  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { theme } = useTheme();
 
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -105,11 +100,6 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
     event.target.value = ''; 
   };
   
-  const onEmojiClick = (emojiData: EmojiClickData) => {
-    setMessage(prevMessage => prevMessage + emojiData.emoji);
-    setIsEmojiPickerOpen(false);
-  }
-
   return (
     <div className="p-4 border-t bg-background">
       <div className="relative">
@@ -123,18 +113,6 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
           <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
           
-          <Popover open={isEmojiPickerOpen} onOpenChange={setIsEmojiPickerOpen}>
-            <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon">
-                    <SmilePlus className="h-5 w-5" />
-                    <span className="sr-only">Add emoji</span>
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 border-0">
-                <EmojiPicker onEmojiClick={onEmojiClick} theme={theme === 'dark' ? 'dark' : 'light'} />
-            </PopoverContent>
-          </Popover>
-
           <Button variant="ghost" size="icon" onClick={handleAttachmentClick}>
             <Paperclip className="h-5 w-5" />
             <span className="sr-only">Attach file</span>
