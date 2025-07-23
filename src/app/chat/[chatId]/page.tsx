@@ -4,9 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, where, getDocs, writeBatch } from 'firebase/firestore';
-import { db, storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { v4 as uuidv4 } from 'uuid';
+import { db } from '@/lib/firebase';
 import type { Chat, Message, User } from '@/lib/types';
 import ChatArea from '@/components/chat-area';
 import { Bot } from 'lucide-react';
@@ -161,6 +159,15 @@ export default function ChatPage() {
         });
     };
 
+    const readFileAsBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = (error) => reject(error);
+        });
+    };
+
     const handleSendFile = async (file: File) => {
         if (!chatId || !currentUser) {
             toast({ variant: 'destructive', title: 'Send Failed', description: 'Chat session not found.' });
@@ -174,9 +181,7 @@ export default function ChatPage() {
         toast({ title: 'Sending file...', description: 'Please wait.' });
     
         try {
-            const storageRef = ref(storage, `chat_files/${chatId}/${uuidv4()}-${file.name}`);
-            await uploadBytes(storageRef, file);
-            const downloadURL = await getDownloadURL(storageRef);
+            const base64 = await readFileAsBase64(file);
             
             const messagesColRef = collection(db, 'chats', chatId, 'messages');
             await addDoc(messagesColRef, {
@@ -184,7 +189,7 @@ export default function ChatPage() {
                 senderId: currentUser.uid,
                 timestamp: serverTimestamp(),
                 type: file.type.startsWith('image/') ? 'image' : 'file',
-                fileURL: downloadURL,
+                fileURL: base64,
                 fileName: file.name,
                 status: 'sent',
             });
@@ -264,3 +269,5 @@ export default function ChatPage() {
         </div>
     );
 }
+
+    
