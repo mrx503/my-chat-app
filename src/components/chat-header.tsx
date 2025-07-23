@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Phone, Video, MoreVertical, ShieldCheck, Waves, Trash2, ShieldX, Shield, ArrowLeft } from 'lucide-react';
 import type { Contact } from '@/lib/types';
@@ -37,6 +37,32 @@ interface ChatHeaderProps {
   isBlocked: boolean;
 }
 
+function formatLastSeen(timestamp?: any) {
+    if (!timestamp) return 'Offline';
+    try {
+        const date = timestamp.toDate();
+        const now = new Date();
+        const diffSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+        
+        if (diffSeconds < 60) return 'last seen just now';
+        
+        const diffMinutes = Math.floor(diffSeconds / 60);
+        if (diffMinutes < 60) return `last seen ${diffMinutes}m ago`;
+        
+        const diffHours = Math.floor(diffMinutes / 60);
+        if (diffHours < 24) return `last seen ${diffHours}h ago`;
+
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays === 1) return `last seen yesterday`;
+        
+        return `last seen on ${date.toLocaleDateString()}`;
+
+    } catch (e) {
+        return 'Offline';
+    }
+}
+
+
 export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDeleteChat, onBlockUser, isBlocked }: ChatHeaderProps) {
   const router = useRouter();
   const [password, setPassword] = useState('');
@@ -45,6 +71,25 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
 
   const [showCreatePasswordDialog, setShowCreatePasswordDialog] = useState(false);
   const [showDecryptDialog, setShowDecryptDialog] = useState(false);
+  const [status, setStatus] = useState('');
+
+  useEffect(() => {
+    if (contact?.privacySettings?.showOnlineStatus === false) {
+        setStatus('');
+        return;
+    }
+
+    if (contact.online) {
+        setStatus('Online');
+    } else {
+        if(contact?.privacySettings?.showLastSeen === false) {
+             setStatus('Offline');
+        } else {
+            setStatus(formatLastSeen(contact.lastSeen));
+        }
+    }
+  }, [contact]);
+
 
   const handleMicrowaveClick = () => {
     if (isEncrypted) {
@@ -96,7 +141,7 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
             </Avatar>
             <div>
               <h2 className="text-lg font-semibold">{contact.name}</h2>
-              <p className="text-sm text-muted-foreground">{contact.online ? 'Online' : 'Offline'}</p>
+              <p className="text-sm text-muted-foreground">{status}</p>
             </div>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -216,4 +261,3 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
     </>
   );
 }
-

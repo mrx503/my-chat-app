@@ -8,6 +8,11 @@ export type User = {
   email: string;
   avatar: string;
   online?: boolean;
+  lastSeen?: Timestamp;
+  privacySettings?: {
+    showOnlineStatus?: boolean;
+    showLastSeen?: boolean;
+  };
   blockedUsers?: string[];
 };
 

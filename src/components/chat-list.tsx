@@ -22,7 +22,11 @@ export default function ChatList({ chats, onChatSelect }: ChatListProps) {
     setIsClient(true);
   }, []);
 
-  const sortedChats = [...chats].sort((a, b) => (b.contact?.lastMessageTimestamp as any) - (a.contact?.lastMessageTimestamp as any));
+  const sortedChats = [...chats].sort((a, b) => {
+    const timeA = a.contact?.lastMessageTimestamp?.toMillis() || 0;
+    const timeB = b.contact?.lastMessageTimestamp?.toMillis() || 0;
+    return timeB - timeA;
+  });
 
   const formatTimestamp = (timestamp?: any) => {
     if (!timestamp || !isClient) return '';
@@ -40,7 +44,7 @@ export default function ChatList({ chats, onChatSelect }: ChatListProps) {
         return date.toLocaleDateString('en-US');
         }
     } catch (e) {
-        return ''; // Return empty string if timestamp is not a valid Firestore Timestamp
+        return '';
     }
   }
   
@@ -55,10 +59,15 @@ export default function ChatList({ chats, onChatSelect }: ChatListProps) {
                 'w-full text-left flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-muted/50'
               )}
             >
-              <Avatar className="h-12 w-12 border-2 border-transparent data-[online=true]:border-green-500" data-online={chat.contact.online}>
-                <AvatarImage src={chat.contact.avatar} alt={chat.contact.name} data-ai-hint="profile picture" />
-                <AvatarFallback>{chat.contact.name ? chat.contact.name.charAt(0) : 'U'}</AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={chat.contact.avatar} alt={chat.contact.name} data-ai-hint="profile picture" />
+                  <AvatarFallback>{chat.contact.name ? chat.contact.name.charAt(0) : 'U'}</AvatarFallback>
+                </Avatar>
+                {chat.contact.online && chat.contact.privacySettings?.showOnlineStatus && (
+                    <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-background" />
+                )}
+              </div>
               <div className="flex-1 overflow-hidden">
                 <h3 className="font-semibold truncate">{chat.contact.name}</h3>
                 <p className="text-sm text-muted-foreground truncate">{chat.contact.lastMessage}</p>
@@ -75,4 +84,3 @@ export default function ChatList({ chats, onChatSelect }: ChatListProps) {
     </ScrollArea>
   );
 }
-
