@@ -131,64 +131,67 @@ const MessageWrapper = ({
     const { currentUser } = useAuth();
     const x = useMotionValue(0);
 
+    const isCurrentUser = message.senderId === currentUser?.uid;
+
     const handleDragEnd = (event: any, info: any) => {
-        if (info.offset.x < -50) { 
-            x.set(-160); 
-        } else {
-            x.set(0); 
+        if (message.isDeleted) return;
+
+        const dragThreshold = 50;
+        if (isCurrentUser) { // Can drag left
+            if (info.offset.x < -dragThreshold) {
+                onReplyRequest();
+            }
+        } else { // Can drag right
+            if (info.offset.x > dragThreshold) {
+                onReplyRequest();
+            }
         }
+        x.set(0);
     };
-    
-    if (message.senderId !== currentUser?.uid) {
-        const [isHovered, setIsHovered] = useState(false);
-        return (
-            <div 
-                className="relative"
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-            >
-                {children}
-                {isHovered && !message.isDeleted && (
-                    <div className="absolute top-1/2 -translate-y-1/2 left-full ml-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onReplyRequest}>
-                            <CornerUpLeft className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
-            </div>
-        );
-    }
     
     useEffect(() => {
         x.set(0);
     }, [message.id, x]);
+    
+    const replyOpacity = useTransform(x, isCurrentUser ? [-50, 0] : [0, 50], [1, 0]);
+    const deleteOpacity = useTransform(x, [-160, -50], [1, 0]);
+
+    const dragProps = message.isDeleted ? {} : {
+        drag: "x" as const,
+        dragConstraints: isCurrentUser ? { left: 0, right: 0 } : { left: 0, right: 0 },
+        onDragEnd,
+        style: { x },
+    };
+    if (isCurrentUser && !message.isDeleted) {
+        dragProps.dragConstraints = { left: -160, right: 0 };
+    } else if (!isCurrentUser && !message.isDeleted) {
+        dragProps.dragConstraints = { left: 0, right: 80 };
+    }
 
 
     return (
         <div className="relative w-full overflow-hidden">
-            <motion.div
-                 className="absolute right-0 top-0 h-full flex items-center pr-4"
-                 style={{ opacity: useTransform(x, [-160, 0], [1, 0]) }}
-            >
-                {!message.isDeleted && (
-                  <div className="flex bg-muted p-2 rounded-lg gap-2">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onReplyRequest}>
-                          <CornerUpLeft className="h-5 w-5 text-primary" />
-                      </Button>
+             {/* Action Icons Container */}
+            <div className={cn("absolute inset-y-0 flex items-center", isCurrentUser ? "right-0" : "left-0")}>
+                 {isCurrentUser && !message.isDeleted && (
+                  <motion.div style={{ opacity: deleteOpacity }} className="flex bg-muted p-2 rounded-lg gap-2 mr-4">
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteRequest('me')}>
                           <User className="h-5 w-5 text-destructive" />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteRequest('everyone')}>
                           <Users className="h-5 w-5 text-destructive" />
                       </Button>
-                  </div>
+                  </motion.div>
                 )}
-            </motion.div>
+                 {!isCurrentUser && !message.isDeleted && (
+                     <motion.div style={{ opacity: replyOpacity }} className="flex items-center justify-center w-20">
+                         <CornerUpLeft className="h-5 w-5 text-primary" />
+                     </motion.div>
+                 )}
+            </div>
+            
             <motion.div
-                drag={message.isDeleted ? false : 'x'}
-                dragConstraints={{ left: -160, right: 0 }}
-                onDragEnd={handleDragEnd}
-                style={{ x }}
+                {...dragProps}
                 className="relative z-10 bg-background"
             >
                 {children}
@@ -308,3 +311,4 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     </>
   );
 }
+
