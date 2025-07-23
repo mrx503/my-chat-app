@@ -126,10 +126,10 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
               <div className="w-full flex flex-col" style={{ alignItems: isCurrentUser ? 'flex-end' : 'flex-start' }}>
                 <div
                     className={cn(
-                    'max-w-[70%] rounded-xl shadow-sm break-words group',
+                    'max-w-[70%] rounded-xl p-3 shadow-sm break-words group',
                     isCurrentUser
-                        ? `bg-primary text-primary-foreground rounded-br-none ${message.type !== 'text' ? 'p-0 bg-transparent shadow-none' : 'p-3'}`
-                        : `bg-background text-foreground rounded-bl-none ${message.type !== 'text' ? 'p-0 bg-transparent shadow-none' : 'p-3'}`
+                        ? 'bg-primary text-primary-foreground rounded-br-none'
+                        : 'bg-background text-foreground rounded-bl-none'
                     )}
                 >
                     <MessageContent message={message} isEncrypted={isEncrypted} />
