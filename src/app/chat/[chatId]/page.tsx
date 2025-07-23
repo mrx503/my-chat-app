@@ -159,6 +159,27 @@ export default function ChatPage() {
             status: 'sent',
         });
     };
+    
+    const compressImage = (file: File, quality = 0.7): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target?.result as string;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL(file.type, quality));
+                };
+                img.onerror = (error) => reject(error);
+            };
+            reader.onerror = (error) => reject(error);
+        });
+    };
 
     const readFileAsBase64 = (file: Blob): Promise<string> => {
         return new Promise((resolve, reject) => {
@@ -189,22 +210,26 @@ export default function ChatPage() {
         toast({ title: 'Sending file...', description: 'Please wait.' });
 
         try {
-            const base64 = await readFileAsBase64(file);
+            const isImage = file.type.startsWith('image/');
+            const base64 = isImage ? await compressImage(file) : await readFileAsBase64(file);
             
             const messagesColRef = collection(db, 'chats', chatId, 'messages');
             await addDoc(messagesColRef, {
                 text: '',
                 senderId: currentUser.uid,
                 timestamp: serverTimestamp(),
-                type: file.type.startsWith('image/') ? 'image' : 'file',
+                type: isImage ? 'image' : 'file',
                 fileURL: base64,
                 fileName: file.name
             });
     
             toast({ title: 'Success!', description: 'File sent successfully.' });
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error sending file:", error);
-            toast({ variant: 'destructive', title: 'Send Failed', description: 'Could not send the file. Please try again.' });
+            const description = error.message.includes('longer than 1048487 bytes')
+                ? 'The file is too large to be sent.'
+                : 'Could not send the file. Please try again.';
+            toast({ variant: 'destructive', title: 'Send Failed', description });
         }
     };
 

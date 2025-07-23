@@ -129,37 +129,41 @@ export default function Home() {
     fileInputRef.current?.click();
   };
 
+  const compressImage = (file: File, quality = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL(file.type, quality));
+            };
+            img.onerror = (error) => reject(error);
+        };
+        reader.onerror = (error) => reject(error);
+    });
+  };
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    console.log('File selected:', file);
-  
     if (file && currentUser) {
-      const reader = new FileReader();
-      
-      reader.onloadstart = () => console.log('Starting to read file...');
-      reader.onerror = (error) => console.error('Error reading file:', error);
-      
-      reader.onload = async () => {
-        const base64 = reader.result as string;
-        console.log('File read successfully:', base64.substring(0, 30) + '...');
-        
-        try {
-          const userDocRef = doc(db, 'users', currentUser.uid);
-          console.log('Updating user avatar...');
-          await updateDoc(userDocRef, { avatar: base64 });
-          
-          console.log('Avatar updated in Firestore');
-          updateCurrentUser({ avatar: base64 });
-          toast({ title: 'Success', description: 'Profile picture updated!' });
-        } catch (error) {
-          console.error("Error updating avatar:", error);
-          toast({ variant: 'destructive', title: 'Error', description: 'Failed to update profile picture.' });
-        }
-      };
-      
-      reader.readAsDataURL(file);
+      try {
+        const base64 = await compressImage(file);
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userDocRef, { avatar: base64 });
+        updateCurrentUser({ avatar: base64 });
+        toast({ title: 'Success', description: 'Profile picture updated!' });
+      } catch (error) {
+        console.error("Error updating avatar:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update profile picture.' });
+      }
     }
-    // Reset the input value to allow re-uploading the same file
     event.target.value = '';
   };
   
@@ -263,6 +267,3 @@ export default function Home() {
     </div>
   );
 }
-    
-
-    
