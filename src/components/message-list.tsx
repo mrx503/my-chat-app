@@ -135,11 +135,11 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
               <div className="w-full flex flex-col" style={{ alignItems: isCurrentUser ? 'flex-end' : 'flex-start' }}>
                 <div
                     className={cn(
-                    'max-w-[70%] rounded-xl p-3 shadow-sm break-words group',
+                    'max-w-[70%] rounded-xl shadow-sm break-words group',
                     isCurrentUser
                         ? 'bg-primary text-primary-foreground rounded-br-none'
                         : 'bg-background text-foreground rounded-bl-none',
-                     {'p-1': message.type === 'image'} // reduce padding for images
+                     message.type === 'image' ? 'p-1 bg-transparent' : 'p-3'
                     )}
                 >
                     <MessageContent message={message} isEncrypted={isEncrypted} />
