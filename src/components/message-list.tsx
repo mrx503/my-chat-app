@@ -25,7 +25,13 @@ function FormattedTime({ timestamp }: { timestamp: any }) {
         if (timestamp && typeof timestamp.toDate === 'function') {
             timeStr = new Date(timestamp.toDate()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         } else if (timestamp) { // Fallback for server-generated timestamps before hydration
-            timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+             try {
+                // This might be a server timestamp object that isn't a Date object yet
+                const date = new Date(timestamp.seconds * 1000);
+                timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+             } catch(e) {
+                timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+             }
         }
         setFormattedTime(timeStr);
     }, [timestamp]);
@@ -56,13 +62,14 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
 
     switch (message.type) {
         case 'image':
+             if (!message.fileURL) return null;
             return (
-                <div className="relative w-full aspect-video max-w-xs overflow-hidden rounded-lg">
+                 <div className="relative w-full aspect-video max-w-xs overflow-hidden rounded-lg">
                     <a href={message.fileURL} target="_blank" rel="noopener noreferrer">
                         <Image
-                            src={message.fileURL!}
+                            src={message.fileURL}
                             alt={message.fileName || 'Sent image'}
-                            layout="fill"
+                            fill
                             className="object-cover"
                             data-ai-hint="sent image"
                         />
@@ -70,6 +77,7 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
                 </div>
             );
         case 'file':
+            if (!message.fileURL) return null;
             return (
                 <a href={message.fileURL} target="_blank" rel="noopener noreferrer" download={message.fileName}>
                     <Button variant="outline" className="h-auto">
@@ -77,6 +85,7 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
                             <Download className="h-6 w-6" />
                             <div className="text-left">
                                 <p className="font-semibold break-all">{message.fileName}</p>
+
                                 <p className="text-xs text-muted-foreground">Click to download</p>
                             </div>
                         </div>
@@ -110,7 +119,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
       <div className="p-6 space-y-2">
         {messages.map((message, index) => {
           const isCurrentUser = message.senderId === currentUser.uid;
-          const showAvatar = index === messages.length - 1 || messages[index + 1].senderId !== message.senderId;
+          const showAvatar = index === 0 || messages[index - 1].senderId !== message.senderId;
           
           return (
             <div
@@ -129,7 +138,8 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
                     'max-w-[70%] rounded-xl p-3 shadow-sm break-words group',
                     isCurrentUser
                         ? 'bg-primary text-primary-foreground rounded-br-none'
-                        : 'bg-background text-foreground rounded-bl-none'
+                        : 'bg-background text-foreground rounded-bl-none',
+                     {'p-1': message.type === 'image'} // reduce padding for images
                     )}
                 >
                     <MessageContent message={message} isEncrypted={isEncrypted} />
