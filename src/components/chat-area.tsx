@@ -26,12 +26,15 @@ interface ChatAreaProps extends React.HTMLAttributes<HTMLDivElement> {
   onDeleteChat: () => void;
   onBlockUser: () => void;
   isSelfBlocked: boolean;
+  isAutoReplyActive: boolean;
+  onToggleAutoReply: () => void;
 }
 
 export default function ChatArea({ 
     chat, onNewMessage, onSendFile, onSendVoiceMessage, onDeleteMessage, 
     onReplyToMessage, replyingTo, setReplyingTo, 
-    isEncrypted, setIsEncrypted, isBlocked, onDeleteChat, onBlockUser, isSelfBlocked, className 
+    isEncrypted, setIsEncrypted, isBlocked, onDeleteChat, onBlockUser, isSelfBlocked,
+    isAutoReplyActive, onToggleAutoReply, className 
 }: ChatAreaProps) {
     
   const handleSendMessage = (message: string) => {
@@ -79,6 +82,8 @@ export default function ChatArea({
               onSendMessage={handleSendMessage} 
               onSendFile={onSendFile}
               onSendVoiceMessage={onSendVoiceMessage}
+              isAutoReplyActive={isAutoReplyActive}
+              onToggleAutoReply={onToggleAutoReply}
             />
         </div>
       )}

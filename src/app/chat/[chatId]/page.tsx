@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -11,6 +11,7 @@ import { Bot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { generateReply } from '@/ai/flows/auto-reply-flow';
 
 export default function ChatPage() {
     const params = useParams();
@@ -26,6 +27,8 @@ export default function ChatPage() {
     const [loading, setLoading] = useState(true);
     const [isBlocked, setIsBlocked] = useState(false);
     const [amIBlocked, setAmIBlocked] = useState(false);
+    const [isAutoReplyActive, setIsAutoReplyActive] = useState(false);
+    const lastProcessedMessageId = useRef<string | null>(null);
 
     useEffect(() => {
         if (!currentUser) {
@@ -108,6 +111,14 @@ export default function ChatPage() {
                 ...doc.data()
             } as Message));
             setMessages(newMessages);
+
+            const latestMessage = newMessages[newMessages.length - 1];
+            if(latestMessage && latestMessage.senderId !== currentUser?.uid && latestMessage.id !== lastProcessedMessageId.current) {
+                lastProcessedMessageId.current = latestMessage.id;
+                if(isAutoReplyActive) {
+                    handleAutoReply(latestMessage.text);
+                }
+            }
         });
 
         setIsEncrypted(false);
@@ -117,7 +128,31 @@ export default function ChatPage() {
             unsubscribeMessages();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [chatId, currentUser, router, toast]);
+    }, [chatId, currentUser, router, toast, isAutoReplyActive]);
+
+    const handleAutoReply = async (incomingMessage: string) => {
+        if(!chatId || !currentUser) return;
+        try {
+            const result = await generateReply({ message: incomingMessage });
+            if(result.reply) {
+                const messagesColRef = collection(db, 'chats', chatId, 'messages');
+                await addDoc(messagesColRef, {
+                    text: result.reply,
+                    senderId: currentUser.uid,
+                    timestamp: serverTimestamp(),
+                    type: 'text',
+                    status: 'sent',
+                });
+            }
+        } catch (error) {
+            console.error("Error generating auto-reply:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Auto-Reply Failed',
+                description: 'Could not generate an AI reply.',
+            });
+        }
+    }
 
     useEffect(() => {
         if (!chat?.contact || !currentUser) return;
@@ -310,6 +345,15 @@ export default function ChatPage() {
         setReplyingTo(message);
     };
 
+    const handleToggleAutoReply = () => {
+        const newStatus = !isAutoReplyActive;
+        setIsAutoReplyActive(newStatus);
+        toast({
+            title: `AI Assistant ${newStatus ? 'Enabled' : 'Disabled'}`,
+            description: newStatus ? 'The AI will now reply to messages for you.' : 'The AI will no longer reply automatically.',
+        });
+    };
+
     if (loading) {
          return (
             <div className="flex flex-col items-center justify-center h-full text-center">
@@ -347,6 +391,8 @@ export default function ChatPage() {
                 onDeleteChat={handleDeleteChat}
                 onBlockUser={handleBlockUser}
                 isSelfBlocked={isBlocked}
+                isAutoReplyActive={isAutoReplyActive}
+                onToggleAutoReply={handleToggleAutoReply}
                 className="flex-1 min-h-0"
             />
         </div>

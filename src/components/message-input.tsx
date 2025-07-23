@@ -3,30 +3,26 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, SmilePlus, Bot, Loader2, Paperclip, Mic, StopCircle, X } from 'lucide-react';
-import type { VariantProps } from 'class-variance-authority';
-import { analyzeSentiment } from '@/ai/flows/analyze-sentiment';
-import type { AnalyzeSentimentOutput } from '@/ai/flows/analyze-sentiment';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge, badgeVariants } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from './ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { useTheme } from 'next-themes';
+import { cn } from '@/lib/utils';
 
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
   onSendFile: (file: File) => void;
   onSendVoiceMessage: (audioBase64: string) => void;
+  isAutoReplyActive: boolean;
+  onToggleAutoReply: () => void;
 }
 
-export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMessage }: MessageInputProps) {
+export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMessage, isAutoReplyActive, onToggleAutoReply }: MessageInputProps) {
   const [message, setMessage] = useState('');
-  const [analysis, setAnalysis] = useState<AnalyzeSentimentOutput | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -83,30 +79,10 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
   };
 
 
-  const handleAnalyze = async () => {
-    if (!message.trim()) return;
-    setIsLoading(true);
-    setAnalysis(null);
-    try {
-      const result = await analyzeSentiment({ message });
-      setAnalysis(result);
-    } catch (error) {
-      console.error('Sentiment analysis failed:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Analysis Failed',
-        description: 'Could not analyze message sentiment. Please try again.',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSendMessage = () => {
     if (!message.trim()) return;
     onSendMessage(message);
     setMessage('');
-    setAnalysis(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -134,42 +110,8 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
     setIsEmojiPickerOpen(false);
   }
 
-  const sentimentBadgeVariant = (sentiment?: string): VariantProps<typeof badgeVariants>['variant'] => {
-    switch (sentiment?.toLowerCase()) {
-        case 'positive':
-            return 'success';
-        case 'negative':
-            return 'destructive';
-        case 'neutral':
-            return 'secondary';
-        default:
-            return 'default';
-    }
-  }
-
   return (
     <div className="p-4 border-t bg-background">
-      {analysis && (
-        <Alert className="mb-4 relative">
-          <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => setAnalysis(null)}>
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close analysis</span>
-          </Button>
-
-          <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5" />
-            <AlertTitle className="text-base font-semibold">Tone Analysis</AlertTitle>
-          </div>
-          
-          <AlertDescription className="mt-2 pl-7 space-y-2">
-            <div className="flex items-center gap-2">
-                <p className="font-medium">Sentiment:</p>
-                <Badge variant={sentimentBadgeVariant(analysis.sentiment)}>{analysis.sentiment}</Badge>
-            </div>
-            <p>{analysis.analysis}</p>
-          </AlertDescription>
-        </Alert>
-      )}
       <div className="relative">
         <Textarea
           placeholder="Type a message..."
@@ -198,13 +140,9 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
             <span className="sr-only">Attach file</span>
           </Button>
 
-          <Button variant="ghost" size="icon" onClick={handleAnalyze} disabled={isLoading}>
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
+          <Button variant="ghost" size="icon" onClick={onToggleAutoReply} className={cn(isAutoReplyActive && "text-primary bg-primary/10")}>
               <Bot className="h-5 w-5" />
-            )}
-            <span className="sr-only">Analyze Sentiment</span>
+            <span className="sr-only">Toggle AI Auto-Reply</span>
           </Button>
 
           <Button variant="ghost" size="icon" onClick={handleMicClick}>
