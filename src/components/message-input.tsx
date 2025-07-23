@@ -37,7 +37,12 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
       setIsRecording(false);
     } else {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+            } 
+        });
         const mediaRecorder = new MediaRecorder(stream, { audioBitsPerSecond: 128000 });
         mediaRecorderRef.current = mediaRecorder;
         
