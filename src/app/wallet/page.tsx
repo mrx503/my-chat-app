@@ -24,7 +24,7 @@ const ServiceCard = ({ icon, title, description, action, disabled }: { icon: Rea
         </CardHeader>
         <CardFooter>
             <Button className="w-full" variant="secondary" onClick={action} disabled={disabled}>
-                {disabled && action ? 'Coming Soon' : 'Redeem'}
+                {action && !disabled ? 'Redeem' : 'Coming Soon'}
             </Button>
         </CardFooter>
     </Card>
@@ -111,7 +111,7 @@ export default function WalletPage() {
                                 icon={<CreditCard className="h-6 w-6 text-primary"/>}
                                 title="Fakka Cards"
                                 description="Get small denomination scratch cards."
-                                disabled
+                                action={() => router.push('/wallet/fakka-cards')}
                            />
                             <ServiceCard 
                                 icon={<Smartphone className="h-6 w-6 text-primary"/>}

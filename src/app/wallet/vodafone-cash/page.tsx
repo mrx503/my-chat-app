@@ -98,6 +98,7 @@ export default function VodafoneCashPage() {
                 transaction.set(newRequestRef, {
                     userId: currentUser.uid,
                     email: currentUser.email,
+                    type: 'vodafone-cash',
                     vodafoneNumber: vodafoneNumber.trim(),
                     amount: numericAmount,
                     status: 'pending',

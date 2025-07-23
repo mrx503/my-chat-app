@@ -59,9 +59,13 @@ export type WithdrawalRequest = {
     id?: string;
     userId: string;
     email: string;
-    vodafoneNumber: string;
     amount: number;
     status: 'pending' | 'approved' | 'rejected';
     createdAt: Timestamp;
     updatedAt?: Timestamp;
+    // --- Vodafone Cash Specific ---
+    type: 'vodafone-cash' | 'fakka-card' | 'mobile-topup';
+    vodafoneNumber?: string;
+    // --- Fakka Card Specific ---
+    operator?: 'Vodafone' | 'Etisalat' | 'Orange';
 };
