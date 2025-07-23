@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
-import { Download, Check, CheckCheck, Trash2, File } from 'lucide-react';
+import { Check, CheckCheck, Trash2, File } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -84,14 +84,15 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
         case 'image':
              if (!message.fileURL) return null;
             return (
-                <Image
-                    src={message.fileURL}
-                    alt={message.fileName || 'Sent image'}
-                    width={240}
-                    height={135}
-                    className="rounded-md object-cover"
-                    data-ai-hint="sent image"
-                />
+                <div className="relative w-full max-w-xs aspect-video rounded-lg overflow-hidden">
+                    <Image
+                        src={message.fileURL}
+                        alt={message.fileName || 'Sent image'}
+                        fill
+                        className="object-cover"
+                        data-ai-hint="sent image"
+                    />
+                </div>
             );
         case 'file':
             if (!message.fileURL) return null;
@@ -111,7 +112,7 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
         case 'audio':
             if (!message.fileURL) return null;
             return (
-                <audio controls src={message.fileURL} className="max-w-xs" />
+                <audio controls src={message.fileURL} className="max-w-[250px]" />
             );
         default:
             return <p className="whitespace-pre-wrap break-words">{messageText}</p>;
@@ -153,23 +154,25 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
   return (
     <>
       <ScrollArea className="flex-1" viewportRef={viewportRef}>
-        <div className="p-4 space-y-2">
+        <div className="p-4 space-y-4">
           {visibleMessages.map((message, index) => {
             const isCurrentUser = message.senderId === currentUser.uid;
-            const showAvatar = index === 0 || visibleMessages[index - 1].senderId !== message.senderId;
+            const showAvatar = index === visibleMessages.length - 1 || visibleMessages[index + 1].senderId !== message.senderId;
             
             return (
               <div
                 key={message.id || index}
-                className={cn('flex items-end gap-3 group', isCurrentUser ? 'justify-end' : 'justify-start')}
-              >
-                {!isCurrentUser && (
-                  <Avatar className={cn('h-8 w-8 self-end', showAvatar ? 'opacity-100' : 'opacity-0')}>
-                     {showAvatar && <AvatarImage src={contactAvatar} alt="Contact Avatar" data-ai-hint="profile picture"/>}
-                     {showAvatar && <AvatarFallback>C</AvatarFallback>}
-                  </Avatar>
+                className={cn(
+                  'flex items-end gap-3 group', 
+                  isCurrentUser ? 'justify-end flex-row-reverse' : 'justify-start'
                 )}
-                 <div className="w-full flex flex-col" style={{ alignItems: isCurrentUser ? 'flex-end' : 'flex-start' }}>
+              >
+                <Avatar className={cn('h-8 w-8 self-end', showAvatar ? 'opacity-100' : 'opacity-0')}>
+                   {showAvatar && <AvatarImage src={isCurrentUser ? currentUser.avatar : contactAvatar} alt="Avatar" data-ai-hint="profile picture"/>}
+                   {showAvatar && <AvatarFallback>{isCurrentUser ? currentUser.email?.[0].toUpperCase() : 'C'}</AvatarFallback>}
+                </Avatar>
+
+                 <div className="flex flex-col" style={{ alignItems: isCurrentUser ? 'flex-end' : 'flex-start' }}>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                            <div
