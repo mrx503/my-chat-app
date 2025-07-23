@@ -53,6 +53,15 @@ export default function Home() {
                     avatar: `https://placehold.co/100x100.png`,
                 };
             }
+        } else {
+             // Handle case with no contact (e.g. chat with self, which shouldn't happen)
+             chatData.contact = {
+                id: 'unknown',
+                uid: 'unknown',
+                name: 'Unknown User',
+                email: 'Unknown',
+                avatar: `https://placehold.co/100x100.png`,
+            };
         }
         
         return chatData;
@@ -254,4 +263,6 @@ export default function Home() {
     </div>
   );
 }
+    
+
     
