@@ -2,7 +2,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, SmilePlus, Bot, Loader2, Paperclip, Mic, StopCircle } from 'lucide-react';
+import { Send, SmilePlus, Bot, Loader2, Paperclip, Mic, StopCircle, X } from 'lucide-react';
 import type { VariantProps } from 'class-variance-authority';
 import { analyzeSentiment } from '@/ai/flows/analyze-sentiment';
 import type { AnalyzeSentimentOutput } from '@/ai/flows/analyze-sentiment';
@@ -150,18 +150,24 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
   return (
     <div className="p-4 border-t bg-background">
       {analysis && (
-        <Alert className="mb-4">
-          <Bot className="h-4 w-4" />
-          <div className="flex justify-between items-start">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <AlertTitle className="font-semibold">Tone Analysis</AlertTitle>
-                <Badge variant={sentimentBadgeVariant(analysis.sentiment)}>{analysis.sentiment}</Badge>
-              </div>
-              <AlertDescription>{analysis.analysis}</AlertDescription>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => setAnalysis(null)}>Close</Button>
+        <Alert className="mb-4 relative">
+          <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => setAnalysis(null)}>
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close analysis</span>
+          </Button>
+
+          <div className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            <AlertTitle className="text-base font-semibold">Tone Analysis</AlertTitle>
           </div>
+          
+          <AlertDescription className="mt-2 pl-7 space-y-2">
+            <div className="flex items-center gap-2">
+                <p className="font-medium">Sentiment:</p>
+                <Badge variant={sentimentBadgeVariant(analysis.sentiment)}>{analysis.sentiment}</Badge>
+            </div>
+            <p>{analysis.analysis}</p>
+          </AlertDescription>
         </Alert>
       )}
       <div className="relative">
