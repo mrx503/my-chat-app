@@ -5,6 +5,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import type { Message } from '@/lib/types';
 import { Button } from './ui/button';
+import { useAuth } from '@/context/AuthContext';
 
 interface ReplyPreviewProps {
   message: Message;
@@ -12,6 +13,8 @@ interface ReplyPreviewProps {
 }
 
 export default function ReplyPreview({ message, onCancelReply }: ReplyPreviewProps) {
+  const { currentUser } = useAuth();
+  
   const getMessageText = () => {
     switch (message.type) {
         case 'image': return 'Image';
@@ -21,10 +24,12 @@ export default function ReplyPreview({ message, onCancelReply }: ReplyPreviewPro
     }
   }
 
+  const senderName = message.senderId === currentUser?.uid ? 'yourself' : message.senderName || '...';
+
   return (
     <div className="p-2 border-t bg-background flex justify-between items-center">
       <div className="border-l-4 border-primary pl-3">
-        <p className="font-semibold text-primary text-sm">Replying to {message.senderId === 'You' ? 'yourself' : message.senderId}</p>
+        <p className="font-semibold text-primary text-sm">Replying to {senderName}</p>
         <p className="text-sm text-muted-foreground truncate">{getMessageText()}</p>
       </div>
       <Button variant="ghost" size="icon" onClick={onCancelReply}>
