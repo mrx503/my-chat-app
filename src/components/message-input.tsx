@@ -27,6 +27,7 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
   const [message, setMessage] = useState('');
   const [analysis, setAnalysis] = useState<AnalyzeSentimentOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { theme } = useTheme();
@@ -130,6 +131,7 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
   
   const onEmojiClick = (emojiData: EmojiClickData) => {
     setMessage(prevMessage => prevMessage + emojiData.emoji);
+    setIsEmojiPickerOpen(false);
   }
 
   const sentimentBadgeVariant = (sentiment?: string): VariantProps<typeof badgeVariants>['variant'] => {
@@ -173,7 +175,7 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
           <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
           
-          <Popover>
+          <Popover open={isEmojiPickerOpen} onOpenChange={setIsEmojiPickerOpen}>
             <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon">
                     <SmilePlus className="h-5 w-5" />
