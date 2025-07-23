@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
+import { motion, useMotionValue, AnimatePresence } from 'framer-motion';
 import ReplyContent from './reply-content';
 
 interface MessageListProps {
@@ -159,9 +159,9 @@ const MessageWrapper = ({
         x.set(0);
     }, [message.id, x]);
     
-    const dragProps = message.isDeleted ? {} : {
+    const dragProps = (message.isDeleted) ? {} : {
         drag: "x" as const,
-        dragConstraints: isCurrentUser ? { left: 0, right: 0 } : { left: 0, right: 0 },
+        dragConstraints: { left: 0, right: 0 },
         onDragEnd: handleDragEnd,
         style: { x },
     };
@@ -169,7 +169,7 @@ const MessageWrapper = ({
     return (
         <div className="relative w-full overflow-hidden">
             <AnimatePresence>
-                {isRevealed && (
+                {isRevealed && !message.isDeleted && (
                     <motion.div 
                         className={cn("absolute inset-y-0 flex items-center", isCurrentUser ? "right-0" : "left-0")}
                         initial={{ opacity: 0}}
@@ -277,7 +277,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                                 'rounded-xl shadow-sm break-words p-3',
                                 isCurrentUser
                                     ? 'bg-primary text-primary-foreground rounded-br-none'
-                                    : 'bg-card text-card-foreground rounded-bl-none',
+                                    : 'bg-muted text-card-foreground rounded-bl-none',
                                 message.isDeleted && 'bg-transparent shadow-none p-0',
                                 (message.type === 'image' || message.type === 'audio') && 'p-1 bg-transparent dark:bg-transparent shadow-none',
                             )}
@@ -287,7 +287,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                         </div>
                         <div className={cn("flex items-center text-xs text-muted-foreground", isCurrentUser ? "justify-end" : "justify-start")}>
                             <FormattedTime timestamp={message.timestamp} />
-                            {isCurrentUser && <ReadReceipt status={message.status} />}
+                            {isCurrentUser && !message.isDeleted && <ReadReceipt status={message.status} />}
                         </div>
                     </div>
                 </div>
