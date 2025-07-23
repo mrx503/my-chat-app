@@ -288,22 +288,21 @@ export default function ChatPage() {
     }
 
     return (
-        <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
-            <main className="flex-1 flex flex-col bg-muted/30 min-h-0">
-                <ChatArea
-                  chat={{ ...chat, messages }}
-                  onNewMessage={handleNewMessage}
-                  onSendFile={handleSendFile}
-                  onSendVoiceMessage={handleSendVoiceMessage}
-                  onDeleteMessage={handleDeleteMessage}
-                  isEncrypted={isEncrypted}
-                  setIsEncrypted={setIsEncrypted}
-                  isBlocked={isBlocked || amIBlocked}
-                  onDeleteChat={handleDeleteChat}
-                  onBlockUser={handleBlockUser}
-                  isSelfBlocked={isBlocked}
-                />
-            </main>
+        <div className="flex flex-col h-screen bg-background text-foreground">
+            <ChatArea
+                chat={{ ...chat, messages }}
+                onNewMessage={handleNewMessage}
+                onSendFile={handleSendFile}
+                onSendVoiceMessage={handleSendVoiceMessage}
+                onDeleteMessage={handleDeleteMessage}
+                isEncrypted={isEncrypted}
+                setIsEncrypted={setIsEncrypted}
+                isBlocked={isBlocked || amIBlocked}
+                onDeleteChat={handleDeleteChat}
+                onBlockUser={handleBlockUser}
+                isSelfBlocked={isBlocked}
+                className="flex-1 flex flex-col bg-muted/30 min-h-0"
+            />
         </div>
     );
 }

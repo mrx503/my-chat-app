@@ -8,8 +8,9 @@ import MessageList from './message-list';
 import MessageInput from './message-input';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { ShieldAlert } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-interface ChatAreaProps {
+interface ChatAreaProps extends React.HTMLAttributes<HTMLDivElement> {
   chat: Chat;
   onNewMessage: (message: string) => void;
   onSendFile: (file: File) => void;
@@ -23,7 +24,7 @@ interface ChatAreaProps {
   isSelfBlocked: boolean;
 }
 
-export default function ChatArea({ chat, onNewMessage, onSendFile, onSendVoiceMessage, onDeleteMessage, isEncrypted, setIsEncrypted, isBlocked, onDeleteChat, onBlockUser, isSelfBlocked }: ChatAreaProps) {
+export default function ChatArea({ chat, onNewMessage, onSendFile, onSendVoiceMessage, onDeleteMessage, isEncrypted, setIsEncrypted, isBlocked, onDeleteChat, onBlockUser, isSelfBlocked, className }: ChatAreaProps) {
   const handleSendMessage = (message: string) => {
     if (message.trim()) {
       onNewMessage(message);
@@ -31,7 +32,7 @@ export default function ChatArea({ chat, onNewMessage, onSendFile, onSendVoiceMe
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className={cn("flex flex-col h-full", className)}>
       <ChatHeader 
         contact={chat.contact} 
         isEncrypted={isEncrypted}
