@@ -34,7 +34,9 @@ export default function VodafoneCashPage() {
     };
 
     const validateForm = () => {
+        setError('');
         const numericAmount = Number(amount);
+
         if (!vodafoneNumber.trim() || !/^\d{11}$/.test(vodafoneNumber.trim())) {
             setError('Please enter a valid 11-digit Vodafone number.');
             return false;
@@ -47,17 +49,19 @@ export default function VodafoneCashPage() {
             setError(`The minimum withdrawal amount is ${MIN_WITHDRAWAL_AMOUNT} coins.`);
             return false;
         }
-        if (!currentUser || numericAmount > currentUser.coins) {
+        if (!currentUser || numericAmount > (currentUser.coins ?? 0)) {
             setError("You don't have enough coins for this withdrawal.");
             return false;
         }
-        setError('');
+        
         return true;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!currentUser || !validateForm()) return;
+        if (!currentUser || !validateForm()) {
+            return;
+        }
 
         setIsLoading(true);
         const numericAmount = Number(amount);
@@ -65,20 +69,28 @@ export default function VodafoneCashPage() {
         const requestsColRef = collection(db, 'withdrawalRequests');
 
         try {
-            // Create a new document reference with an auto-generated ID
-            const newRequestRef = doc(requestsColRef);
-
             await runTransaction(db, async (transaction) => {
                 const userDoc = await transaction.get(userDocRef);
-                if (!userDoc.exists() || userDoc.data().coins < numericAmount) {
-                    throw new Error("Insufficient funds.");
+                
+                if (!userDoc.exists()) {
+                    throw new Error("User data not found.");
+                }
+                
+                const currentCoins = userDoc.data().coins ?? 0;
+
+                if (currentCoins < numericAmount) {
+                    throw new Error("You don't have enough coins for this withdrawal.");
+                }
+                 if (numericAmount < MIN_WITHDRAWAL_AMOUNT) {
+                    throw new Error(`The minimum withdrawal amount is ${MIN_WITHDRAWAL_AMOUNT} coins.`);
                 }
 
                 // 1. Deduct coins from user's balance
-                const newBalance = userDoc.data().coins - numericAmount;
+                const newBalance = currentCoins - numericAmount;
                 transaction.update(userDocRef, { coins: newBalance });
 
-                // 2. Create withdrawal request using the new reference
+                // 2. Create withdrawal request
+                const newRequestRef = doc(requestsColRef);
                 transaction.set(newRequestRef, {
                     userId: currentUser.uid,
                     email: currentUser.email,
@@ -90,7 +102,7 @@ export default function VodafoneCashPage() {
             });
 
             // Optimistically update local state
-            updateCurrentUser({ coins: currentUser.coins - numericAmount });
+            updateCurrentUser({ coins: (currentUser.coins ?? 0) - numericAmount });
 
             toast({
                 title: 'Request Submitted',
@@ -100,11 +112,12 @@ export default function VodafoneCashPage() {
 
         } catch (error: any) {
             console.error("Error submitting withdrawal request:", error);
-            setError(error.message || 'An unexpected error occurred. Please try again.');
+            const errorMessage = error.message || 'An unexpected error occurred. Please try again.';
+            setError(errorMessage);
             toast({
                 variant: 'destructive',
                 title: 'Submission Failed',
-                description: error.message || 'Could not submit your request.',
+                description: errorMessage,
             });
         } finally {
             setIsLoading(false);
@@ -137,7 +150,7 @@ export default function VodafoneCashPage() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Submit a Withdrawal Request</CardTitle>
-                                <CardDescription>Your current balance is {currentUser.coins} coins. The minimum withdrawal is {MIN_WITHDRAWAL_AMOUNT} coins.</CardDescription>
+                                <CardDescription>Your current balance is {currentUser.coins ?? 0} coins. The minimum withdrawal is {MIN_WITHDRAWAL_AMOUNT} coins.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {error && (
@@ -148,7 +161,7 @@ export default function VodafoneCashPage() {
                                 )}
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Email</Label>
-                                    <Input id="email" type="email" value={currentUser.email} readOnly disabled />
+                                    <Input id="email" type="email" value={currentUser.email ?? ''} readOnly disabled />
                                     <p className="text-xs text-muted-foreground">This is the email associated with your account.</p>
                                 </div>
                                 <div className="space-y-2">
