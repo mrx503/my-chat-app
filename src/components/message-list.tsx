@@ -57,7 +57,7 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
     switch (message.type) {
         case 'image':
             return (
-                <div className="relative w-full aspect-square max-w-xs overflow-hidden rounded-lg">
+                <div className="relative w-full aspect-video max-w-xs overflow-hidden rounded-lg">
                     <a href={message.fileURL} target="_blank" rel="noopener noreferrer">
                         <Image
                             src={message.fileURL!}
