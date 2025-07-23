@@ -32,7 +32,7 @@ export default function ChatArea({ chat, onNewMessage, onSendFile, onSendVoiceMe
   };
 
   return (
-    <div className={cn("flex flex-col h-full", className)}>
+    <div className={cn("flex flex-col h-full bg-muted/30 overflow-hidden", className)}>
       <ChatHeader 
         contact={chat.contact} 
         isEncrypted={isEncrypted}

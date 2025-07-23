@@ -179,7 +179,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                                         ? 'bg-primary text-primary-foreground rounded-br-none'
                                         : 'bg-background text-foreground rounded-bl-none',
                                     message.isDeleted && 'bg-transparent shadow-none',
-                                    message.type === 'image' && !message.text ? 'p-1' : '',
+                                    message.type === 'image' && 'p-1',
                                 )}
                             >
                                 <MessageContent message={message} isEncrypted={isEncrypted} />
