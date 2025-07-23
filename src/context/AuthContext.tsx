@@ -7,6 +7,26 @@ import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, getDoc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 
+const SYSTEM_BOT_UID = 'system-bot-uid';
+
+// Function to ensure the system bot exists
+const ensureSystemBotExists = async () => {
+    const botDocRef = doc(db, 'users', SYSTEM_BOT_UID);
+    const botDoc = await getDoc(botDocRef);
+    if (!botDoc.exists()) {
+        await setDoc(botDocRef, {
+            uid: SYSTEM_BOT_UID,
+            name: 'System',
+            email: 'system@duck.app',
+            avatar: 'https://placehold.co/100x100.png',
+            online: true,
+            lastSeen: serverTimestamp(),
+            isBot: true,
+        });
+    }
+};
+
+
 interface AuthContextType {
   currentUser: (User & { uid: string }) | null;
   loading: boolean;
@@ -23,6 +43,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Ensure system bot exists on app start
+    ensureSystemBotExists();
+
     const handleBeforeUnload = async () => {
         if (auth.currentUser) {
             const userDocRef = doc(db, 'users', auth.currentUser.uid);
@@ -82,6 +105,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             showOnlineStatus: true,
         },
         coins: 0,
+        unclaimedFakkaCards: [], // Initialize with an empty array
     };
     await setDoc(doc(db, "users", user.uid), userDoc);
     return userCredential;
@@ -132,3 +156,5 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+    

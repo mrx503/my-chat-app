@@ -15,6 +15,7 @@ export type User = {
   };
   blockedUsers?: string[];
   coins: number;
+  unclaimedFakkaCards?: string[]; // Array of card numbers to be delivered
 };
 
 export type ReplyTo = {
@@ -69,3 +70,5 @@ export type WithdrawalRequest = {
     // --- Fakka Card Specific ---
     operator?: 'Vodafone' | 'Etisalat' | 'Orange';
 };
+
+    

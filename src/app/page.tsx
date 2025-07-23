@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, updateDoc, increment, arrayUnion, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Chat, User } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
@@ -15,6 +15,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Copy, LogOut, MessageSquarePlus, Camera, Coins, Clapperboard, Wallet } from 'lucide-react';
 
+const SYSTEM_BOT_UID = 'system-bot-uid';
+
 export default function Home() {
   const { currentUser, logout, updateCurrentUser } = useAuth();
   const [chats, setChats] = useState<Chat[]>([]);
@@ -24,6 +26,8 @@ export default function Home() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isWatchingAd, setIsWatchingAd] = useState(false);
+  const processedCardsRef = useRef<string[]>([]);
+
 
   useEffect(() => {
     if (!currentUser) {
@@ -56,11 +60,10 @@ export default function Home() {
                 };
             }
         } else {
-             // Handle case with no contact (e.g. chat with self, which shouldn't happen)
              chatData.contact = {
                 id: 'unknown',
                 uid: 'unknown',
-                name: 'Unknown User',
+                name: 'System',
                 email: 'Unknown',
                 avatar: `https://placehold.co/100x100.png`,
                 coins: 0,
@@ -79,6 +82,84 @@ export default function Home() {
     return () => unsubscribe();
   }, [currentUser, router]);
   
+  // Effect to handle unclaimed Fakka cards
+  useEffect(() => {
+      const deliverUnclaimedCards = async () => {
+          if (!currentUser || !currentUser.unclaimedFakkaCards || currentUser.unclaimedFakkaCards.length === 0) {
+              return;
+          }
+
+          const cardsToProcess = currentUser.unclaimedFakkaCards.filter(
+              card => !processedCardsRef.current.includes(card)
+          );
+
+          if (cardsToProcess.length === 0) {
+              return;
+          }
+
+          // Mark cards as processed immediately to prevent re-processing
+          processedCardsRef.current = [...processedCardsRef.current, ...cardsToProcess];
+
+          try {
+              // 1. Find or create the system chat
+              const chatsQuery = query(
+                  collection(db, 'chats'),
+                  where('users', '==', [currentUser.uid, SYSTEM_BOT_UID].sort())
+              );
+              const chatSnapshot = await getDoc(chatsQuery.docs[0]?.ref);
+              let chatRef;
+
+              if (chatSnapshot.exists()) {
+                  chatRef = chatSnapshot.ref;
+              } else {
+                  chatRef = doc(collection(db, 'chats'));
+                  await setDoc(chatRef, {
+                      users: [currentUser.uid, SYSTEM_BOT_UID].sort(),
+                      createdAt: serverTimestamp(),
+                  });
+              }
+
+              // 2. Add card messages and clear them from user doc in a batch
+              const batch = writeBatch(db);
+              const messagesColRef = collection(chatRef, 'messages');
+
+              for (const card of cardsToProcess) {
+                  const messageRef = doc(messagesColRef);
+                  batch.set(messageRef, {
+                      senderId: SYSTEM_BOT_UID,
+                      text: `Congratulations! Your new Fakka Card number is: ${card}`,
+                      timestamp: serverTimestamp(),
+                      type: 'text',
+                  });
+              }
+              
+              const userDocRef = doc(db, 'users', currentUser.uid);
+              batch.update(userDocRef, { unclaimedFakkaCards: [] }); // Clear all cards
+
+              await batch.commit();
+
+              // 3. Update local state
+              updateCurrentUser({ unclaimedFakkaCards: [] });
+              
+              toast({
+                  title: 'You have new rewards!',
+                  description: 'Check your system chat for your new Fakka Card.',
+              });
+
+          } catch (error) {
+              console.error("Error delivering Fakka cards:", error);
+              // If error, remove from processed so it can be retried
+              processedCardsRef.current = processedCardsRef.current.filter(
+                  pCard => !cardsToProcess.includes(pCard)
+              );
+          }
+      };
+
+      deliverUnclaimedCards();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, toast, updateCurrentUser]);
+
+
   const handleChatSelect = (chat: Chat) => {
     router.push(`/chat/${chat.id}`);
   };
@@ -109,7 +190,7 @@ export default function Home() {
         }
 
         const newChatRef = await addDoc(collection(db, 'chats'), {
-            users: [currentUser.uid, searchUserId],
+            users: [currentUser.uid, searchUserId].sort(),
             createdAt: serverTimestamp(),
         });
         
@@ -299,3 +380,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
