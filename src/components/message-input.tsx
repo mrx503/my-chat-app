@@ -41,6 +41,7 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
             audio: {
                 echoCancellation: true,
                 noiseSuppression: true,
+                autoGainControl: false,
             } 
         });
         const mediaRecorder = new MediaRecorder(stream, { audioBitsPerSecond: 128000 });
