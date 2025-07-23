@@ -163,7 +163,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
               <div
                 key={message.id}
                 className={cn(
-                  'flex items-end gap-3 group',
+                  'flex items-end gap-3',
                   isCurrentUser ? 'justify-end flex-row-reverse' : 'justify-start'
                 )}
               >
@@ -234,3 +234,4 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     </>
   );
 }
+
