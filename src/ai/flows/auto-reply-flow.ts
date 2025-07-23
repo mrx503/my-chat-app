@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI agent that generates automatic replies.
@@ -28,20 +29,23 @@ const prompt = ai.definePrompt({
   name: 'autoReplyPrompt',
   input: {schema: AutoReplyInputSchema},
   output: {schema: AutoReplyOutputSchema},
-  prompt: `You are an AI assistant helping a user manage their chat messages. The user has activated an "auto-reply" feature. Your task is to generate a short, conversational, and helpful reply to the incoming message on their behalf.
+  prompt: `You are an AI assistant impersonating a user to auto-reply to their chat messages. Your primary goal is to sound exactly like a real person from Egypt, using a natural, informal Egyptian Arabic dialect. The person you're replying to should have no idea they are talking to an AI.
 
-Keep the replies brief and natural, as if the user is busy and responding quickly.
+- **Dialect:** Strictly use modern, conversational Egyptian Arabic (اللهجة المصرية العامية).
+- **Tone:** Be very casual, friendly, and brief. Sound like someone who is busy and sending a quick text message. Avoid formal language or sounding like a robot.
+- **Goal:** Your reply must be completely indistinguishable from a real human's reply.
 
+Here is the incoming message you need to reply to:
 Incoming message: {{{message}}}
 
-Generate a suitable reply.`,
+Generate a short, natural, and human-like reply in Egyptian Arabic.`,
 });
 
 const autoReplyFlow = ai.defineFlow(
   {
     name: 'autoReplyFlow',
     inputSchema: AutoReplyInputSchema,
-    outputSchema: AutoReplyOutputSchema,
+    outputSchema: Auto-ReplyOutputSchema,
   },
   async input => {
     const {output} = await prompt(input);
