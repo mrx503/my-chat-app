@@ -153,7 +153,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
   return (
     <>
       <ScrollArea className="flex-1" viewportRef={viewportRef}>
-        <div className="p-6 space-y-2">
+        <div className="p-4 space-y-2">
           {visibleMessages.map((message, index) => {
             const isCurrentUser = message.senderId === currentUser.uid;
             const showAvatar = index === 0 || visibleMessages[index - 1].senderId !== message.senderId;
