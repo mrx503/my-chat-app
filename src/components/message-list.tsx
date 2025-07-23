@@ -8,13 +8,31 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
-import { Download, Check, CheckCheck } from 'lucide-react';
+import { Download, Check, CheckCheck, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface MessageListProps {
   messages: Message[];
   contactAvatar: string;
   isEncrypted: boolean;
+  onDeleteMessage: (messageId: string, type: 'me' | 'everyone') => void;
 }
 
 function FormattedTime({ timestamp }: { timestamp: any }) {
@@ -24,9 +42,8 @@ function FormattedTime({ timestamp }: { timestamp: any }) {
         let timeStr = '';
         if (timestamp && typeof timestamp.toDate === 'function') {
             timeStr = new Date(timestamp.toDate()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-        } else if (timestamp) { // Fallback for server-generated timestamps before hydration
+        } else if (timestamp) { 
              try {
-                // This might be a server timestamp object that isn't a Date object yet
                 const date = new Date(timestamp.seconds * 1000);
                 timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
              } catch(e) {
@@ -58,6 +75,10 @@ const encryptMessage = (text: string) => {
 }
 
 const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypted: boolean }) => {
+    if (message.isDeleted) {
+        return <p className="whitespace-pre-wrap break-words text-muted-foreground italic">This message was deleted</p>;
+    }
+
     const messageText = isEncrypted && message.text ? encryptMessage(message.text) : message.text;
 
     switch (message.type) {
@@ -94,58 +115,113 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
 };
 
 
-export default function MessageList({ messages, contactAvatar, isEncrypted }: MessageListProps) {
+export default function MessageList({ messages, contactAvatar, isEncrypted, onDeleteMessage }: MessageListProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const { currentUser } = useAuth();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<{ id: string, type: 'me' | 'everyone' } | null>(null);
 
   useEffect(() => {
     if (viewportRef.current) {
         viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
     }
   }, [messages, isEncrypted]);
+
+  const handleDeleteRequest = (messageId: string, type: 'me' | 'everyone') => {
+    setSelectedMessage({ id: messageId, type });
+    setShowDeleteDialog(true);
+  };
   
+  const confirmDelete = () => {
+    if (selectedMessage) {
+      onDeleteMessage(selectedMessage.id, selectedMessage.type);
+      setShowDeleteDialog(false);
+      setSelectedMessage(null);
+    }
+  };
+
   if (!currentUser) {
     return null; 
   }
+  
+  const visibleMessages = messages.filter(message => !message.deletedFor?.includes(currentUser.uid));
 
   return (
-    <ScrollArea className="flex-1" viewportRef={viewportRef}>
-      <div className="p-6 space-y-2">
-        {messages.map((message, index) => {
-          const isCurrentUser = message.senderId === currentUser.uid;
-          const showAvatar = index === 0 || messages[index - 1].senderId !== message.senderId;
-          
-          return (
-            <div
-              key={message.id || index}
-              className={cn('flex items-end gap-3', isCurrentUser ? 'justify-end' : 'justify-start')}
-            >
-              {!isCurrentUser && (
-                <Avatar className={cn('h-8 w-8 self-end', showAvatar ? 'opacity-100' : 'opacity-0')}>
-                   {showAvatar && <AvatarImage src={contactAvatar} alt="Contact Avatar" data-ai-hint="profile picture"/>}
-                   {showAvatar && <AvatarFallback>C</AvatarFallback>}
-                </Avatar>
-              )}
-              <div className="w-full flex flex-col" style={{ alignItems: isCurrentUser ? 'flex-end' : 'flex-start' }}>
-                <div
-                    className={cn(
-                        'max-w-[70%] rounded-xl shadow-sm break-words group p-3',
-                        isCurrentUser
-                            ? 'bg-primary text-primary-foreground rounded-br-none'
-                            : 'bg-background text-foreground rounded-bl-none'
-                    )}
-                >
-                    <MessageContent message={message} isEncrypted={isEncrypted} />
-                </div>
-                <div className="flex items-center text-xs mt-1 text-right opacity-70">
-                    <FormattedTime timestamp={message.timestamp} />
-                    {isCurrentUser && <ReadReceipt status={message.status} />}
+    <>
+      <ScrollArea className="flex-1" viewportRef={viewportRef}>
+        <div className="p-6 space-y-2">
+          {visibleMessages.map((message, index) => {
+            const isCurrentUser = message.senderId === currentUser.uid;
+            const showAvatar = index === 0 || visibleMessages[index - 1].senderId !== message.senderId;
+            
+            return (
+              <div
+                key={message.id || index}
+                className={cn('flex items-end gap-3 group', isCurrentUser ? 'justify-end' : 'justify-start')}
+              >
+                {!isCurrentUser && (
+                  <Avatar className={cn('h-8 w-8 self-end', showAvatar ? 'opacity-100' : 'opacity-0')}>
+                     {showAvatar && <AvatarImage src={contactAvatar} alt="Contact Avatar" data-ai-hint="profile picture"/>}
+                     {showAvatar && <AvatarFallback>C</AvatarFallback>}
+                  </Avatar>
+                )}
+                 <div className="w-full flex flex-col" style={{ alignItems: isCurrentUser ? 'flex-end' : 'flex-start' }}>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                           <div
+                                className={cn(
+                                    'max-w-[70%] rounded-xl shadow-sm break-words p-3 cursor-pointer',
+                                    isCurrentUser
+                                        ? 'bg-primary text-primary-foreground rounded-br-none'
+                                        : 'bg-background text-foreground rounded-bl-none',
+                                    message.isDeleted && 'bg-transparent shadow-none'
+                                )}
+                            >
+                                <MessageContent message={message} isEncrypted={isEncrypted} />
+                            </div>
+                        </DropdownMenuTrigger>
+                        {isCurrentUser && !message.isDeleted && (
+                             <DropdownMenuContent align={isCurrentUser ? "end" : "start"}>
+                                <DropdownMenuItem onClick={() => handleDeleteRequest(message.id, 'me')} className="text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Delete for me</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDeleteRequest(message.id, 'everyone')} className="text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Delete for everyone</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        )}
+                    </DropdownMenu>
+                    <div className="flex items-center text-xs mt-1 text-right opacity-70">
+                        <FormattedTime timestamp={message.timestamp} />
+                        {isCurrentUser && <ReadReceipt status={message.status} />}
+                    </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-    </ScrollArea>
+            );
+          })}
+        </div>
+      </ScrollArea>
+      
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. 
+              {selectedMessage?.type === 'everyone' && ' This will permanently delete this message for everyone.'}
+              {selectedMessage?.type === 'me' && ' This will hide this message for you.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedMessage(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

@@ -230,6 +230,33 @@ export default function ChatPage() {
         }
     };
 
+    const handleDeleteMessage = async (messageId: string, type: 'me' | 'everyone') => {
+        if (!chatId || !currentUser) return;
+    
+        const messageDocRef = doc(db, 'chats', chatId, 'messages', messageId);
+    
+        try {
+            if (type === 'me') {
+                await updateDoc(messageDocRef, {
+                    deletedFor: arrayUnion(currentUser.uid)
+                });
+                toast({ title: 'Message deleted', description: 'The message has been deleted for you.' });
+            } else if (type === 'everyone') {
+                await updateDoc(messageDocRef, {
+                    text: 'This message was deleted.',
+                    type: 'text',
+                    fileURL: '',
+                    fileName: '',
+                    isDeleted: true
+                });
+                toast({ title: 'Message deleted for everyone' });
+            }
+        } catch (error) {
+            console.error("Error deleting message:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the message.' });
+        }
+    };
+
 
     if (loading) {
          return (
@@ -258,6 +285,7 @@ export default function ChatPage() {
                   chat={{ ...chat, messages }}
                   onNewMessage={handleNewMessage}
                   onSendFile={handleSendFile}
+                  onDeleteMessage={handleDeleteMessage}
                   isEncrypted={isEncrypted}
                   setIsEncrypted={setIsEncrypted}
                   isBlocked={isBlocked || amIBlocked}
@@ -269,7 +297,3 @@ export default function ChatPage() {
         </div>
     );
 }
-
-    
-
-    

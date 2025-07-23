@@ -25,6 +25,8 @@ export type Message = {
   fileURL?: string; // URL for the file/image
   fileName?: string; // Name of the file
   status?: 'sent' | 'read';
+  deletedFor?: string[]; // Array of user UIDs for whom the message is deleted
+  isDeleted?: boolean; // True if deleted for everyone
 };
 
 export type Contact = User & {
