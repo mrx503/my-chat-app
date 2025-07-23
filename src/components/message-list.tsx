@@ -172,7 +172,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                   <AvatarFallback>{isCurrentUser ? currentUser.email?.[0].toUpperCase() : 'C'}</AvatarFallback>
                 </Avatar>
                 
-                <div className={cn("flex flex-col", isCurrentUser ? "items-end" : "items-start")}>
+                <div className={cn("flex flex-col gap-1", isCurrentUser ? "items-end" : "items-start")}>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <div
@@ -181,7 +181,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                                     isCurrentUser
                                         ? 'bg-primary text-primary-foreground rounded-br-none'
                                         : 'bg-card text-card-foreground rounded-bl-none',
-                                    message.isDeleted && 'bg-transparent shadow-none',
+                                    message.isDeleted && 'bg-transparent shadow-none p-0',
                                     (message.type === 'image' || message.type === 'audio') && 'p-1 bg-transparent dark:bg-transparent shadow-none',
                                 )}
                             >
@@ -201,7 +201,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                             </DropdownMenuContent>
                         )}
                     </DropdownMenu>
-                    <div className="flex items-center text-xs mt-1 text-right opacity-70">
+                    <div className="flex items-center text-xs text-muted-foreground">
                         <FormattedTime timestamp={message.timestamp} />
                         {isCurrentUser && <ReadReceipt status={message.status} />}
                     </div>
