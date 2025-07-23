@@ -289,7 +289,7 @@ export default function ChatPage() {
 
     return (
         <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
-            <main className="flex-1 flex flex-col bg-muted/30">
+            <main className="flex-1 flex flex-col bg-muted/30 min-h-0">
                 <ChatArea
                   chat={{ ...chat, messages }}
                   onNewMessage={handleNewMessage}
