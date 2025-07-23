@@ -60,18 +60,28 @@ const encryptMessage = (text: string) => {
 const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypted: boolean }) => {
     const messageText = isEncrypted && message.text ? encryptMessage(message.text) : message.text;
 
+    const renderText = () => {
+        if (!messageText) return null;
+        const textClasses = message.type === 'image' 
+            ? "absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2 text-xs"
+            : "whitespace-pre-wrap break-words";
+        return <p className={textClasses}>{messageText}</p>;
+    };
+
     switch (message.type) {
         case 'image':
-            if (!message.fileURL) return null;
             return (
-                <div className="relative w-full max-w-xs aspect-video rounded-lg overflow-hidden">
-                    <Image
-                        src={message.fileURL}
-                        alt={message.fileName || 'Sent image'}
-                        fill
-                        className="object-cover"
-                        data-ai-hint="sent image"
-                    />
+                 <div className="relative w-full max-w-xs aspect-video rounded-lg overflow-hidden">
+                    {message.fileURL && (
+                        <Image
+                            src={message.fileURL}
+                            alt={message.fileName || 'Sent image'}
+                            fill
+                            className="object-cover"
+                            data-ai-hint="sent image"
+                        />
+                    )}
+                    {renderText()}
                 </div>
             );
         case 'file':
@@ -83,7 +93,6 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
                             <Download className="h-6 w-6" />
                             <div className="text-left">
                                 <p className="font-semibold break-all">{message.fileName}</p>
-
                                 <p className="text-xs text-muted-foreground">Click to download</p>
                             </div>
                         </div>
@@ -91,12 +100,10 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
                 </a>
             );
         default:
-             if (messageText) {
-                return <p className="whitespace-pre-wrap break-words">{messageText}</p>;
-            }
-            return null;
+            return renderText();
     }
 };
+
 
 export default function MessageList({ messages, contactAvatar, isEncrypted }: MessageListProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -133,11 +140,12 @@ export default function MessageList({ messages, contactAvatar, isEncrypted }: Me
               <div className="w-full flex flex-col" style={{ alignItems: isCurrentUser ? 'flex-end' : 'flex-start' }}>
                 <div
                     className={cn(
-                        'max-w-[70%] rounded-xl p-3 shadow-sm break-words group',
+                        'max-w-[70%] rounded-xl shadow-sm break-words group',
                         isCurrentUser
                             ? 'bg-primary text-primary-foreground rounded-br-none'
                             : 'bg-background text-foreground rounded-bl-none',
-                        { 'p-1 bg-transparent shadow-none': message.type === 'image' }
+                        // Apply padding unless it's an image without text
+                        message.type === 'image' && !message.text ? 'p-0' : 'p-3'
                     )}
                 >
                     <MessageContent message={message} isEncrypted={isEncrypted} />
