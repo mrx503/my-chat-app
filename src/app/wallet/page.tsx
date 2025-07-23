@@ -114,9 +114,9 @@ export default function WalletPage() {
                                 action={() => router.push('/wallet/fakka-cards')}
                            />
                             <ServiceCard 
-                                icon={<Smartphone className="h-6 w-6 text-primary"/>}
-                                title="Mobile Top-Up"
-                                description="Recharge mobile credit for any operator."
+                                icon={<CreditCard className="h-6 w-6 text-primary"/>}
+                                title="PayPal"
+                                description="Transfer funds to your PayPal account."
                                 disabled
                            />
                         </div>
