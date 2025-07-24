@@ -64,9 +64,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         const unsubscribeSnapshot = onSnapshot(userDocRef, (userDoc) => {
           if (userDoc.exists()) {
-            setCurrentUser({ uid: user.uid, ...userDoc.data() } as User & { uid: string });
+            const userData = userDoc.data();
+            // Ensure systemMessagesQueue exists, if not, treat it as empty
+            if (!userData.systemMessagesQueue) {
+              userData.systemMessagesQueue = [];
+            }
+            setCurrentUser({ uid: user.uid, ...userData } as User & { uid: string });
           } else {
-            setCurrentUser({ uid: user.uid, email: user.email!, name: '', avatar: '', coins: 0 });
+            // This case might happen briefly before the user doc is created
+            setCurrentUser({ 
+              uid: user.uid, 
+              email: user.email!, 
+              name: '', 
+              avatar: '', 
+              coins: 0,
+              systemMessagesQueue: []
+            });
           }
           setLoading(false);
         });
@@ -156,5 +169,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-
-    
