@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, updateDoc, increment, arrayUnion, writeBatch, setDoc, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, setDoc, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Chat, User, Message } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
@@ -12,10 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Copy, LogOut, MessageSquarePlus, Camera, Wallet } from 'lucide-react';
+import { LogOut, MessageSquarePlus } from 'lucide-react';
 import SystemChatCard from '@/components/system-chat-card';
-import { Label } from '@/components/ui/label';
+import ProfileCard from '@/components/profile-card';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -44,7 +43,6 @@ export default function Home() {
       const chatsDataPromises = snapshot.docs.map(async (docSnapshot) => {
         const chatData = { id: docSnapshot.id, ...docSnapshot.data() } as Chat;
         
-        // Don't process chats that the user has "deleted for me"
         if (chatData.deletedFor?.includes(currentUser.uid)) {
           return null;
         }
@@ -71,7 +69,6 @@ export default function Home() {
             }
         }
         
-        // Fetch messages to calculate unread count
         const messagesQuery = query(
           collection(db, 'chats', chatData.id, 'messages'), 
           orderBy('timestamp', 'desc')
@@ -119,7 +116,6 @@ export default function Home() {
     return () => unsubscribe();
   }, [currentUser, router]);
   
-  // Effect to handle unclaimed messages from the system queue
   useEffect(() => {
       const deliverQueuedMessages = async () => {
           if (!currentUser || !currentUser.systemMessagesQueue || currentUser.systemMessagesQueue.length === 0) {
@@ -137,36 +133,25 @@ export default function Home() {
           processedMessagesRef.current = [...processedMessagesRef.current, ...messagesToProcess];
 
           try {
+              const chatQuery = query(collection(db, 'chats'), where('users', '==', [currentUser.uid, SYSTEM_BOT_UID].sort()));
+              const chatSnapshot = await getDocs(chatQuery);
               let chatRef;
-              if (systemChat) {
-                chatRef = doc(db, 'chats', systemChat.id);
+
+              if (!chatSnapshot.empty) {
+                  chatRef = chatSnapshot.docs[0].ref;
               } else {
-                 // Find or create the system chat
-                const chatsQuery = query(
-                    collection(db, 'chats'),
-                    where('users', 'in', [[currentUser.uid, SYSTEM_BOT_UID], [SYSTEM_BOT_UID, currentUser.uid]])
-                );
-                const chatSnapshot = await getDocs(chatsQuery);
-
-                if (!chatSnapshot.empty) {
-                    chatRef = chatSnapshot.docs[0].ref;
-                } else {
-                    chatRef = doc(collection(db, 'chats'));
-                    await setDoc(chatRef, {
-                        users: [currentUser.uid, SYSTEM_BOT_UID].sort(),
-                        createdAt: serverTimestamp(),
-                        encrypted: false,
-                        deletedFor: [],
-                    });
-                }
+                  chatRef = doc(collection(db, 'chats'));
+                  await setDoc(chatRef, {
+                      users: [currentUser.uid, SYSTEM_BOT_UID].sort(),
+                      createdAt: serverTimestamp(),
+                      encrypted: false,
+                      deletedFor: [],
+                  });
               }
-
-              const batch = writeBatch(db);
+              
               const messagesColRef = collection(chatRef, 'messages');
-
               for (const messageText of messagesToProcess) {
-                  const messageRef = doc(messagesColRef);
-                  batch.set(messageRef, {
+                  await addDoc(messagesColRef, {
                       senderId: SYSTEM_BOT_UID,
                       text: messageText,
                       timestamp: serverTimestamp(),
@@ -176,10 +161,7 @@ export default function Home() {
               }
               
               const userDocRef = doc(db, 'users', currentUser.uid);
-              batch.update(userDocRef, { systemMessagesQueue: [] });
-
-              await batch.commit();
-              updateCurrentUser({ systemMessagesQueue: [] });
+              await updateDoc(userDocRef, { systemMessagesQueue: [] });
               
               toast({
                   title: 'You have new system messages!',
@@ -253,54 +235,6 @@ export default function Home() {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not start a new chat.' });
     }
   };
-  
-  const copyUserId = () => {
-    if (currentUser?.uid) {
-      navigator.clipboard.writeText(currentUser.uid);
-      toast({ title: 'Copied!', description: 'Your full user ID has been copied to the clipboard.' });
-    }
-  };
-
-  const compressImage = (file: File, quality = 0.7): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target?.result as string;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-                resolve(canvas.toDataURL(file.type, quality));
-            };
-            img.onerror = (error) => reject(error);
-        };
-        reader.onerror = (error) => reject(error);
-    });
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && currentUser) {
-      try {
-        toast({ title: 'Uploading...', description: 'Please wait while we update your picture.' });
-        const base64 = await compressImage(file);
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        await updateDoc(userDocRef, { avatar: base64 });
-        updateCurrentUser({ avatar: base64 });
-        toast({ title: 'Success', description: 'Profile picture updated!' });
-      } catch (error) {
-        console.error("Error updating avatar:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update profile picture.' });
-      }
-    }
-    event.target.value = '';
-  };
-  
-  const shortUserId = currentUser?.uid ? `${currentUser.uid.substring(0, 6)}...` : '';
 
   if (!currentUser || loading) {
     return (
@@ -315,7 +249,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen bg-muted/30">
-        <header className="flex items-center justify-between p-4 bg-background border-b shadow-sm">
+        <header className="hidden lg:flex items-center justify-between p-4 bg-background border-b shadow-sm">
             <h1 className="text-xl font-bold text-primary">duck</h1>
             <Button variant="outline" onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4"/>
@@ -323,51 +257,21 @@ export default function Home() {
             </Button>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto p-0 md:p-6">
             <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                <div className="lg:col-span-1 space-y-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center gap-4">
-                            <div className="relative">
-                                <Avatar className="w-16 h-16">
-                                    <AvatarImage src={currentUser.avatar} alt={currentUser.name || currentUser.email || ''} data-ai-hint="profile picture"/>
-                                    <AvatarFallback>{currentUser.email?.[0].toUpperCase()}</AvatarFallback>
-                                </Avatar>
-                                <Label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-primary rounded-full p-1 border-2 border-background cursor-pointer hover:bg-primary/80 transition-colors">
-                                    <Camera className="h-4 w-4 text-primary-foreground"/>
-                                </Label>
-                                <Input id="avatar-upload" type="file" onChange={handleFileChange} accept="image/*" className="hidden" />
-                            </div>
-                            <div>
-                                <CardTitle>{currentUser.name || currentUser.email}</CardTitle>
-                                <CardDescription>Welcome back!</CardDescription>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                             <div className="flex items-center justify-between p-3 bg-muted rounded-md mb-4">
-                                <span className="text-sm font-mono text-muted-foreground" title={currentUser.uid}>
-                                    ID: {shortUserId}
-                                 </span>
-                                <Button variant="ghost" size="icon" onClick={copyUserId} className="h-8 w-8">
-                                    <Copy className="h-4 w-4"/>
-                                    <span className="sr-only">Copy User ID</span>
-                                </Button>
-                            </div>
-                            <Button className="w-full" onClick={() => router.push('/wallet')}>
-                                <Wallet className="mr-2 h-4 w-4"/>
-                                View Wallet
-                            </Button>
-                        </CardContent>
-                    </Card>
+                <ProfileCard 
+                    currentUser={currentUser}
+                    updateCurrentUser={updateCurrentUser}
+                    logout={logout}
+                />
 
-                    <SystemChatCard 
+                <div className="lg:col-span-2 p-4 md:p-0">
+                     <SystemChatCard 
                         unreadCount={systemUnreadCount}
                         onClick={handleSystemChatSelect}
+                        className="mb-6"
                     />
-                </div>
-
-                <div className="lg:col-span-2">
                     <Card>
                         <CardHeader>
                             <CardTitle>Start or Continue a Chat</CardTitle>
