@@ -3,29 +3,31 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, updateDoc, increment, arrayUnion, writeBatch } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, updateDoc, increment, arrayUnion, writeBatch, setDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Chat, User } from '@/lib/types';
+import type { Chat, User, Message } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import ChatList from "@/components/chat-list";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Copy, LogOut, MessageSquarePlus, Camera, Coins, Clapperboard, Wallet } from 'lucide-react';
+import { Copy, LogOut, MessageSquarePlus, Camera, Wallet } from 'lucide-react';
+import SystemChatCard from '@/components/system-chat-card';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
 export default function Home() {
   const { currentUser, logout, updateCurrentUser } = useAuth();
-  const [chats, setChats] = useState<Chat[]>([]);
+  const [userChats, setUserChats] = useState<Chat[]>([]);
+  const [systemChat, setSystemChat] = useState<Chat | null>(null);
+  const [systemUnreadCount, setSystemUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchUserId, setSearchUserId] = useState('');
   const { toast } = useToast();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isWatchingAd, setIsWatchingAd] = useState(false);
   const processedCardsRef = useRef<string[]>([]);
 
 
@@ -39,11 +41,14 @@ export default function Home() {
     const q = query(chatsCollection, where('users', 'array-contains', currentUser.uid));
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const chatsData = await Promise.all(snapshot.docs.map(async (docSnapshot) => {
+      const chatsDataPromises = snapshot.docs.map(async (docSnapshot) => {
         const chatData = { id: docSnapshot.id, ...docSnapshot.data() } as Chat;
         
-        const contactId = chatData.users.find(uid => uid !== currentUser.uid);
-        
+        const isSystemChat = chatData.users.includes(SYSTEM_BOT_UID);
+        const contactId = isSystemChat 
+            ? SYSTEM_BOT_UID 
+            : chatData.users.find(uid => uid !== currentUser.uid);
+
         if (contactId) {
             const userDocRef = doc(db, 'users', contactId);
             const userDoc = await getDoc(userDocRef);
@@ -59,20 +64,30 @@ export default function Home() {
                     coins: 0,
                 };
             }
-        } else {
-             chatData.contact = {
-                id: 'unknown',
-                uid: 'unknown',
-                name: 'System',
-                email: 'Unknown',
-                avatar: `https://placehold.co/100x100.png`,
-                coins: 0,
-            };
         }
         
+        // Fetch messages to calculate unread count for system chat
+        if (isSystemChat) {
+             const messagesQuery = query(
+                collection(db, 'chats', chatData.id, 'messages'),
+                where('senderId', '==', SYSTEM_BOT_UID),
+                where('status', '!=', 'read')
+            );
+            const unreadSnapshot = await getDocs(messagesQuery);
+            chatData.contact.unreadMessages = unreadSnapshot.size;
+        }
+
         return chatData;
-      }));
-      setChats(chatsData);
+      });
+      
+      const allChats = await Promise.all(chatsDataPromises);
+      
+      const sysChat = allChats.find(c => c.users.includes(SYSTEM_BOT_UID)) || null;
+      const regularChats = allChats.filter(c => !c.users.includes(SYSTEM_BOT_UID));
+
+      setSystemChat(sysChat);
+      setSystemUnreadCount(sysChat?.contact?.unreadMessages || 0);
+      setUserChats(regularChats);
       setLoading(false);
     }, (error) => {
         console.error("Error fetching chats:", error);
@@ -97,29 +112,31 @@ export default function Home() {
               return;
           }
 
-          // Mark cards as processed immediately to prevent re-processing
           processedCardsRef.current = [...processedCardsRef.current, ...cardsToProcess];
 
           try {
-              // 1. Find or create the system chat
-              const chatsQuery = query(
-                  collection(db, 'chats'),
-                  where('users', '==', [currentUser.uid, SYSTEM_BOT_UID].sort())
-              );
-              const chatSnapshot = await getDoc(chatsQuery.docs[0]?.ref);
               let chatRef;
-
-              if (chatSnapshot.exists()) {
-                  chatRef = chatSnapshot.ref;
+              if (systemChat) {
+                chatRef = doc(db, 'chats', systemChat.id);
               } else {
-                  chatRef = doc(collection(db, 'chats'));
-                  await setDoc(chatRef, {
-                      users: [currentUser.uid, SYSTEM_BOT_UID].sort(),
-                      createdAt: serverTimestamp(),
-                  });
+                 // Find or create the system chat
+                const chatsQuery = query(
+                    collection(db, 'chats'),
+                    where('users', 'in', [[currentUser.uid, SYSTEM_BOT_UID], [SYSTEM_BOT_UID, currentUser.uid]])
+                );
+                const chatSnapshot = await getDocs(chatsQuery);
+
+                if (!chatSnapshot.empty) {
+                    chatRef = chatSnapshot.docs[0].ref;
+                } else {
+                    chatRef = doc(collection(db, 'chats'));
+                    await setDoc(chatRef, {
+                        users: [currentUser.uid, SYSTEM_BOT_UID].sort(),
+                        createdAt: serverTimestamp(),
+                    });
+                }
               }
 
-              // 2. Add card messages and clear them from user doc in a batch
               const batch = writeBatch(db);
               const messagesColRef = collection(chatRef, 'messages');
 
@@ -130,25 +147,23 @@ export default function Home() {
                       text: `Congratulations! Your new Fakka Card number is: ${card}`,
                       timestamp: serverTimestamp(),
                       type: 'text',
+                      status: 'sent'
                   });
               }
               
               const userDocRef = doc(db, 'users', currentUser.uid);
-              batch.update(userDocRef, { unclaimedFakkaCards: [] }); // Clear all cards
+              batch.update(userDocRef, { unclaimedFakkaCards: [] });
 
               await batch.commit();
-
-              // 3. Update local state
               updateCurrentUser({ unclaimedFakkaCards: [] });
               
               toast({
                   title: 'You have new rewards!',
-                  description: 'Check your system chat for your new Fakka Card.',
+                  description: 'Check your system messages for your new Fakka Card.',
               });
 
           } catch (error) {
               console.error("Error delivering Fakka cards:", error);
-              // If error, remove from processed so it can be retried
               processedCardsRef.current = processedCardsRef.current.filter(
                   pCard => !cardsToProcess.includes(pCard)
               );
@@ -157,11 +172,22 @@ export default function Home() {
 
       deliverUnclaimedCards();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, toast, updateCurrentUser]);
+  }, [currentUser, systemChat]);
 
 
   const handleChatSelect = (chat: Chat) => {
     router.push(`/chat/${chat.id}`);
+  };
+  
+   const handleSystemChatSelect = () => {
+    if (systemChat) {
+      router.push(`/chat/${systemChat.id}`);
+    } else {
+      toast({
+        title: 'No System Messages',
+        description: 'You do not have any system messages yet.',
+      });
+    }
   };
 
   const handleSearchAndCreateChat = async () => {
@@ -183,7 +209,7 @@ export default function Home() {
             return;
         }
         
-        const existingChat = chats.find(chat => chat.users.includes(searchUserId));
+        const existingChat = userChats.find(chat => chat.users.includes(searchUserId));
         if(existingChat) {
             router.push(`/chat/${existingChat.id}`);
             return;
@@ -250,31 +276,6 @@ export default function Home() {
     }
     event.target.value = '';
   };
-
-  const handleWatchAd = async () => {
-    if (!currentUser) return;
-    setIsWatchingAd(true);
-    toast({ title: 'Watching Ad...', description: 'Please wait while the ad plays.' });
-
-    // Simulate ad delay
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    const coinsEarned = Math.floor(Math.random() * 10) + 1;
-    const userDocRef = doc(db, 'users', currentUser.uid);
-    
-    try {
-      await updateDoc(userDocRef, {
-        coins: increment(coinsEarned)
-      });
-      updateCurrentUser({ coins: (currentUser.coins || 0) + coinsEarned });
-      toast({ title: 'Congratulations!', description: `You earned ${coinsEarned} coins!` });
-    } catch (error) {
-      console.error("Error updating coins:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not update your coin balance.' });
-    } finally {
-      setIsWatchingAd(false);
-    }
-  };
   
   const shortUserId = currentUser?.uid ? `${currentUser.uid.substring(0, 6)}...` : '';
 
@@ -337,13 +338,20 @@ export default function Home() {
                         </CardContent>
                     </Card>
 
-                     <Card>
+                    <SystemChatCard 
+                        unreadCount={systemUnreadCount}
+                        onClick={handleSystemChatSelect}
+                    />
+                </div>
+
+                <div className="lg:col-span-2">
+                    <Card>
                         <CardHeader>
-                            <CardTitle>Start a New Chat</CardTitle>
-                            <CardDescription>Enter a user ID to begin a conversation.</CardDescription>
+                            <CardTitle>Start or Continue a Chat</CardTitle>
+                            <CardDescription>Enter a user ID or select a conversation.</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <div className="flex gap-2">
+                        <CardContent className="space-y-4">
+                             <div className="flex gap-2">
                                 <Input 
                                     placeholder="Enter user ID..."
                                     value={searchUserId}
@@ -353,22 +361,11 @@ export default function Home() {
                                    <MessageSquarePlus className="h-4 w-4"/>
                                 </Button>
                             </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <div className="lg:col-span-2">
-                    <Card>
-                        <CardHeader>
-                             <CardTitle>Your Chats</CardTitle>
-                             <CardDescription>Select a conversation to continue messaging.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {chats.length > 0 ? (
-                                <ChatList chats={chats} onChatSelect={handleChatSelect} />
+                            {userChats.length > 0 ? (
+                                <ChatList chats={userChats} onChatSelect={handleChatSelect} />
                             ) : (
                                 <div className="text-center py-10">
-                                    <p className="text-muted-foreground">You have no active chats.</p>
+                                    <p className="text-muted-foreground">You have no active chats with users.</p>
                                     <p className="text-sm text-muted-foreground">Start one by entering a user ID.</p>
                                 </div>
                             )}
@@ -380,5 +377,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
