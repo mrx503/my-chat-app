@@ -7,6 +7,7 @@ import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, getDoc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
 import type { User, PushSubscription } from '@/lib/types';
 import { urlBase64ToUint8Array } from '@/lib/utils';
+import { VAPID_PUBLIC_KEY } from '@/lib/env';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -31,6 +32,12 @@ const setupPushNotifications = async (userId: string) => {
         console.warn('Push notifications are not supported by this browser.');
         return;
     }
+    
+    const vapidPublicKey = VAPID_PUBLIC_KEY;
+    if (!vapidPublicKey) {
+        console.error('VAPID public key not found. Cannot subscribe to push notifications.');
+        return;
+    }
 
     try {
         const registration = await navigator.serviceWorker.register('/sw.js');
@@ -45,12 +52,6 @@ const setupPushNotifications = async (userId: string) => {
             console.log('User is already subscribed.');
             // Optional: You might want to update the subscription on your server anyway
             await saveSubscription(userId, existingSubscription);
-            return;
-        }
-        
-        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-        if (!vapidPublicKey) {
-            console.error('VAPID public key not found. Cannot subscribe to push notifications.');
             return;
         }
 
