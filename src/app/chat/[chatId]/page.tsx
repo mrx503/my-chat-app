@@ -224,12 +224,13 @@ export default function ChatPage() {
         // Send Push Notification
         if (chat.contact?.pushSubscription) {
             try {
+                const fullUrl = `${window.location.origin}/chat/${chatId}`;
                 await sendNotification({
                     subscription: chat.contact.pushSubscription,
                     payload: {
                         title: currentUser.name || 'New Message',
                         body: messageText,
-                        url: `/chat/${chatId}`
+                        url: fullUrl
                     }
                 });
             } catch (e) {
@@ -313,12 +314,13 @@ export default function ChatPage() {
 
             if (chat.contact?.pushSubscription) {
                 try {
+                    const fullUrl = `${window.location.origin}/chat/${chatId}`;
                     await sendNotification({
                         subscription: chat.contact.pushSubscription,
                         payload: {
                             title: currentUser.name || 'New Message',
                             body: isImage ? 'Sent an image' : `Sent a file: ${file.name}`,
-                            url: `/chat/${chatId}`
+                            url: fullUrl
                         }
                     });
                 } catch (e) {
