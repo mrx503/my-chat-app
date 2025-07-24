@@ -5,11 +5,11 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, getDoc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
-import type { User } from '@/lib/types';
+import type { User, PushSubscription } from '@/lib/types';
+import { urlBase64ToUint8Array } from '@/lib/utils';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
-// Function to ensure the system bot exists
 const ensureSystemBotExists = async () => {
     const botDocRef = doc(db, 'users', SYSTEM_BOT_UID);
     const botDoc = await getDoc(botDocRef);
@@ -24,6 +24,60 @@ const ensureSystemBotExists = async () => {
             isBot: true,
         });
     }
+};
+
+const setupPushNotifications = async (userId: string) => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.warn('Push notifications are not supported by this browser.');
+        return;
+    }
+
+    try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        const permission = await window.Notification.requestPermission();
+        if (permission !== 'granted') {
+            console.log('Push notification permission not granted.');
+            return;
+        }
+
+        const existingSubscription = await registration.pushManager.getSubscription();
+        if (existingSubscription) {
+            console.log('User is already subscribed.');
+            // Optional: You might want to update the subscription on your server anyway
+            await saveSubscription(userId, existingSubscription);
+            return;
+        }
+        
+        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidPublicKey) {
+            console.error('VAPID public key not found.');
+            return;
+        }
+
+        const newSubscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        });
+
+        await saveSubscription(userId, newSubscription);
+
+    } catch (error) {
+        console.error('Failed to subscribe to push notifications:', error);
+    }
+};
+
+const saveSubscription = async (userId: string, subscription: globalThis.PushSubscription) => {
+    const userDocRef = doc(db, 'users', userId);
+    const subscriptionJSON = subscription.toJSON();
+    const dbSubscription: PushSubscription = {
+        endpoint: subscriptionJSON.endpoint!,
+        expirationTime: subscriptionJSON.expirationTime,
+        keys: {
+            p256dh: subscriptionJSON.keys!.p256dh!,
+            auth: subscriptionJSON.keys!.auth!,
+        },
+    };
+    await updateDoc(userDocRef, { pushSubscription: dbSubscription });
 };
 
 
@@ -43,7 +97,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Ensure system bot exists on app start
     ensureSystemBotExists();
 
     const handleBeforeUnload = async () => {
@@ -58,6 +111,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
+        setupPushNotifications(user.uid);
         const userDocRef = doc(db, 'users', user.uid);
         
         updateDoc(userDocRef, { online: true });
@@ -65,13 +119,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const unsubscribeSnapshot = onSnapshot(userDocRef, (userDoc) => {
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            // Ensure systemMessagesQueue exists, if not, treat it as empty
             if (!userData.systemMessagesQueue) {
               userData.systemMessagesQueue = [];
             }
             setCurrentUser({ uid: user.uid, ...userData } as User & { uid: string });
           } else {
-            // This case might happen briefly before the user doc is created
             setCurrentUser({ 
               uid: user.uid, 
               email: user.email!, 
@@ -89,7 +141,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return () => {
             unsubscribeSnapshot();
             window.removeEventListener('beforeunload', handleBeforeUnload);
-            handleBeforeUnload(); // Call it on component unmount too
+            handleBeforeUnload();
         };
       } else {
         setCurrentUser(null);
@@ -118,7 +170,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             showOnlineStatus: true,
         },
         coins: 0,
-        systemMessagesQueue: [], // Initialize with an empty array
+        systemMessagesQueue: [],
+        pushSubscription: null,
     };
     await setDoc(doc(db, "users", user.uid), userDoc);
     return userCredential;

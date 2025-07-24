@@ -1,6 +1,16 @@
 
 import type { Timestamp } from "firebase/firestore";
 
+// This is the shape of the Web Push API's PushSubscription object
+export type PushSubscription = {
+  endpoint: string;
+  expirationTime?: number | null;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+};
+
 export type User = {
   id: string; // This is the document ID from Firestore
   uid: string; // This is the Firebase Auth UID
@@ -16,6 +26,7 @@ export type User = {
   blockedUsers?: string[];
   coins: number;
   systemMessagesQueue?: string[]; // Array of messages to be delivered by the system bot
+  pushSubscription?: PushSubscription | null; // For web push notifications
 };
 
 export type ReplyTo = {
@@ -72,5 +83,3 @@ export type WithdrawalRequest = {
     // --- Fakka Card Specific ---
     operator?: 'Vodafone' | 'Etisalat' | 'Orange';
 };
-
-    

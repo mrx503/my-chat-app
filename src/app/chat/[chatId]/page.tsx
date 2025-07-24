@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { generateReply } from '@/ai/flows/auto-reply-flow';
+import { sendNotification } from '@/ai/flows/send-notification-flow';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -190,7 +191,7 @@ export default function ChatPage() {
 
     const handleNewMessage = async (messageText: string) => {
         if (!chatId || !messageText.trim() || !currentUser || isBlocked || amIBlocked || isSystemChat) return;
-        if (chat?.encrypted) {
+        if (chat?.encrypted && !chat?.isDecrypted) {
             toast({ variant: 'destructive', title: 'Chat is Encrypted', description: 'You must decrypt the chat to send messages.' });
             return;
         }
@@ -219,6 +220,22 @@ export default function ChatPage() {
             ...(replyingTo && { replyTo: replyToObject })
         });
         setReplyingTo(null);
+
+        // Send Push Notification
+        if (chat.contact?.pushSubscription) {
+            try {
+                await sendNotification({
+                    subscription: chat.contact.pushSubscription,
+                    payload: {
+                        title: currentUser.name || 'New Message',
+                        body: messageText,
+                        url: `/chat/${chatId}`
+                    }
+                });
+            } catch (e) {
+                console.error("Failed to send push notification", e);
+            }
+        }
     };
     
     const compressImage = (file: File, quality = 0.7): Promise<string> => {
@@ -253,7 +270,7 @@ export default function ChatPage() {
     
     const handleSendVoiceMessage = async (audioBase64: string) => {
         if (!chatId || !currentUser || isBlocked || amIBlocked || isSystemChat) return;
-        if (chat?.encrypted) {
+        if (chat?.encrypted && !chat?.isDecrypted) {
             toast({ variant: 'destructive', title: 'Chat is Encrypted', description: 'You must decrypt the chat to send files.' });
             return;
         }
@@ -271,7 +288,7 @@ export default function ChatPage() {
 
     const handleSendFile = async (file: File) => {
         if (!chatId || !currentUser || isBlocked || amIBlocked || isSystemChat) return;
-        if (chat?.encrypted) {
+        if (chat?.encrypted && !chat?.isDecrypted) {
             toast({ variant: 'destructive', title: 'Chat is Encrypted', description: 'You must decrypt the chat to send files.' });
             return;
         }
@@ -293,6 +310,21 @@ export default function ChatPage() {
             });
     
             toast({ title: 'Success!', description: 'File sent successfully.' });
+
+            if (chat.contact?.pushSubscription) {
+                try {
+                    await sendNotification({
+                        subscription: chat.contact.pushSubscription,
+                        payload: {
+                            title: currentUser.name || 'New Message',
+                            body: isImage ? 'Sent an image' : `Sent a file: ${file.name}`,
+                            url: `/chat/${chatId}`
+                        }
+                    });
+                } catch (e) {
+                     console.error("Failed to send push notification for file", e);
+                }
+            }
         } catch (error: any) {
             console.error("Error sending file:", error);
             const description = error.message.includes('longer than 1048487 bytes')
@@ -379,6 +411,7 @@ export default function ChatPage() {
                 encrypted: true,
                 chatPassword: password
             });
+            setChat(prev => prev ? { ...prev, encrypted: true, chatPassword: password, isDecrypted: true } : null);
             toast({ title: "Chat Encrypted", description: "Messages in this chat are now encrypted." });
         } catch (error) {
             console.error("Error setting encryption:", error);
@@ -388,24 +421,18 @@ export default function ChatPage() {
 
     const handleDecrypt = async (password: string) => {
         if (password === chat?.chatPassword) {
-             if (!chatId) return false;
-            try {
-                const chatDocRef = doc(db, 'chats', chatId);
-                await updateDoc(chatDocRef, {
-                    encrypted: false,
-                    chatPassword: ''
-                });
-                toast({ title: "Chat Decrypted", description: "Encryption has been removed for everyone." });
-                return true;
-            } catch (error) {
-                console.error("Error decrypting chat:", error);
-                toast({ variant: 'destructive', title: 'Decryption Failed' });
-                return false;
-            }
+            setChat(prev => prev ? { ...prev, isDecrypted: true } : null);
+            toast({ title: "Chat Unlocked", description: "You can now view the messages." });
+            return true;
         } else {
             toast({ variant: 'destructive', title: 'Incorrect Password' });
             return false;
         }
+    };
+    
+     const handleReEncrypt = () => {
+        setChat(prev => prev ? { ...prev, isDecrypted: false } : null);
+        toast({ title: "Chat Locked", description: "The chat is now hidden." });
     };
 
     if (loading) {
@@ -431,7 +458,7 @@ export default function ChatPage() {
     return (
         <div className="flex flex-col h-screen bg-background text-foreground">
             <ChatArea
-                chat={{ ...chat, messages }}
+                chat={chat}
                 onNewMessage={handleNewMessage}
                 onSendFile={handleSendFile}
                 onSendVoiceMessage={handleSendVoiceMessage}
@@ -441,6 +468,7 @@ export default function ChatPage() {
                 setReplyingTo={setReplyingTo}
                 onSetEncryption={handleSetEncryption}
                 onDecrypt={handleDecrypt}
+                onReEncrypt={handleReEncrypt}
                 isBlocked={isBlocked || amIBlocked}
                 onDeleteChat={handleDeleteChat}
                 onBlockUser={handleBlockUser}
