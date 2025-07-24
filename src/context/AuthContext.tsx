@@ -28,12 +28,12 @@ const ensureSystemBotExists = async () => {
 };
 
 const setupPushNotifications = async (userId: string) => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
         console.warn('Push notifications are not supported by this browser.');
         return;
     }
     
-    const vapidPublicKey = VAPID_PUBLIC_KEY;
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     if (!vapidPublicKey) {
         console.error('VAPID public key not found. Cannot subscribe to push notifications.');
         return;
@@ -49,12 +49,10 @@ const setupPushNotifications = async (userId: string) => {
 
         const existingSubscription = await registration.pushManager.getSubscription();
         if (existingSubscription) {
-            console.log('User is already subscribed.');
-            // Optional: You might want to update the subscription on your server anyway
             await saveSubscription(userId, existingSubscription);
             return;
         }
-
+        
         const newSubscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
