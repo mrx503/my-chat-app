@@ -34,18 +34,21 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
-            reader.onload = (event) => {
-                if (!event.target?.result) {
-                    return reject(new Error("FileReader event target result is null"));
+            reader.onload = () => { // No event argument needed
+                if (!reader.result) {
+                    return reject(new Error("FileReader result is null"));
                 }
                 const img = new Image();
-                img.src = event.target.result as string;
+                img.src = reader.result as string; // Use reader.result directly
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        return reject(new Error("Failed to get canvas context"));
+                    }
                     canvas.width = img.width;
                     canvas.height = img.height;
-                    ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     resolve(canvas.toDataURL(file.type, quality));
                 };
                 img.onerror = (error) => reject(error);
@@ -69,7 +72,10 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to update profile picture.' });
             }
         }
-        event.target.value = ''; // Reset input to allow re-uploading the same file
+        // Reset input to allow re-uploading the same file
+        if (event.target) {
+            event.target.value = '';
+        }
     };
     
     const shortUserId = currentUser?.uid ? `${currentUser.uid.substring(0, 6)}...` : '';
