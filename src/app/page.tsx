@@ -44,6 +44,11 @@ export default function Home() {
       const chatsDataPromises = snapshot.docs.map(async (docSnapshot) => {
         const chatData = { id: docSnapshot.id, ...docSnapshot.data() } as Chat;
         
+        // Don't process chats that the user has "deleted for me"
+        if (chatData.deletedFor?.includes(currentUser.uid)) {
+          return null;
+        }
+
         const isSystemChat = chatData.users.includes(SYSTEM_BOT_UID);
         const contactId = isSystemChat 
             ? SYSTEM_BOT_UID 
@@ -66,23 +71,44 @@ export default function Home() {
             }
         }
         
-        // Fetch messages to calculate unread count for system chat
+        // Fetch messages to calculate unread count
+        const messagesQuery = query(
+          collection(db, 'chats', chatData.id, 'messages'), 
+          orderBy('timestamp', 'desc')
+        );
+        const messagesSnapshot = await getDocs(messagesQuery);
+        
+        let unreadCount = 0;
+        let lastMessageText = '';
+        let lastMessageTimestamp: any = chatData.createdAt;
+
+        if (!messagesSnapshot.empty) {
+            const messages = messagesSnapshot.docs.map(d => d.data() as Message);
+            lastMessageText = messages[0].text || messages[0].type || '...';
+            lastMessageTimestamp = messages[0].timestamp;
+            
+            unreadCount = messages.filter(
+                (msg) => msg.senderId !== currentUser.uid && msg.status !== 'read'
+            ).length;
+        }
+
+        chatData.contact.unreadMessages = unreadCount;
+        chatData.contact.lastMessage = lastMessageText;
+        chatData.contact.lastMessageTimestamp = lastMessageTimestamp;
+        
         if (isSystemChat) {
-            const messagesQuery = query(collection(db, 'chats', chatData.id, 'messages'), where('senderId', '==', SYSTEM_BOT_UID), where('status', '!=', 'read'));
-            const messagesSnapshot = await getDocs(messagesQuery);
-            chatData.contact.unreadMessages = messagesSnapshot.size;
+          setSystemUnreadCount(unreadCount);
         }
 
         return chatData;
       });
       
-      const allChats = await Promise.all(chatsDataPromises);
+      const allChats = (await Promise.all(chatsDataPromises)).filter((c): c is Chat => c !== null);
       
       const sysChat = allChats.find(c => c.users.includes(SYSTEM_BOT_UID)) || null;
       const regularChats = allChats.filter(c => !c.users.includes(SYSTEM_BOT_UID));
 
       setSystemChat(sysChat);
-      setSystemUnreadCount(sysChat?.contact?.unreadMessages || 0);
       setUserChats(regularChats);
       setLoading(false);
     }, (error) => {
@@ -129,6 +155,8 @@ export default function Home() {
                     await setDoc(chatRef, {
                         users: [currentUser.uid, SYSTEM_BOT_UID].sort(),
                         createdAt: serverTimestamp(),
+                        encrypted: false,
+                        deletedFor: [],
                     });
                 }
               }
@@ -214,6 +242,8 @@ export default function Home() {
         const newChatRef = await addDoc(collection(db, 'chats'), {
             users: [currentUser.uid, searchUserId].sort(),
             createdAt: serverTimestamp(),
+            encrypted: false,
+            deletedFor: [],
         });
         
         router.push(`/chat/${newChatRef.id}`);
@@ -304,7 +334,7 @@ export default function Home() {
                                     <AvatarImage src={currentUser.avatar} alt={currentUser.name || currentUser.email || ''} data-ai-hint="profile picture"/>
                                     <AvatarFallback>{currentUser.email?.[0].toUpperCase()}</AvatarFallback>
                                 </Avatar>
-                                <Label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-primary rounded-full p-1 border-2 border-background cursor-pointer">
+                                <Label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-primary rounded-full p-1 border-2 border-background cursor-pointer hover:bg-primary/80 transition-colors">
                                     <Camera className="h-4 w-4 text-primary-foreground"/>
                                 </Label>
                                 <Input id="avatar-upload" type="file" onChange={handleFileChange} accept="image/*" className="hidden" />
