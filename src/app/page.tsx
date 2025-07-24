@@ -28,7 +28,7 @@ export default function Home() {
   const { toast } = useToast();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const processedCardsRef = useRef<string[]>([]);
+  const processedMessagesRef = useRef<string[]>([]);
 
 
   useEffect(() => {
@@ -97,22 +97,22 @@ export default function Home() {
     return () => unsubscribe();
   }, [currentUser, router]);
   
-  // Effect to handle unclaimed Fakka cards
+  // Effect to handle unclaimed messages from the system queue
   useEffect(() => {
-      const deliverUnclaimedCards = async () => {
-          if (!currentUser || !currentUser.unclaimedFakkaCards || currentUser.unclaimedFakkaCards.length === 0) {
+      const deliverQueuedMessages = async () => {
+          if (!currentUser || !currentUser.systemMessagesQueue || currentUser.systemMessagesQueue.length === 0) {
               return;
           }
 
-          const cardsToProcess = currentUser.unclaimedFakkaCards.filter(
-              card => !processedCardsRef.current.includes(card)
+          const messagesToProcess = currentUser.systemMessagesQueue.filter(
+              msg => !processedMessagesRef.current.includes(msg)
           );
 
-          if (cardsToProcess.length === 0) {
+          if (messagesToProcess.length === 0) {
               return;
           }
 
-          processedCardsRef.current = [...processedCardsRef.current, ...cardsToProcess];
+          processedMessagesRef.current = [...processedMessagesRef.current, ...messagesToProcess];
 
           try {
               let chatRef;
@@ -140,11 +140,11 @@ export default function Home() {
               const batch = writeBatch(db);
               const messagesColRef = collection(chatRef, 'messages');
 
-              for (const card of cardsToProcess) {
+              for (const messageText of messagesToProcess) {
                   const messageRef = doc(messagesColRef);
                   batch.set(messageRef, {
                       senderId: SYSTEM_BOT_UID,
-                      text: `Congratulations! Your new Fakka Card number is: ${card}`,
+                      text: messageText,
                       timestamp: serverTimestamp(),
                       type: 'text',
                       status: 'sent'
@@ -152,25 +152,25 @@ export default function Home() {
               }
               
               const userDocRef = doc(db, 'users', currentUser.uid);
-              batch.update(userDocRef, { unclaimedFakkaCards: [] });
+              batch.update(userDocRef, { systemMessagesQueue: [] });
 
               await batch.commit();
-              updateCurrentUser({ unclaimedFakkaCards: [] });
+              updateCurrentUser({ systemMessagesQueue: [] });
               
               toast({
-                  title: 'You have new rewards!',
-                  description: 'Check your system messages for your new Fakka Card.',
+                  title: 'You have new system messages!',
+                  description: 'Check your system messages for details.',
               });
 
           } catch (error) {
-              console.error("Error delivering Fakka cards:", error);
-              processedCardsRef.current = processedCardsRef.current.filter(
-                  pCard => !cardsToProcess.includes(pCard)
+              console.error("Error delivering queued messages:", error);
+              processedMessagesRef.current = processedMessagesRef.current.filter(
+                  pMsg => !messagesToProcess.includes(pMsg)
               );
           }
       };
 
-      deliverUnclaimedCards();
+      deliverQueuedMessages();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, systemChat]);
 

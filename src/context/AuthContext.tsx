@@ -105,7 +105,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             showOnlineStatus: true,
         },
         coins: 0,
-        unclaimedFakkaCards: [], // Initialize with an empty array
+        systemMessagesQueue: [], // Initialize with an empty array
     };
     await setDoc(doc(db, "users", user.uid), userDoc);
     return userCredential;

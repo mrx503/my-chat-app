@@ -15,7 +15,7 @@ export type User = {
   };
   blockedUsers?: string[];
   coins: number;
-  unclaimedFakkaCards?: string[]; // Array of card numbers to be delivered
+  systemMessagesQueue?: string[]; // Array of messages to be delivered by the system bot
 };
 
 export type ReplyTo = {
