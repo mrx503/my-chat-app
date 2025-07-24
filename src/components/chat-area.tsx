@@ -21,7 +21,10 @@ interface ChatAreaProps extends React.HTMLAttributes<HTMLDivElement> {
   replyingTo: Message | null;
   setReplyingTo: (message: Message | null) => void;
   isEncrypted: boolean;
-  setIsEncrypted: (isEncrypted: boolean) => void;
+  isDecrypted: boolean;
+  onSetEncryption: (password: string) => void;
+  onDecrypt: (password: string) => boolean;
+  onReEncrypt: () => void;
   isBlocked: boolean;
   onDeleteChat: () => void;
   onBlockUser: () => void;
@@ -34,7 +37,8 @@ interface ChatAreaProps extends React.HTMLAttributes<HTMLDivElement> {
 export default function ChatArea({ 
     chat, onNewMessage, onSendFile, onSendVoiceMessage, onDeleteMessage, 
     onReplyToMessage, replyingTo, setReplyingTo, 
-    isEncrypted, setIsEncrypted, isBlocked, onDeleteChat, onBlockUser, isSelfBlocked,
+    isEncrypted, isDecrypted, onSetEncryption, onDecrypt, onReEncrypt,
+    isBlocked, onDeleteChat, onBlockUser, isSelfBlocked,
     isAutoReplyActive, onToggleAutoReply, isSystemChat, className 
 }: ChatAreaProps) {
     
@@ -72,6 +76,21 @@ export default function ChatArea({
         </div>
       );
     }
+    
+    if (isEncrypted && !isDecrypted) {
+      return (
+          <div className="p-4 border-t bg-background">
+              <Alert variant="default" className="border-amber-500/50 text-center">
+                  <ShieldAlert className="h-4 w-4 text-amber-500" />
+                  <AlertTitle>Chat is Encrypted</AlertTitle>
+                  <AlertDescription>
+                      Decrypt the chat in the header to send and view messages.
+                  </AlertDescription>
+              </Alert>
+          </div>
+      );
+    }
+
 
     return (
       <div className="flex flex-col">
@@ -97,7 +116,10 @@ export default function ChatArea({
       <ChatHeader 
         contact={chat.contact} 
         isEncrypted={isEncrypted}
-        setIsEncrypted={setIsEncrypted}
+        isDecrypted={isDecrypted}
+        onSetEncryption={onSetEncryption}
+        onDecrypt={onDecrypt}
+        onReEncrypt={onReEncrypt}
         onDeleteChat={onDeleteChat}
         onBlockUser={onBlockUser}
         isBlocked={isSelfBlocked}
@@ -108,7 +130,8 @@ export default function ChatArea({
         contactAvatar={chat.contact?.avatar} 
         onDeleteMessage={onDeleteMessage}
         onReplyToMessage={onReplyToMessage}
-        isEncrypted={isEncrypted} 
+        isEncrypted={isEncrypted}
+        isDecrypted={isDecrypted}
       />
       {renderInputArea()}
     </div>

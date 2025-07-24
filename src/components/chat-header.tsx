@@ -32,7 +32,10 @@ import { useToast } from '@/hooks/use-toast';
 interface ChatHeaderProps {
   contact: Contact;
   isEncrypted: boolean;
-  setIsEncrypted: (isEncrypted: boolean) => void;
+  isDecrypted: boolean;
+  onSetEncryption: (password: string) => void;
+  onDecrypt: (password: string) => boolean;
+  onReEncrypt: () => void;
   onDeleteChat: () => void;
   onBlockUser: () => void;
   isBlocked: boolean;
@@ -65,13 +68,16 @@ function formatLastSeen(timestamp?: any) {
 }
 
 
-export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDeleteChat, onBlockUser, isBlocked, isSystemChat }: ChatHeaderProps) {
+export default function ChatHeader({ 
+    contact, isEncrypted, isDecrypted, 
+    onSetEncryption, onDecrypt, onReEncrypt,
+    onDeleteChat, onBlockUser, isBlocked, isSystemChat 
+}: ChatHeaderProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [chatPassword, setChatPassword] = useState<string | null>(null);
-
+  
   const [showCreatePasswordDialog, setShowCreatePasswordDialog] = useState(false);
   const [showDecryptDialog, setShowDecryptDialog] = useState(false);
   const [status, setStatus] = useState('');
@@ -98,39 +104,38 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
     }
   }, [contact, isSystemChat]);
 
-
   const handleMicrowaveClick = () => {
     if (isEncrypted) {
-      setShowDecryptDialog(true);
-    } else {
-      if (chatPassword) {
-        setIsEncrypted(true);
+      if (isDecrypted) {
+        onReEncrypt();
       } else {
-        setShowCreatePasswordDialog(true);
+        setShowDecryptDialog(true);
       }
+    } else {
+      setShowCreatePasswordDialog(true);
     }
   };
 
   const handleCreatePassword = () => {
     if (password && password === confirmPassword) {
-      setChatPassword(password);
-      setIsEncrypted(true);
+      onSetEncryption(password);
       setShowCreatePasswordDialog(false);
       setPassword('');
       setConfirmPassword('');
     } else {
-      alert('Passwords do not match or are empty.');
+      toast({
+          variant: 'destructive',
+          title: 'Passwords do not match or are empty.',
+      });
     }
   };
 
   const handlePasswordSubmit = () => {
-    if (password === chatPassword) {
-      setIsEncrypted(false);
-      setShowDecryptDialog(false);
-      setPassword('');
+    if (onDecrypt(password)) {
+        setShowDecryptDialog(false);
+        setPassword('');
     } else {
-      alert('Incorrect password');
-      setPassword('');
+        setPassword('');
     }
   };
   
@@ -140,6 +145,10 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
         description: "Voice and video calls will be available in a future update.",
     })
   }
+  
+  const encryptionIcon = isEncrypted 
+    ? <ShieldCheck className={`h-5 w-5 ${isDecrypted ? 'text-green-500' : 'text-amber-500'}`} /> 
+    : <Waves className="h-5 w-5" />;
 
   return (
     <>
@@ -163,7 +172,7 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
             {!isSystemChat && (
               <>
                 <Button variant="ghost" size="icon" onClick={handleMicrowaveClick}>
-                  {isEncrypted ? <ShieldCheck className="h-5 w-5 text-green-500" /> : <Waves className="h-5 w-5" />}
+                  {encryptionIcon}
                   <span className="sr-only">Microwave Chat</span>
                 </Button>
                 <Button variant="ghost" size="icon" onClick={handleCallClick}>
@@ -223,7 +232,7 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
           <AlertDialogHeader>
             <AlertDialogTitle>Create a Password</AlertDialogTitle>
             <AlertDialogDescription>
-              To encrypt this chat, please create a password. You will need this to decrypt the messages later.
+              To encrypt this chat, please create a password. You and the other user will need this to decrypt the messages.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4">

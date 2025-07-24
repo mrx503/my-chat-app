@@ -28,6 +28,7 @@ interface MessageListProps {
   messages: Message[];
   contactAvatar: string;
   isEncrypted: boolean;
+  isDecrypted: boolean;
   onDeleteMessage: (messageId: string, type: 'me' | 'everyone') => void;
   onReplyToMessage: (message: Message) => void;
 }
@@ -71,12 +72,12 @@ const encryptMessage = (text: string) => {
   return text.split('').map(char => char.charCodeAt(0)).join(' ');
 }
 
-const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypted: boolean }) => {
+const MessageContent = ({ message, isVisible }: { message: Message; isVisible: boolean }) => {
     if (message.isDeleted) {
         return <p className="whitespace-pre-wrap break-words text-muted-foreground italic">This message was deleted</p>;
     }
 
-    const messageText = isEncrypted && message.text ? encryptMessage(message.text) : message.text;
+    const messageText = isVisible || !message.text ? message.text : encryptMessage(message.text);
 
     switch (message.type) {
         case 'image':
@@ -87,7 +88,7 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
                         src={message.fileURL}
                         alt={message.fileName || 'Sent image'}
                         layout="fill"
-                        className="object-contain rounded-md"
+                        className={cn("object-contain rounded-md", !isVisible && "blur-md")}
                         data-ai-hint="sent image"
                     />
                 </div>
@@ -100,7 +101,7 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
                         <div className="flex items-center gap-3 py-2 px-3">
                             <File className="h-6 w-6" />
                             <div className="text-left">
-                                <p className="font-semibold break-all">{message.fileName}</p>
+                                <p className={cn("font-semibold break-all", !isVisible && "blur-sm")}>{message.fileName}</p>
                                 <p className="text-xs text-muted-foreground">Click to download</p>
                             </div>
                         </div>
@@ -110,7 +111,7 @@ const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypte
         case 'audio':
             if (!message.fileURL) return null;
             return (
-                <audio controls src={message.fileURL} className="max-w-[250px]" />
+                <audio controls src={message.fileURL} className={cn("max-w-[250px]", !isVisible && "filter blur-sm")} />
             );
         default:
             return <p className="whitespace-pre-wrap break-words">{messageText}</p>;
@@ -230,11 +231,13 @@ const MessageWrapper = ({
     );
 };
 
-export default function MessageList({ messages, contactAvatar, isEncrypted, onDeleteMessage, onReplyToMessage }: MessageListProps) {
+export default function MessageList({ messages, contactAvatar, isEncrypted, isDecrypted, onDeleteMessage, onReplyToMessage }: MessageListProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const { currentUser } = useAuth();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<{ id: string, type: 'me' | 'everyone' } | null>(null);
+  
+  const messagesVisible = !isEncrypted || isDecrypted;
 
   useEffect(() => {
     if (viewportRef.current) {
@@ -295,8 +298,8 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                                 (message.type === 'image' || message.type === 'audio') && 'p-1 bg-transparent dark:bg-transparent shadow-none',
                             )}
                         >
-                            {message.replyTo && <ReplyContent reply={message.replyTo} isCurrentUserReply={isCurrentUser} />}
-                            <MessageContent message={message} isEncrypted={isEncrypted} />
+                            {message.replyTo && messagesVisible && <ReplyContent reply={message.replyTo} isCurrentUserReply={isCurrentUser} />}
+                            <MessageContent message={message} isVisible={messagesVisible} />
                         </div>
                         <div className={cn("flex items-center text-xs text-muted-foreground", isCurrentUser ? "justify-end" : "justify-start")}>
                             <FormattedTime timestamp={message.timestamp} />

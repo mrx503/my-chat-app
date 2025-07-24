@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, where, getDocs, writeBatch } from 'firebase/firestore';
+import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Chat, Message, User, ReplyTo } from '@/lib/types';
 import ChatArea from '@/components/chat-area';
@@ -26,6 +26,8 @@ export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const [isEncrypted, setIsEncrypted] = useState(false);
+    const [chatPassword, setChatPassword] = useState<string | null>(null);
+    const [isDecrypted, setIsDecrypted] = useState(false);
     const [loading, setLoading] = useState(true);
     const [isBlocked, setIsBlocked] = useState(false);
     const [amIBlocked, setAmIBlocked] = useState(false);
@@ -52,6 +54,9 @@ export default function ChatPage() {
                     router.push('/');
                     return;
                 }
+                
+                setIsEncrypted(chatData.encrypted || false);
+                setChatPassword(chatData.chatPassword || null);
 
                 if (chatData.users.includes(SYSTEM_BOT_UID)) {
                     setIsSystemChat(true);
@@ -123,15 +128,12 @@ export default function ChatPage() {
             if(latestMessage && latestMessage.senderId !== currentUser?.uid && latestMessage.id !== lastProcessedMessageId.current) {
                 lastProcessedMessageId.current = latestMessage.id;
                 if(isAutoReplyActive) {
-                    // Check if the incoming message is an auto-reply itself
                     if (!latestMessage.isAutoReply) {
                         handleAutoReply(latestMessage.text);
                     }
                 }
             }
         });
-
-        setIsEncrypted(false);
 
         return () => {
             unsubscribeChat();
@@ -152,7 +154,7 @@ export default function ChatPage() {
                     timestamp: serverTimestamp(),
                     type: 'text',
                     status: 'sent',
-                    isAutoReply: true, // Mark this message as an auto-reply
+                    isAutoReply: true,
                 });
             }
         } catch (error) {
@@ -362,6 +364,41 @@ export default function ChatPage() {
             description: newStatus ? 'The AI will now reply to messages for you.' : 'The AI will no longer reply automatically.',
         });
     };
+    
+    const handleSetEncryption = async (password: string) => {
+        if (!chatId) return;
+        try {
+            const chatDocRef = doc(db, 'chats', chatId);
+            await updateDoc(chatDocRef, {
+                encrypted: true,
+                chatPassword: password
+            });
+            setIsEncrypted(true);
+            setChatPassword(password);
+            setIsDecrypted(true); // Automatically decrypted since the user who set it knows the password
+            toast({ title: "Chat Encrypted", description: "Messages in this chat are now encrypted." });
+        } catch (error) {
+            console.error("Error setting encryption:", error);
+            toast({ variant: 'destructive', title: 'Encryption Failed' });
+        }
+    };
+
+    const handleDecrypt = (password: string) => {
+        if (password === chatPassword) {
+            setIsDecrypted(true);
+            toast({ title: "Chat Decrypted", description: "You can now view the messages." });
+            return true;
+        } else {
+            toast({ variant: 'destructive', title: 'Incorrect Password' });
+            return false;
+        }
+    };
+
+    const handleReEncrypt = () => {
+        setIsDecrypted(false);
+        toast({ title: "Chat Re-encrypted", description: "Messages are hidden again." });
+    };
+
 
     if (loading) {
          return (
@@ -395,7 +432,10 @@ export default function ChatPage() {
                 replyingTo={replyingTo}
                 setReplyingTo={setReplyingTo}
                 isEncrypted={isEncrypted}
-                setIsEncrypted={setIsEncrypted}
+                isDecrypted={isDecrypted}
+                onSetEncryption={handleSetEncryption}
+                onDecrypt={handleDecrypt}
+                onReEncrypt={handleReEncrypt}
                 isBlocked={isBlocked || amIBlocked}
                 onDeleteChat={handleDeleteChat}
                 onBlockUser={handleBlockUser}

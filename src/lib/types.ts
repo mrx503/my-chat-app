@@ -54,6 +54,8 @@ export type Chat = {
   contact: Contact; // The other user in the chat
   messages: Message[];
   createdAt: Timestamp;
+  encrypted?: boolean;
+  chatPassword?: string;
 };
 
 export type WithdrawalRequest = {
