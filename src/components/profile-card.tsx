@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ interface ProfileCardProps {
 export default function ProfileCard({ currentUser, updateCurrentUser, logout }: ProfileCardProps) {
     const router = useRouter();
     const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const copyUserId = () => {
         if (currentUser?.uid) {
@@ -30,25 +31,47 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
         }
     };
 
+    const handleAvatarClick = () => {
+        fileInputRef.current?.click();
+    };
+
     const compressImage = (file: File, quality = 0.7): Promise<string> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
-            reader.onload = () => { // No event argument needed
+            reader.onload = () => { 
                 if (!reader.result) {
                     return reject(new Error("FileReader result is null"));
                 }
                 const img = new Image();
-                img.src = reader.result as string; // Use reader.result directly
+                img.src = reader.result as string; 
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     if (!ctx) {
                         return reject(new Error("Failed to get canvas context"));
                     }
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    // Optional: Resize image for performance
+                    const MAX_WIDTH = 800;
+                    const MAX_HEIGHT = 800;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
                     resolve(canvas.toDataURL(file.type, quality));
                 };
                 img.onerror = (error) => reject(error);
@@ -72,7 +95,6 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to update profile picture.' });
             }
         }
-        // Reset input to allow re-uploading the same file
         if (event.target) {
             event.target.value = '';
         }
@@ -96,10 +118,11 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                             <AvatarImage src={currentUser.avatar} alt={currentUser.name || currentUser.email || ''} data-ai-hint="profile picture"/>
                             <AvatarFallback>{currentUser.email?.[0].toUpperCase()}</AvatarFallback>
                         </Avatar>
-                        <Label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-primary rounded-full p-1 border-2 border-background cursor-pointer hover:bg-primary/80 transition-colors">
+                        <button onClick={handleAvatarClick} className="absolute bottom-0 right-0 bg-primary rounded-full p-1 border-2 border-background cursor-pointer hover:bg-primary/80 transition-colors">
                             <Camera className="h-4 w-4 text-primary-foreground"/>
-                        </Label>
-                        <Input id="avatar-upload" type="file" onChange={handleFileChange} accept="image/*" className="hidden" />
+                            <span className="sr-only">Change profile picture</span>
+                        </button>
+                        <Input id="avatar-upload" type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
                     </div>
                     <div>
                         <CardTitle>{currentUser.name || currentUser.email}</CardTitle>
