@@ -4,7 +4,6 @@ import React, { useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Copy, Camera, Wallet, LogOut } from 'lucide-react';
@@ -39,12 +38,9 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
-            reader.onload = () => { 
-                if (!reader.result) {
-                    return reject(new Error("FileReader result is null"));
-                }
+            reader.onload = (event) => { 
                 const img = new Image();
-                img.src = reader.result as string; 
+                img.src = event.target?.result as string; 
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
@@ -122,7 +118,7 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                             <Camera className="h-4 w-4 text-primary-foreground"/>
                             <span className="sr-only">Change profile picture</span>
                         </button>
-                        <Input id="avatar-upload" type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                        <Input id="avatar-upload" type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
                     </div>
                     <div>
                         <CardTitle>{currentUser.name || currentUser.email}</CardTitle>
