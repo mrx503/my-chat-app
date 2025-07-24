@@ -71,6 +71,11 @@ const encryptMessage = (text: string) => {
   return text.split('').map(char => char.charCodeAt(0)).join(' ');
 }
 
+const decryptMessage = (encryptedText: string) => {
+    return encryptedText.split(' ').map(code => String.fromCharCode(parseInt(code))).join('');
+}
+
+
 const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypted: boolean }) => {
     if (message.isDeleted) {
         return <p className="whitespace-pre-wrap break-words text-muted-foreground italic">This message was deleted</p>;
@@ -263,7 +268,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     return null; 
   }
   
-  const visibleMessages = messages.filter(message => !message.deletedFor?.includes(currentUser.uid));
+  const visibleMessages = (messages || []).filter(message => !message.deletedFor?.includes(currentUser.uid));
 
   return (
     <>
