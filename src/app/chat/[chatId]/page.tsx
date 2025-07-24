@@ -166,20 +166,18 @@ export default function ChatPage() {
 
     const markMessagesAsRead = async (contactId: string) => {
         if (!chatId || !currentUser) return;
-        
-        const messagesToUpdateQuery = query(
-            collection(db, 'chats', chatId, 'messages'),
-            where('senderId', '==', contactId),
-            where('status', '==', 'sent')
+    
+        const messagesToUpdate = messages.filter(
+            (msg) => msg.senderId === contactId && msg.status === 'sent'
         );
 
+        if (messagesToUpdate.length === 0) return;
+    
         try {
-            const querySnapshot = await getDocs(messagesToUpdateQuery);
-            if(querySnapshot.empty) return;
-
             const batch = writeBatch(db);
-            querySnapshot.forEach(docSnapshot => {
-                batch.update(docSnapshot.ref, { status: 'read' });
+            messagesToUpdate.forEach((msg) => {
+                const messageRef = doc(db, 'chats', chatId, 'messages', msg.id);
+                batch.update(messageRef, { status: 'read' });
             });
             await batch.commit();
         } catch (error) {

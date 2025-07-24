@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, updateDoc, increment, arrayUnion, writeBatch, setDoc, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, updateDoc, increment, arrayUnion, writeBatch, setDoc, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Chat, User, Message } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
@@ -68,13 +68,11 @@ export default function Home() {
         
         // Fetch messages to calculate unread count for system chat
         if (isSystemChat) {
-             const messagesQuery = query(
-                collection(db, 'chats', chatData.id, 'messages'),
-                where('senderId', '==', SYSTEM_BOT_UID),
-                where('status', '!=', 'read')
-            );
-            const unreadSnapshot = await getDocs(messagesQuery);
-            chatData.contact.unreadMessages = unreadSnapshot.size;
+            const messagesQuery = query(collection(db, 'chats', chatData.id, 'messages'), orderBy('timestamp', 'asc'));
+            const messagesSnapshot = await getDocs(messagesQuery);
+            const allMessages = messagesSnapshot.docs.map(d => d.data() as Message);
+            const unreadCount = allMessages.filter(m => m.senderId === SYSTEM_BOT_UID && m.status !== 'read').length;
+            chatData.contact.unreadMessages = unreadCount;
         }
 
         return chatData;
