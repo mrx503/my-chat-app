@@ -13,6 +13,7 @@ import ReplyPreview from './reply-preview';
 
 interface ChatAreaProps extends React.HTMLAttributes<HTMLDivElement> {
   chat: Chat;
+  messages: Message[];
   onNewMessage: (message: string) => void;
   onSendFile: (file: File) => void;
   onSendVoiceMessage: (audioBase64: string) => void;
@@ -32,7 +33,7 @@ interface ChatAreaProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export default function ChatArea({ 
-    chat, onNewMessage, onSendFile, onSendVoiceMessage, onDeleteMessage, 
+    chat, messages, onNewMessage, onSendFile, onSendVoiceMessage, onDeleteMessage, 
     onReplyToMessage, replyingTo, setReplyingTo, 
     onSetEncryption, onDecrypt,
     isBlocked, onDeleteChat, onBlockUser, isSelfBlocked,
@@ -81,7 +82,7 @@ export default function ChatArea({
                   <ShieldAlert className="h-4 w-4 text-amber-500" />
                   <AlertTitle>Chat is Encrypted</AlertTitle>
                   <AlertDescription>
-                      The chat is locked. To send messages, decrypt it from the header.
+                      This chat is currently encrypted. Decrypt it from the header to send messages.
                   </AlertDescription>
               </Alert>
           </div>
@@ -121,7 +122,7 @@ export default function ChatArea({
         isSystemChat={isSystemChat}
       />
       <MessageList 
-        messages={chat.messages} 
+        messages={messages} 
         contactAvatar={chat.contact?.avatar} 
         onDeleteMessage={onDeleteMessage}
         onReplyToMessage={onReplyToMessage}
@@ -131,3 +132,4 @@ export default function ChatArea({
     </div>
   );
 }
+ 

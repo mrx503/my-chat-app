@@ -63,7 +63,6 @@ export type Chat = {
   id: string;
   users: string[]; // array of user UIDs
   contact: Contact; // The other user in the chat
-  messages: Message[];
   createdAt: Timestamp;
   encrypted?: boolean;
   chatPassword?: string;
@@ -83,3 +82,4 @@ export type WithdrawalRequest = {
     // --- Fakka Card Specific ---
     operator?: 'Vodafone' | 'Etisalat' | 'Orange';
 };
+ 
