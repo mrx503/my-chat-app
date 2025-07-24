@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Copy, LogOut, MessageSquarePlus, Camera, Wallet } from 'lucide-react';
 import SystemChatCard from '@/components/system-chat-card';
+import { Label } from '@/components/ui/label';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -27,7 +28,6 @@ export default function Home() {
   const [searchUserId, setSearchUserId] = useState('');
   const { toast } = useToast();
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const processedMessagesRef = useRef<string[]>([]);
 
 
@@ -68,11 +68,9 @@ export default function Home() {
         
         // Fetch messages to calculate unread count for system chat
         if (isSystemChat) {
-            const messagesQuery = query(collection(db, 'chats', chatData.id, 'messages'), orderBy('timestamp', 'asc'));
+            const messagesQuery = query(collection(db, 'chats', chatData.id, 'messages'), where('senderId', '==', SYSTEM_BOT_UID), where('status', '!=', 'read'));
             const messagesSnapshot = await getDocs(messagesQuery);
-            const allMessages = messagesSnapshot.docs.map(d => d.data() as Message);
-            const unreadCount = allMessages.filter(m => m.senderId === SYSTEM_BOT_UID && m.status !== 'read').length;
-            chatData.contact.unreadMessages = unreadCount;
+            chatData.contact.unreadMessages = messagesSnapshot.size;
         }
 
         return chatData;
@@ -233,10 +231,6 @@ export default function Home() {
     }
   };
 
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
-
   const compressImage = (file: File, quality = 0.7): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -262,6 +256,7 @@ export default function Home() {
     const file = event.target.files?.[0];
     if (file && currentUser) {
       try {
+        toast({ title: 'Uploading...', description: 'Please wait while we update your picture.' });
         const base64 = await compressImage(file);
         const userDocRef = doc(db, 'users', currentUser.uid);
         await updateDoc(userDocRef, { avatar: base64 });
@@ -305,14 +300,14 @@ export default function Home() {
                     <Card>
                         <CardHeader className="flex flex-row items-center gap-4">
                             <div className="relative">
-                                <Avatar className="w-16 h-16" onClick={handleAvatarClick} style={{ cursor: 'pointer' }}>
+                                <Avatar className="w-16 h-16">
                                     <AvatarImage src={currentUser.avatar} alt={currentUser.name || currentUser.email || ''} data-ai-hint="profile picture"/>
                                     <AvatarFallback>{currentUser.email?.[0].toUpperCase()}</AvatarFallback>
                                 </Avatar>
-                                <div className="absolute bottom-0 right-0 bg-primary rounded-full p-1 border-2 border-background cursor-pointer" onClick={handleAvatarClick}>
+                                <Label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-primary rounded-full p-1 border-2 border-background cursor-pointer">
                                     <Camera className="h-4 w-4 text-primary-foreground"/>
-                                </div>
-                                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                                </Label>
+                                <Input id="avatar-upload" type="file" onChange={handleFileChange} accept="image/*" className="hidden" />
                             </div>
                             <div>
                                 <CardTitle>{currentUser.name || currentUser.email}</CardTitle>
@@ -375,5 +370,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
