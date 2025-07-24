@@ -25,9 +25,6 @@ export default function ChatPage() {
     const [chat, setChat] = useState<Chat | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
-    const [isEncrypted, setIsEncrypted] = useState(false);
-    const [chatPassword, setChatPassword] = useState<string | null>(null);
-    const [isDecrypted, setIsDecrypted] = useState(false);
     const [loading, setLoading] = useState(true);
     const [isBlocked, setIsBlocked] = useState(false);
     const [amIBlocked, setAmIBlocked] = useState(false);
@@ -55,9 +52,6 @@ export default function ChatPage() {
                     return;
                 }
                 
-                setIsEncrypted(chatData.encrypted || false);
-                setChatPassword(chatData.chatPassword || null);
-
                 if (chatData.users.includes(SYSTEM_BOT_UID)) {
                     setIsSystemChat(true);
                 }
@@ -69,7 +63,7 @@ export default function ChatPage() {
                          if (contactDoc.exists()) {
                             const contactData = { id: contactDoc.id, ...contactDoc.data() } as User;
                             setChat(prev => {
-                                const newChat = prev ? {...prev, contact: contactData} : chatData;
+                                const newChat = prev ? {...prev, ...chatDoc.data(), id: chatDoc.id} : chatData;
                                 newChat.contact = contactData;
                                 return newChat;
                             });
@@ -196,6 +190,10 @@ export default function ChatPage() {
 
     const handleNewMessage = async (messageText: string) => {
         if (!chatId || !messageText.trim() || !currentUser || isBlocked || amIBlocked || isSystemChat) return;
+        if (chat?.encrypted) {
+            toast({ variant: 'destructive', title: 'Chat is Encrypted', description: 'You must decrypt the chat to send messages.' });
+            return;
+        }
 
         const messagesColRef = collection(db, 'chats', chatId, 'messages');
         
@@ -255,6 +253,10 @@ export default function ChatPage() {
     
     const handleSendVoiceMessage = async (audioBase64: string) => {
         if (!chatId || !currentUser || isBlocked || amIBlocked || isSystemChat) return;
+        if (chat?.encrypted) {
+            toast({ variant: 'destructive', title: 'Chat is Encrypted', description: 'You must decrypt the chat to send files.' });
+            return;
+        }
 
         const messagesColRef = collection(db, 'chats', chatId, 'messages');
         await addDoc(messagesColRef, {
@@ -269,6 +271,10 @@ export default function ChatPage() {
 
     const handleSendFile = async (file: File) => {
         if (!chatId || !currentUser || isBlocked || amIBlocked || isSystemChat) return;
+        if (chat?.encrypted) {
+            toast({ variant: 'destructive', title: 'Chat is Encrypted', description: 'You must decrypt the chat to send files.' });
+            return;
+        }
         
         toast({ title: 'Sending file...', description: 'Please wait.' });
 
@@ -373,9 +379,6 @@ export default function ChatPage() {
                 encrypted: true,
                 chatPassword: password
             });
-            setIsEncrypted(true);
-            setChatPassword(password);
-            setIsDecrypted(true); // Automatically decrypted since the user who set it knows the password
             toast({ title: "Chat Encrypted", description: "Messages in this chat are now encrypted." });
         } catch (error) {
             console.error("Error setting encryption:", error);
@@ -383,22 +386,27 @@ export default function ChatPage() {
         }
     };
 
-    const handleDecrypt = (password: string) => {
-        if (password === chatPassword) {
-            setIsDecrypted(true);
-            toast({ title: "Chat Decrypted", description: "You can now view the messages." });
-            return true;
+    const handleDecrypt = async (password: string) => {
+        if (password === chat?.chatPassword) {
+             if (!chatId) return false;
+            try {
+                const chatDocRef = doc(db, 'chats', chatId);
+                await updateDoc(chatDocRef, {
+                    encrypted: false,
+                    chatPassword: ''
+                });
+                toast({ title: "Chat Decrypted", description: "Encryption has been removed for everyone." });
+                return true;
+            } catch (error) {
+                console.error("Error decrypting chat:", error);
+                toast({ variant: 'destructive', title: 'Decryption Failed' });
+                return false;
+            }
         } else {
             toast({ variant: 'destructive', title: 'Incorrect Password' });
             return false;
         }
     };
-
-    const handleReEncrypt = () => {
-        setIsDecrypted(false);
-        toast({ title: "Chat Re-encrypted", description: "Messages are hidden again." });
-    };
-
 
     if (loading) {
          return (
@@ -431,11 +439,8 @@ export default function ChatPage() {
                 onReplyToMessage={handleReplyToMessage}
                 replyingTo={replyingTo}
                 setReplyingTo={setReplyingTo}
-                isEncrypted={isEncrypted}
-                isDecrypted={isDecrypted}
                 onSetEncryption={handleSetEncryption}
                 onDecrypt={handleDecrypt}
-                onReEncrypt={handleReEncrypt}
                 isBlocked={isBlocked || amIBlocked}
                 onDeleteChat={handleDeleteChat}
                 onBlockUser={handleBlockUser}

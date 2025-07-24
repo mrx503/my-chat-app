@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Phone, MoreVertical, ShieldCheck, Waves, Trash2, ShieldX, Shield, ArrowLeft } from 'lucide-react';
+import { Phone, MoreVertical, ShieldCheck, ShieldOff, Trash2, ShieldX, Shield, ArrowLeft } from 'lucide-react';
 import type { Contact } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -32,10 +32,8 @@ import { useToast } from '@/hooks/use-toast';
 interface ChatHeaderProps {
   contact: Contact;
   isEncrypted: boolean;
-  isDecrypted: boolean;
   onSetEncryption: (password: string) => void;
-  onDecrypt: (password: string) => boolean;
-  onReEncrypt: () => void;
+  onDecrypt: (password: string) => Promise<boolean>;
   onDeleteChat: () => void;
   onBlockUser: () => void;
   isBlocked: boolean;
@@ -69,8 +67,8 @@ function formatLastSeen(timestamp?: any) {
 
 
 export default function ChatHeader({ 
-    contact, isEncrypted, isDecrypted, 
-    onSetEncryption, onDecrypt, onReEncrypt,
+    contact, isEncrypted, 
+    onSetEncryption, onDecrypt,
     onDeleteChat, onBlockUser, isBlocked, isSystemChat 
 }: ChatHeaderProps) {
   const router = useRouter();
@@ -104,13 +102,9 @@ export default function ChatHeader({
     }
   }, [contact, isSystemChat]);
 
-  const handleMicrowaveClick = () => {
+  const handleEncryptionClick = () => {
     if (isEncrypted) {
-      if (isDecrypted) {
-        onReEncrypt();
-      } else {
-        setShowDecryptDialog(true);
-      }
+      setShowDecryptDialog(true);
     } else {
       setShowCreatePasswordDialog(true);
     }
@@ -130,8 +124,9 @@ export default function ChatHeader({
     }
   };
 
-  const handlePasswordSubmit = () => {
-    if (onDecrypt(password)) {
+  const handlePasswordSubmit = async () => {
+    const success = await onDecrypt(password);
+    if (success) {
         setShowDecryptDialog(false);
         setPassword('');
     } else {
@@ -147,8 +142,8 @@ export default function ChatHeader({
   }
   
   const encryptionIcon = isEncrypted 
-    ? <ShieldCheck className={`h-5 w-5 ${isDecrypted ? 'text-green-500' : 'text-amber-500'}`} /> 
-    : <Waves className="h-5 w-5" />;
+    ? <ShieldCheck className="h-5 w-5 text-amber-500" /> 
+    : <ShieldOff className="h-5 w-5" />;
 
   return (
     <>
@@ -171,9 +166,9 @@ export default function ChatHeader({
           <div className="ml-auto flex items-center gap-2">
             {!isSystemChat && (
               <>
-                <Button variant="ghost" size="icon" onClick={handleMicrowaveClick}>
+                <Button variant="ghost" size="icon" onClick={handleEncryptionClick}>
                   {encryptionIcon}
-                  <span className="sr-only">Microwave Chat</span>
+                  <span className="sr-only">Toggle Chat Encryption</span>
                 </Button>
                 <Button variant="ghost" size="icon" onClick={handleCallClick}>
                   <Phone className="h-5 w-5" />
@@ -230,9 +225,9 @@ export default function ChatHeader({
       <AlertDialog open={showCreatePasswordDialog} onOpenChange={setShowCreatePasswordDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Create a Password</AlertDialogTitle>
+            <AlertDialogTitle>Encrypt Chat</AlertDialogTitle>
             <AlertDialogDescription>
-              To encrypt this chat, please create a password. You and the other user will need this to decrypt the messages.
+              Create a password to encrypt this chat for all participants. You will need this password to decrypt it later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4">
@@ -260,7 +255,7 @@ export default function ChatHeader({
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => { setPassword(''); setConfirmPassword(''); }}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCreatePassword}>Create and Encrypt</AlertDialogAction>
+            <AlertDialogAction onClick={handleCreatePassword}>Encrypt Chat</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -271,7 +266,7 @@ export default function ChatHeader({
           <AlertDialogHeader>
             <AlertDialogTitle>Enter Password to Decrypt</AlertDialogTitle>
             <AlertDialogDescription>
-              To view the original messages, please enter the password.
+              To decrypt this chat for everyone, please enter the password.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Input 
@@ -283,7 +278,7 @@ export default function ChatHeader({
           />
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setPassword('')}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handlePasswordSubmit}>Decrypt</AlertDialogAction>
+            <AlertDialogAction onClick={handlePasswordSubmit}>Decrypt for Everyone</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
