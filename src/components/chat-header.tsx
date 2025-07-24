@@ -36,6 +36,7 @@ interface ChatHeaderProps {
   onDeleteChat: () => void;
   onBlockUser: () => void;
   isBlocked: boolean;
+  isSystemChat: boolean;
 }
 
 function formatLastSeen(timestamp?: any) {
@@ -64,7 +65,7 @@ function formatLastSeen(timestamp?: any) {
 }
 
 
-export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDeleteChat, onBlockUser, isBlocked }: ChatHeaderProps) {
+export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDeleteChat, onBlockUser, isBlocked, isSystemChat }: ChatHeaderProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [password, setPassword] = useState('');
@@ -76,6 +77,11 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
   const [status, setStatus] = useState('');
 
   useEffect(() => {
+    if (isSystemChat) {
+      setStatus('Official System Channel');
+      return;
+    }
+
     if (contact?.privacySettings?.showOnlineStatus === false) {
         setStatus('');
         return;
@@ -90,7 +96,7 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
             setStatus(formatLastSeen(contact.lastSeen));
         }
     }
-  }, [contact]);
+  }, [contact, isSystemChat]);
 
 
   const handleMicrowaveClick = () => {
@@ -154,13 +160,17 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
             </div>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={handleMicrowaveClick}>
-              {isEncrypted ? <ShieldCheck className="h-5 w-5 text-green-500" /> : <Waves className="h-5 w-5" />}
-              <span className="sr-only">Microwave Chat</span>
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleCallClick}>
-              <Phone className="h-5 w-5" />
-            </Button>
+            {!isSystemChat && (
+              <>
+                <Button variant="ghost" size="icon" onClick={handleMicrowaveClick}>
+                  {isEncrypted ? <ShieldCheck className="h-5 w-5 text-green-500" /> : <Waves className="h-5 w-5" />}
+                  <span className="sr-only">Microwave Chat</span>
+                </Button>
+                <Button variant="ghost" size="icon" onClick={handleCallClick}>
+                  <Phone className="h-5 w-5" />
+                </Button>
+              </>
+            )}
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -175,11 +185,15 @@ export default function ChatHeader({ contact, isEncrypted, setIsEncrypted, onDel
                     <span>Delete Chat</span>
                   </DropdownMenuItem>
                 </AlertDialogTrigger>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onBlockUser}>
-                  {isBlocked ? <Shield className="mr-2 h-4 w-4" /> : <ShieldX className="mr-2 h-4 w-4" />}
-                  <span>{isBlocked ? 'Unblock' : 'Block'} User</span>
-                </DropdownMenuItem>
+                {!isSystemChat && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={onBlockUser}>
+                      {isBlocked ? <Shield className="mr-2 h-4 w-4" /> : <ShieldX className="mr-2 h-4 w-4" />}
+                      <span>{isBlocked ? 'Unblock' : 'Block'} User</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 

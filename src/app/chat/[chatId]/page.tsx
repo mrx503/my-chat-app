@@ -13,6 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { generateReply } from '@/ai/flows/auto-reply-flow';
 
+const SYSTEM_BOT_UID = 'system-bot-uid';
+
 export default function ChatPage() {
     const params = useParams();
     const router = useRouter();
@@ -28,6 +30,7 @@ export default function ChatPage() {
     const [isBlocked, setIsBlocked] = useState(false);
     const [amIBlocked, setAmIBlocked] = useState(false);
     const [isAutoReplyActive, setIsAutoReplyActive] = useState(false);
+    const [isSystemChat, setIsSystemChat] = useState(false);
     const lastProcessedMessageId = useRef<string | null>(null);
 
     useEffect(() => {
@@ -48,6 +51,10 @@ export default function ChatPage() {
                     setLoading(false);
                     router.push('/');
                     return;
+                }
+
+                if (chatData.users.includes(SYSTEM_BOT_UID)) {
+                    setIsSystemChat(true);
                 }
                 
                  const contactId = chatData.users.find(id => id !== currentUser.uid);
@@ -168,7 +175,7 @@ export default function ChatPage() {
         if (!chatId || !currentUser) return;
     
         const messagesToUpdate = messages.filter(
-            (msg) => msg.senderId === contactId && msg.status === 'sent'
+            (msg) => msg.senderId === contactId && msg.status !== 'read'
         );
 
         if (messagesToUpdate.length === 0) return;
@@ -186,7 +193,7 @@ export default function ChatPage() {
     };
 
     const handleNewMessage = async (messageText: string) => {
-        if (!chatId || !messageText.trim() || !currentUser || isBlocked || amIBlocked) return;
+        if (!chatId || !messageText.trim() || !currentUser || isBlocked || amIBlocked || isSystemChat) return;
 
         const messagesColRef = collection(db, 'chats', chatId, 'messages');
         
@@ -245,7 +252,7 @@ export default function ChatPage() {
     };
     
     const handleSendVoiceMessage = async (audioBase64: string) => {
-        if (!chatId || !currentUser || isBlocked || amIBlocked) return;
+        if (!chatId || !currentUser || isBlocked || amIBlocked || isSystemChat) return;
 
         const messagesColRef = collection(db, 'chats', chatId, 'messages');
         await addDoc(messagesColRef, {
@@ -259,7 +266,7 @@ export default function ChatPage() {
     }
 
     const handleSendFile = async (file: File) => {
-        if (!chatId || !currentUser || isBlocked || amIBlocked) return;
+        if (!chatId || !currentUser || isBlocked || amIBlocked || isSystemChat) return;
         
         toast({ title: 'Sending file...', description: 'Please wait.' });
 
@@ -395,6 +402,7 @@ export default function ChatPage() {
                 isSelfBlocked={isBlocked}
                 isAutoReplyActive={isAutoReplyActive}
                 onToggleAutoReply={handleToggleAutoReply}
+                isSystemChat={isSystemChat}
                 className="flex-1 min-h-0"
             />
         </div>
