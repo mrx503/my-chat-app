@@ -12,19 +12,6 @@ import { z } from 'genkit';
 import * as webpush from 'web-push';
 import type { PushSubscription } from '@/lib/types';
 
-const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
-
-if (vapidPublicKey && vapidPrivateKey) {
-  webpush.setVapidDetails(
-    'mailto:your-email@example.com',
-    vapidPublicKey,
-    vapidPrivateKey
-  );
-} else {
-  console.warn('VAPID keys not configured. Push notifications will be disabled.');
-}
-
 const SendNotificationInputSchema = z.object({
   subscription: z.any().describe('The PushSubscription object of the recipient.'),
   payload: z.object({
@@ -47,10 +34,20 @@ const sendNotificationFlow = ai.defineFlow(
     outputSchema: z.void(),
   },
   async ({ subscription, payload }) => {
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+
     if (!vapidPublicKey || !vapidPrivateKey) {
-      console.error('Cannot send notification: VAPID keys are not configured.');
+      console.error('Cannot send notification: VAPID keys are not configured in .env file.');
       return;
     }
+
+    // Initialize web-push inside the flow to ensure env variables are loaded.
+    webpush.setVapidDetails(
+      'mailto:your-email@example.com',
+      vapidPublicKey,
+      vapidPrivateKey
+    );
     
     // The subscription object from Firestore might not be in the exact format web-push expects.
     // Ensure it matches the PushSubscription interface.
