@@ -19,7 +19,7 @@ const ensureSystemBotExists = async () => {
             uid: SYSTEM_BOT_UID,
             name: 'System',
             email: 'system@duck.app',
-            avatar: 'https://placehold.co/100x100.png',
+            avatar: `https://placehold.co/100x100.png`,
             online: true,
             lastSeen: serverTimestamp(),
             isBot: true,
@@ -41,6 +41,10 @@ const setupPushNotifications = async (userId: string) => {
 
     try {
         const registration = await navigator.serviceWorker.register('/sw.js');
+        
+        // Force update of service worker
+        registration.update();
+
         const permission = await window.Notification.requestPermission();
         if (permission !== 'granted') {
             console.log('Push notification permission not granted.');
