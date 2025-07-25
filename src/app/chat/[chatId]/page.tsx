@@ -233,6 +233,7 @@ export default function ChatPage() {
                         body: messageText,
                         url: fullUrl,
                         icon: iconUrl,
+                        badge: currentUser.avatar,
                         tag: chatId,
                     }
                 });
@@ -327,6 +328,7 @@ export default function ChatPage() {
                             body: body,
                             url: fullUrl,
                             icon: iconUrl,
+                            badge: currentUser.avatar,
                             tag: chatId,
                         }
                     });
@@ -489,4 +491,3 @@ export default function ChatPage() {
         </div>
     );
 }
- 

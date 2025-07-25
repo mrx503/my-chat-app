@@ -10,7 +10,6 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import * as webpush from 'web-push';
-import type { PushSubscription } from '@/lib/types';
 
 const SendNotificationInputSchema = z.object({
   subscription: z.any().describe('The PushSubscription object of the recipient.'),
@@ -19,6 +18,7 @@ const SendNotificationInputSchema = z.object({
     body: z.string().describe('The body text of the notification.'),
     url: z.string().url().describe('The URL to open when the notification is clicked.'),
     icon: z.string().url().optional().describe('The icon URL for the notification.'),
+    badge: z.string().optional().describe("URL for a small icon, typically the sender's avatar."),
     tag: z.string().optional().describe('The tag to group notifications.'),
   }).describe('The notification content.'),
 });
@@ -44,15 +44,12 @@ const sendNotificationFlow = ai.defineFlow(
       return;
     }
 
-    // Initialize web-push inside the flow to ensure env variables are loaded.
     webpush.setVapidDetails(
       'mailto:your-email@example.com',
       vapidPublicKey,
       vapidPrivateKey
     );
     
-    // The subscription object from Firestore might not be in the exact format web-push expects.
-    // Ensure it matches the PushSubscription interface.
     const sub: webpush.PushSubscription = {
       endpoint: subscription.endpoint,
       keys: {
@@ -68,8 +65,6 @@ const sendNotificationFlow = ai.defineFlow(
       );
     } catch (error) {
       console.error("Error sending push notification", error);
-      // Optional: If the subscription is invalid (e.g., 410 Gone),
-      // you might want to remove it from your database.
     }
   }
 );
