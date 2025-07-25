@@ -1,38 +1,40 @@
+
 self.addEventListener('push', (event) => {
   const data = event.data.json();
+  const { title, body, icon, tag, url } = data;
 
   const options = {
-    body: data.body,
-    icon: '/duck_logo.png', // The path to the icon
-    badge: '/duck_logo.png', // A badge icon for the status bar
-    vibrate: [200, 100, 200],
+    body: body,
+    icon: icon || '/duck_logo.png', // Fallback icon
+    badge: '/duck_badge.png', // A monochrome badge for the status bar
+    vibrate: [200, 100, 200, 100, 200, 100, 200], // Vibration pattern
+    tag: tag, // Use chat ID to stack notifications
+    renotify: true, // Vibrate and play sound for new notifications with the same tag
+    actions: [], // Remove default "settings" button on some platforms
     data: {
-      url: data.url,
+      url: url, // URL to open on click
     },
-    actions: [], // An empty actions array removes default buttons
   };
 
-  event.waitUntil(self.registration.showNotification(data.title, options));
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const urlToOpen = event.notification.data.url || '/';
+  const urlToOpen = event.notification.data.url;
+
   event.waitUntil(
-    clients.matchAll({
-      type: 'window',
-      includeUncontrolled: true,
-    }).then((clientList) => {
-      if (clientList.length > 0) {
-        let client = clientList[0];
-        for (let i = 0; i < clientList.length; i++) {
-          if (clientList[i].focused) {
-            client = clientList[i];
-          }
+    clients.matchAll({ type: 'window' }).then((clientList) => {
+      // Check if a window is already open and focused
+      for (const client of clientList) {
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
         }
-        return client.focus().then(client => client.navigate(urlToOpen));
       }
-      return clients.openWindow(urlToOpen);
+      // If not, open a new window
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
     })
   );
 });
