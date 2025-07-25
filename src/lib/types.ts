@@ -84,3 +84,10 @@ export type WithdrawalRequest = {
     operator?: 'Vodafone' | 'Etisalat' | 'Orange';
 };
  
+export type NotificationPayload = {
+  title: string;
+  body: string;
+  url: string;
+  icon?: string;
+  tag?: string;
+};
