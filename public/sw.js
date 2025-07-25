@@ -1,62 +1,52 @@
-
 self.addEventListener('push', (event) => {
-  if (!event.data) {
-    console.error('Push event but no data');
-    return;
-  }
-
-  try {
     const data = event.data.json();
-    const { title, body, url, icon } = data;
-    const chatId = url.substring(url.lastIndexOf('/') + 1);
+    const { title, body, icon, tag, url } = data;
 
     const options = {
-      body: body,
-      icon: icon || '/duck_logo.png', // Fallback to app logo
-      badge: '/duck_logo_mono.png', // Monochrome logo for the status bar
-      tag: chatId, // Group notifications by chat
-      renotify: true, // Re-notify if a new message arrives in the same chat
-      data: {
-        url: url, // URL to open on click
-      },
+        body: body,
+        icon: '/duck_logo.png', // Fallback icon
+        badge: '/duck_logo.png',
+        vibrate: [200, 100, 200],
+        tag: tag,
+        data: {
+            url: url
+        },
+        actions: []
     };
+    
+    // Use the provided icon if it's a valid URL, otherwise use fallback
+    if (icon && icon.startsWith('http')) {
+        options.icon = icon;
+        options.badge = icon;
+    }
 
-    event.waitUntil(self.registration.showNotification(title, options));
-  } catch (error) {
-    console.error('Error parsing push data:', error);
-    // Fallback notification if data parsing fails
-    event.waitUntil(
-      self.registration.showNotification('New Message', {
-        body: 'You have a new message.',
-        icon: '/duck_logo.png',
-      })
-    );
-  }
+    const promiseChain = self.registration.showNotification(title, options);
+    event.waitUntil(promiseChain);
 });
 
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-
-  const urlToOpen = event.notification.data?.url || '/';
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientList) => {
-      // Check if there's already a window open with the same URL.
-      for (const client of clientList) {
-        // Use client.url and check if it ends with the desired path
-        const clientPath = new URL(client.url).pathname;
-        if (clientPath === urlToOpen && 'focus' in client) {
-          return client.focus();
+    event.notification.close();
+    const urlToOpen = event.notification.data.url;
+    
+    const promiseChain = clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true
+    }).then((windowClients) => {
+        let matchingClient = null;
+        for (let i = 0; i < windowClients.length; i++) {
+            const windowClient = windowClients[i];
+            if (windowClient.url === urlToOpen) {
+                matchingClient = windowClient;
+                break;
+            }
         }
-      }
-      // If no window is found, open a new one.
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
-    })
-  );
-});
 
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
+        if (matchingClient) {
+            return matchingClient.focus();
+        } else {
+            return clients.openWindow(urlToOpen);
+        }
+    });
+
+    event.waitUntil(promiseChain);
 });

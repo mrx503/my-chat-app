@@ -9,8 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Copy, Camera, Wallet, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db, storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db } from '@/lib/firebase';
 import type { User } from '@/lib/types';
 
 interface ProfileCardProps {
@@ -35,22 +34,20 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
         fileInputRef.current?.click();
     };
 
-    const compressImage = (file: File, quality = 0.7): Promise<Blob> => {
+    const compressAndEncode = (file: File, quality = 0.7): Promise<string> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
-            reader.onload = (event) => { 
+            reader.onload = (event) => {
                 const img = new Image();
-                img.src = event.target?.result as string; 
+                img.src = event.target?.result as string;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
-                    if (!ctx) {
-                        return reject(new Error("Failed to get canvas context"));
-                    }
-                    // Optional: Resize image for performance
-                    const MAX_WIDTH = 800;
-                    const MAX_HEIGHT = 800;
+                    if (!ctx) return reject(new Error("Failed to get canvas context"));
+
+                    const MAX_WIDTH = 256;
+                    const MAX_HEIGHT = 256;
                     let width = img.width;
                     let height = img.height;
 
@@ -69,13 +66,10 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                     canvas.width = width;
                     canvas.height = height;
                     ctx.drawImage(img, 0, 0, width, height);
-                    canvas.toBlob((blob) => {
-                        if (blob) {
-                            resolve(blob);
-                        } else {
-                            reject(new Error('Canvas to Blob conversion failed'));
-                        }
-                    }, file.type, quality);
+                    
+                    // Get the data URL from the canvas
+                    const dataUrl = canvas.toDataURL(file.type, quality);
+                    resolve(dataUrl);
                 };
                 img.onerror = (error) => reject(error);
             };
@@ -86,27 +80,23 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file && currentUser) {
+            if (!file.type.startsWith('image/')) {
+                toast({ variant: 'destructive', title: 'Invalid File', description: 'Please select an image file.' });
+                return;
+            }
+
             try {
-                toast({ title: 'Uploading...', description: 'Please wait while we update your picture.' });
+                toast({ title: 'Updating picture...', description: 'Please wait.' });
                 
-                // 1. Compress the image
-                const compressedBlob = await compressImage(file);
-
-                // 2. Create a reference to Firebase Storage
-                const storageRef = ref(storage, `avatars/${currentUser.uid}/${Date.now()}_${file.name}`);
-
-                // 3. Upload the file
-                const snapshot = await uploadBytes(storageRef, compressedBlob);
-
-                // 4. Get the download URL
-                const downloadURL = await getDownloadURL(snapshot.ref);
-
-                // 5. Update the user document in Firestore
+                // 1. Compress and get base64 data URL
+                const dataUrl = await compressAndEncode(file);
+                
+                // 2. Update the user document in Firestore
                 const userDocRef = doc(db, 'users', currentUser.uid);
-                await updateDoc(userDocRef, { avatar: downloadURL });
+                await updateDoc(userDocRef, { avatar: dataUrl });
                 
-                // 6. Update local state
-                updateCurrentUser({ avatar: downloadURL });
+                // 3. Update local state
+                updateCurrentUser({ avatar: dataUrl });
 
                 toast({ title: 'Success', description: 'Profile picture updated!' });
             } catch (error) {
@@ -114,6 +104,7 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to update profile picture.' });
             }
         }
+        // Reset file input
         if (event.target) {
             event.target.value = '';
         }
