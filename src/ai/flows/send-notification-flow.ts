@@ -17,8 +17,6 @@ const SendNotificationInputSchema = z.object({
     title: z.string().describe('The title of the notification.'),
     body: z.string().describe('The body text of the notification.'),
     url: z.string().url().describe('The URL to open when the notification is clicked.'),
-    icon: z.string().optional().describe('The icon to display in the notification.'),
-    tag: z.string().optional().describe('A tag to group notifications.'),
   }).describe('The notification content.'),
 });
 

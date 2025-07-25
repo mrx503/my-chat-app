@@ -229,9 +229,7 @@ export default function ChatPage() {
                     payload: {
                         title: currentUser.name || 'New Message',
                         body: messageText,
-                        url: `${window.location.origin}/chat/${chatId}`,
-                        icon: chat.contact.avatar,
-                        tag: chatId,
+                        url: `${window.location.origin}/chat/${chatId}`
                     }
                 });
             } catch (e) {
@@ -321,9 +319,7 @@ export default function ChatPage() {
                         payload: {
                             title: currentUser.name || 'New Message',
                             body: body,
-                            url: `${window.location.origin}/chat/${chatId}`,
-                            icon: chat.contact.avatar,
-                            tag: chatId,
+                            url: `${window.location.origin}/chat/${chatId}`
                         }
                     });
                 } catch (e) {
