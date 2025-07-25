@@ -66,6 +66,7 @@ export type Chat = {
   createdAt: Timestamp;
   encrypted?: boolean;
   chatPassword?: string;
+  deletedFor?: string[];
 };
 
 export type WithdrawalRequest = {

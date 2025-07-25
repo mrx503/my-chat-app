@@ -225,13 +225,14 @@ export default function ChatPage() {
         if (chat.contact?.pushSubscription) {
             try {
                 const fullUrl = `${window.location.origin}/chat/${chatId}`;
+                const iconUrl = `${window.location.origin}/duck_logo.png`;
                 await sendNotification({
                     subscription: chat.contact.pushSubscription,
                     payload: {
                         title: currentUser.name || 'New Message',
                         body: messageText,
                         url: fullUrl,
-                        icon: currentUser.avatar || '/duck_logo.png',
+                        icon: iconUrl,
                         tag: chatId,
                     }
                 });
@@ -317,6 +318,7 @@ export default function ChatPage() {
             if (chat.contact?.pushSubscription) {
                 try {
                     const fullUrl = `${window.location.origin}/chat/${chatId}`;
+                    const iconUrl = `${window.location.origin}/duck_logo.png`;
                     const body = isImage ? 'Sent an image' : `Sent a file: ${file.name}`;
                     await sendNotification({
                         subscription: chat.contact.pushSubscription,
@@ -324,7 +326,7 @@ export default function ChatPage() {
                             title: currentUser.name || 'New Message',
                             body: body,
                             url: fullUrl,
-                            icon: currentUser.avatar || '/duck_logo.png',
+                            icon: iconUrl,
                             tag: chatId,
                         }
                     });
