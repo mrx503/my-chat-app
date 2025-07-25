@@ -1,40 +1,35 @@
 
+// This is the service worker file.
+// It's responsible for handling background tasks like push notifications.
+
 self.addEventListener('push', (event) => {
   const data = event.data.json();
-  const { title, body, icon, tag, url } = data;
-
+  const title = data.title || 'New Message';
   const options = {
-    body: body,
-    icon: icon || '/duck_logo.png', // Fallback icon
-    badge: '/duck_badge.png', // A monochrome badge for the status bar
-    vibrate: [200, 100, 200, 100, 200, 100, 200], // Vibration pattern
-    tag: tag, // Use chat ID to stack notifications
-    renotify: true, // Vibrate and play sound for new notifications with the same tag
-    actions: [], // Remove default "settings" button on some platforms
+    body: data.body,
+    // Use the provided icon, or a default one if not available.
+    icon: data.icon || '/duck_logo_192.png',
+    // Use the chat ID as a tag to group notifications
+    tag: data.tag,
+    // Add a vibration pattern for a more noticeable notification
+    vibrate: [200, 100, 200],
+    // Store the URL to open in the data payload
     data: {
-      url: url, // URL to open on click
+      url: data.url
     },
+    // No default actions to prevent "unsubscribe" etc.
+    actions: [],
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {
+  // Close the notification
   event.notification.close();
-  const urlToOpen = event.notification.data.url;
 
+  // Open the app or a specific URL
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientList) => {
-      // Check if a window is already open and focused
-      for (const client of clientList) {
-        if (client.url === urlToOpen && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // If not, open a new window
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
-    })
+    clients.openWindow(event.notification.data.url || '/')
   );
 });
