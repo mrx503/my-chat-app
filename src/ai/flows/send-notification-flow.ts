@@ -16,7 +16,6 @@ const SendNotificationInputSchema = z.object({
   payload: z.object({
     title: z.string().describe('The title of the notification.'),
     body: z.string().describe('The body text of the notification.'),
-    url: z.string().url().describe('The URL to open when the notification is clicked.'),
     tag: z.string().optional().describe('The tag to group notifications.'),
   }).describe('The notification content.'),
 });

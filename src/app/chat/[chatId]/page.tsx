@@ -229,7 +229,6 @@ export default function ChatPage() {
                     payload: {
                         title: currentUser.name || 'New Message',
                         body: messageText,
-                        url: `${window.location.origin}/chat/${chatId}`,
                         tag: chatId,
                     }
                 });
@@ -342,7 +341,6 @@ export default function ChatPage() {
                         payload: {
                             title: currentUser.name || 'New Message',
                             body: body,
-                            url: `${window.location.origin}/chat/${chatId}`,
                             tag: chatId,
                         }
                     });
