@@ -230,7 +230,6 @@ export default function ChatPage() {
                         title: currentUser.name || 'New Message',
                         body: messageText,
                         url: `${window.location.origin}/chat/${chatId}`,
-                        icon: chat.contact.avatar,
                         tag: chatId,
                     }
                 });
@@ -344,7 +343,6 @@ export default function ChatPage() {
                             title: currentUser.name || 'New Message',
                             body: body,
                             url: `${window.location.origin}/chat/${chatId}`,
-                            icon: chat.contact.avatar,
                             tag: chatId,
                         }
                     });
