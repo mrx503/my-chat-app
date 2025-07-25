@@ -8,6 +8,7 @@ import { AuthProvider } from '@/context/AuthContext';
 export const metadata: Metadata = {
   title: 'duck',
   description: 'A modern chat application',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
@@ -24,6 +25,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <link rel="icon" href="/duck_logo.png" sizes="any" />
       </head>
       <body className="font-body antialiased overflow-x-hidden">
         <ThemeProvider
