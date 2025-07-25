@@ -224,17 +224,12 @@ export default function ChatPage() {
         // Send Push Notification
         if (chat.contact?.pushSubscription) {
             try {
-                const fullUrl = `${window.location.origin}/chat/${chatId}`;
-                const iconUrl = `${window.location.origin}/duck_logo.png`;
                 await sendNotification({
                     subscription: chat.contact.pushSubscription,
                     payload: {
                         title: currentUser.name || 'New Message',
                         body: messageText,
-                        url: fullUrl,
-                        icon: iconUrl,
-                        badge: currentUser.avatar,
-                        tag: chatId,
+                        url: `${window.location.origin}/chat/${chatId}`,
                     }
                 });
             } catch (e) {
@@ -318,18 +313,13 @@ export default function ChatPage() {
 
             if (chat.contact?.pushSubscription) {
                 try {
-                    const fullUrl = `${window.location.origin}/chat/${chatId}`;
-                    const iconUrl = `${window.location.origin}/duck_logo.png`;
                     const body = isImage ? 'Sent an image' : `Sent a file: ${file.name}`;
                     await sendNotification({
                         subscription: chat.contact.pushSubscription,
                         payload: {
                             title: currentUser.name || 'New Message',
                             body: body,
-                            url: fullUrl,
-                            icon: iconUrl,
-                            badge: currentUser.avatar,
-                            tag: chatId,
+                            url: `${window.location.origin}/chat/${chatId}`,
                         }
                     });
                 } catch (e) {
