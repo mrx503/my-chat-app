@@ -9,7 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Copy, Camera, Wallet, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import type { User } from '@/lib/types';
 
 interface ProfileCardProps {
@@ -34,7 +35,7 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
         fileInputRef.current?.click();
     };
 
-    const compressImage = (file: File, quality = 0.7): Promise<string> => {
+    const compressImage = (file: File, quality = 0.7): Promise<Blob> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -68,7 +69,13 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                     canvas.width = width;
                     canvas.height = height;
                     ctx.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL(file.type, quality));
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            resolve(blob);
+                        } else {
+                            reject(new Error('Canvas to Blob conversion failed'));
+                        }
+                    }, file.type, quality);
                 };
                 img.onerror = (error) => reject(error);
             };
@@ -81,10 +88,26 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
         if (file && currentUser) {
             try {
                 toast({ title: 'Uploading...', description: 'Please wait while we update your picture.' });
-                const base64 = await compressImage(file);
+                
+                // 1. Compress the image
+                const compressedBlob = await compressImage(file);
+
+                // 2. Create a reference to Firebase Storage
+                const storageRef = ref(storage, `avatars/${currentUser.uid}/${Date.now()}_${file.name}`);
+
+                // 3. Upload the file
+                const snapshot = await uploadBytes(storageRef, compressedBlob);
+
+                // 4. Get the download URL
+                const downloadURL = await getDownloadURL(snapshot.ref);
+
+                // 5. Update the user document in Firestore
                 const userDocRef = doc(db, 'users', currentUser.uid);
-                await updateDoc(userDocRef, { avatar: base64 });
-                updateCurrentUser({ avatar: base64 });
+                await updateDoc(userDocRef, { avatar: downloadURL });
+                
+                // 6. Update local state
+                updateCurrentUser({ avatar: downloadURL });
+
                 toast({ title: 'Success', description: 'Profile picture updated!' });
             } catch (error) {
                 console.error("Error updating avatar:", error);
@@ -118,7 +141,7 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                             <Camera className="h-4 w-4 text-primary-foreground"/>
                             <span className="sr-only">Change profile picture</span>
                         </button>
-                        <Input id="avatar-upload" type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                        <Input id="avatar-upload" type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                     </div>
                     <div>
                         <CardTitle>{currentUser.name || currentUser.email}</CardTitle>

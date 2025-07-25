@@ -33,7 +33,7 @@ const setupPushNotifications = async (userId: string) => {
         return;
     }
     
-    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const vapidPublicKey = VAPID_PUBLIC_KEY;
     if (!vapidPublicKey) {
         console.error('VAPID public key not found. Cannot subscribe to push notifications.');
         return;

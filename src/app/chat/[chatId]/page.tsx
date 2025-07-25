@@ -229,7 +229,8 @@ export default function ChatPage() {
                     payload: {
                         title: currentUser.name || 'New Message',
                         body: messageText,
-                        url: `${window.location.origin}/chat/${chatId}`
+                        url: `${window.location.origin}/chat/${chatId}`,
+                        icon: chat.contact.avatar,
                     }
                 });
             } catch (e) {
@@ -238,7 +239,7 @@ export default function ChatPage() {
         }
     };
     
-    const compressImage = (file: File, quality = 0.7): Promise<string> => {
+    const compressImage = (file: File, quality = 0.7): Promise<Blob> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -247,11 +248,33 @@ export default function ChatPage() {
                 img.src = event.target?.result as string;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
+                     const MAX_WIDTH = 800;
+                    const MAX_HEIGHT = 800;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
                     const ctx = canvas.getContext('2d');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    resolve(canvas.toDataURL(file.type, quality));
+                    ctx?.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            resolve(blob);
+                        } else {
+                            reject(new Error('Canvas to Blob conversion failed'));
+                        }
+                    }, file.type, quality);
                 };
                 img.onerror = (error) => reject(error);
             };
@@ -297,7 +320,7 @@ export default function ChatPage() {
 
         try {
             const isImage = file.type.startsWith('image/');
-            const base64 = isImage ? await compressImage(file) : await readFileAsBase64(file);
+            const base64 = isImage ? await readFileAsBase64(await compressImage(file)) : await readFileAsBase64(file);
             
             const messagesColRef = collection(db, 'chats', chatId, 'messages');
             await addDoc(messagesColRef, {
@@ -319,7 +342,8 @@ export default function ChatPage() {
                         payload: {
                             title: currentUser.name || 'New Message',
                             body: body,
-                            url: `${window.location.origin}/chat/${chatId}`
+                            url: `${window.location.origin}/chat/${chatId}`,
+                            icon: chat.contact.avatar
                         }
                     });
                 } catch (e) {
