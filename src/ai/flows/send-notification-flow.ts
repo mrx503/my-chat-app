@@ -17,6 +17,14 @@ const SendNotificationInputSchema = z.object({
     title: z.string().describe('The title of the notification.'),
     body: z.string().describe('The body text of the notification.'),
     tag: z.string().optional().describe('The tag to group notifications.'),
+    icon: z.string().optional().describe('URL of the notification icon.'),
+    image: z.string().optional().describe('URL of an image to show in the notification.'),
+    badge: z.string().optional().describe('URL of the badge icon.'),
+    actions: z.array(z.object({
+      action: z.string(),
+      title: z.string(),
+      icon: z.string().optional()
+    })).optional().describe('Interactive action buttons for the notification.')
   }).describe('The notification content.'),
 });
 

@@ -32,6 +32,8 @@ export default function ChatPage() {
     const [isAutoReplyActive, setIsAutoReplyActive] = useState(false);
     const [isSystemChat, setIsSystemChat] = useState(false);
     const lastProcessedMessageId = useRef<string | null>(null);
+    
+    const notificationIcon = "https://i.postimg.cc/Gtp5B5Gh/file-00000000a07c620a8c42c26f1f499972.png";
 
     useEffect(() => {
         if (!currentUser) {
@@ -230,6 +232,7 @@ export default function ChatPage() {
                         title: currentUser.name || 'New Message',
                         body: messageText,
                         tag: chatId,
+                        icon: notificationIcon
                     }
                 });
             } catch (e) {
@@ -293,13 +296,18 @@ export default function ChatPage() {
             if (chat.contact?.pushSubscription) {
                 try {
                     const body = isImage ? 'Sent an image' : `Sent a file: ${file.name}`;
+                    const payload: any = {
+                        title: currentUser.name || 'New Message',
+                        body: body,
+                        tag: chatId,
+                        icon: notificationIcon,
+                    };
+                    if (isImage) {
+                        payload.image = base64; // Send the image data url for preview
+                    }
                     await sendNotification({
                         subscription: chat.contact.pushSubscription,
-                        payload: {
-                            title: currentUser.name || 'New Message',
-                            body: body,
-                            tag: chatId,
-                        }
+                        payload
                     });
                 } catch (e) {
                      console.error("Failed to send push notification for file", e);
