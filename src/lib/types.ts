@@ -26,7 +26,8 @@ export type User = {
   blockedUsers?: string[];
   coins: number;
   systemMessagesQueue?: string[]; // Array of messages to be delivered by the system bot
-  pushSubscription?: PushSubscription | null; // For web push notifications
+  pushSubscription?: PushSubscription | null; // DEPRECATED: For web push notifications
+  oneSignalPlayerId?: string; // For OneSignal push notifications
 };
 
 export type ReplyTo = {

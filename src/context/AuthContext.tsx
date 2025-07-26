@@ -5,9 +5,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, getDoc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
-import type { User, PushSubscription } from '@/lib/types';
-import { urlBase64ToUint8Array } from '@/lib/utils';
-import { VAPID_PUBLIC_KEY } from '@/lib/env';
+import type { User } from '@/lib/types';
+import OneSignal from 'react-onesignal';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -27,61 +26,33 @@ const ensureSystemBotExists = async () => {
     }
 };
 
-const setupPushNotifications = async (userId: string) => {
-    if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.warn('Push notifications are not supported by this browser.');
-        return;
-    }
-    
-    const vapidPublicKey = VAPID_PUBLIC_KEY;
-    if (!vapidPublicKey) {
-        console.error('VAPID public key not found. Cannot subscribe to push notifications.');
-        return;
-    }
-
+const setupOneSignal = async (userId: string) => {
+    if (typeof window === 'undefined') return;
     try {
-        const registration = await navigator.serviceWorker.register('/sw.js');
-        
-        // Force update of service worker
-        registration.update();
+        await OneSignal.init({ appId: process.env.NEXT_PUBLIC_ONE_SIGNAL_APP_ID! });
+        OneSignal.login(userId);
 
-        const permission = await window.Notification.requestPermission();
-        if (permission !== 'granted') {
-            console.log('Push notification permission not granted.');
-            return;
-        }
-
-        const existingSubscription = await registration.pushManager.getSubscription();
-        if (existingSubscription) {
-            await saveSubscription(userId, existingSubscription);
-            return;
-        }
-        
-        const newSubscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        OneSignal.Notifications.addEventListener('permissionChange', (permission) => {
+             console.log('OneSignal permission changed:', permission);
         });
-
-        await saveSubscription(userId, newSubscription);
-
+        
+        const playerId = OneSignal.User.PushSubscription.id;
+        if (playerId) {
+            const userDocRef = doc(db, 'users', userId);
+            await updateDoc(userDocRef, { oneSignalPlayerId: playerId });
+        } else {
+            // Wait for the subscription to be available
+            OneSignal.User.PushSubscription.addEventListener('change', async (change) => {
+                if (change.current.id) {
+                    const userDocRef = doc(db, 'users', userId);
+                    await updateDoc(userDocRef, { oneSignalPlayerId: change.current.id });
+                }
+            });
+        }
     } catch (error) {
-        console.error('Failed to subscribe to push notifications:', error);
+        console.error("Error initializing OneSignal:", error);
     }
-};
-
-const saveSubscription = async (userId: string, subscription: globalThis.PushSubscription) => {
-    const userDocRef = doc(db, 'users', userId);
-    const subscriptionJSON = subscription.toJSON();
-    const dbSubscription: PushSubscription = {
-        endpoint: subscriptionJSON.endpoint!,
-        expirationTime: subscriptionJSON.expirationTime,
-        keys: {
-            p256dh: subscriptionJSON.keys!.p256dh!,
-            auth: subscriptionJSON.keys!.auth!,
-        },
-    };
-    await updateDoc(userDocRef, { pushSubscription: dbSubscription });
-};
+}
 
 
 interface AuthContextType {
@@ -114,7 +85,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
-        setupPushNotifications(user.uid);
+        setupOneSignal(user.uid);
         const userDocRef = doc(db, 'users', user.uid);
         
         updateDoc(userDocRef, { online: true });
@@ -192,6 +163,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             lastSeen: serverTimestamp()
         });
     }
+    OneSignal.logout();
     return signOut(auth);
   };
 

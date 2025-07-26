@@ -12,7 +12,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { generateReply } from '@/ai/flows/auto-reply-flow';
-import { sendNotification } from '@/ai/flows/send-notification-flow';
+import { sendOneSignalNotification } from '@/ai/flows/one-signal-flow';
+
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -33,7 +34,6 @@ export default function ChatPage() {
     const [isSystemChat, setIsSystemChat] = useState(false);
     const lastProcessedMessageId = useRef<string | null>(null);
     
-    const notificationIcon = "https://i.postimg.cc/Gtp5B5Gh/file-00000000a07c620a8c42c26f1f499972.png";
 
     useEffect(() => {
         if (!currentUser) {
@@ -223,20 +223,17 @@ export default function ChatPage() {
         });
         setReplyingTo(null);
 
-        // Send Push Notification
-        if (chat.contact?.pushSubscription) {
+        // Send Push Notification via OneSignal
+        if (chat.contact?.oneSignalPlayerId) {
             try {
-                await sendNotification({
-                    subscription: chat.contact.pushSubscription,
-                    payload: {
-                        title: currentUser.name || 'New Message',
-                        body: messageText,
-                        tag: chatId,
-                        icon: notificationIcon
-                    }
+                await sendOneSignalNotification({
+                    playerId: chat.contact.oneSignalPlayerId,
+                    title: currentUser.name || 'New Message',
+                    body: messageText,
+                    chatId: chatId,
                 });
             } catch (e) {
-                console.error("Failed to send push notification", e);
+                console.error("Failed to send OneSignal notification", e);
             }
         }
     };
@@ -293,21 +290,14 @@ export default function ChatPage() {
     
             toast({ title: 'Success!', description: 'File sent successfully.' });
 
-            if (chat.contact?.pushSubscription) {
+            if (chat.contact?.oneSignalPlayerId) {
                 try {
                     const body = isImage ? 'Sent an image' : `Sent a file: ${file.name}`;
-                    const payload: any = {
+                    await sendOneSignalNotification({
+                        playerId: chat.contact.oneSignalPlayerId,
                         title: currentUser.name || 'New Message',
                         body: body,
-                        tag: chatId,
-                        icon: notificationIcon,
-                    };
-                    if (isImage) {
-                        payload.image = base64; // Send the image data url for preview
-                    }
-                    await sendNotification({
-                        subscription: chat.contact.pushSubscription,
-                        payload
+                        chatId: chatId,
                     });
                 } catch (e) {
                      console.error("Failed to send push notification for file", e);
