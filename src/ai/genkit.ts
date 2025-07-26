@@ -1,5 +1,3 @@
-import {config} from 'dotenv';
-config({path: '.env'});
 
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
