@@ -7,6 +7,7 @@ import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, getDoc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 import OneSignal from 'react-onesignal';
+import { ONE_SIGNAL_APP_ID } from '@/lib/env';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -27,9 +28,9 @@ const ensureSystemBotExists = async () => {
 };
 
 const setupOneSignal = async (userId: string) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !ONE_SIGNAL_APP_ID) return;
     try {
-        await OneSignal.init({ appId: process.env.NEXT_PUBLIC_ONE_SIGNAL_APP_ID! });
+        await OneSignal.init({ appId: ONE_SIGNAL_APP_ID });
         OneSignal.login(userId);
 
         OneSignal.Notifications.addEventListener('permissionChange', (permission) => {
