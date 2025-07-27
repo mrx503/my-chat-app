@@ -29,6 +29,21 @@ const ensureSystemBotExists = async () => {
 
 const setupOneSignal = async (userId: string) => {
     if (typeof window === 'undefined' || !ONE_SIGNAL_APP_ID) return;
+
+    // --- Start of Fix: Unregister old service workers ---
+    if ('serviceWorker' in navigator) {
+        try {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const registration of registrations) {
+                await registration.unregister();
+                console.log('Old service worker unregistered successfully.');
+            }
+        } catch (error) {
+            console.error('Error unregistering old service worker:', error);
+        }
+    }
+    // --- End of Fix ---
+
     try {
         await OneSignal.init({ appId: ONE_SIGNAL_APP_ID });
         OneSignal.login(userId);
