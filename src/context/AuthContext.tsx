@@ -31,14 +31,6 @@ const setupOneSignal = async (userId: string) => {
     if (typeof window === 'undefined' || !ONE_SIGNAL_APP_ID) return;
 
     try {
-        console.log("Attempting to clean up old service workers before initializing OneSignal...");
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (const registration of registrations) {
-            console.log("Unregistering old service worker:", registration);
-            await registration.unregister();
-        }
-        console.log("Cleanup complete. Initializing OneSignal...");
-        
         // This check is crucial. If OneSignal is already initialized, do not re-initialize.
         if (OneSignal.initialized) {
             console.log("OneSignal already initialized.");
