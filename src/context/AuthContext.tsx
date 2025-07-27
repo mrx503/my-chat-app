@@ -6,8 +6,6 @@ import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndP
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, getDoc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
-import OneSignal from 'react-onesignal';
-import { ONE_SIGNAL_APP_ID } from '@/lib/env';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -26,39 +24,6 @@ const ensureSystemBotExists = async () => {
         });
     }
 };
-
-const setupOneSignal = async (userId: string) => {
-    if (typeof window === 'undefined' || !ONE_SIGNAL_APP_ID) return;
-
-    try {
-        if (OneSignal.initialized) {
-            console.log("OneSignal already initialized.");
-            return;
-        }
-
-        await OneSignal.init({
-             appId: ONE_SIGNAL_APP_ID,
-        });
-
-        OneSignal.login(userId);
-
-        OneSignal.Notifications.addEventListener('permissionChange', (permission) => {
-             console.log('OneSignal permission changed:', permission);
-        });
-
-        OneSignal.User.PushSubscription.addEventListener('change', async (change) => {
-            if (change.current.id) {
-                console.log("OneSignal Player ID received:", change.current.id);
-                const userDocRef = doc(db, 'users', userId);
-                await updateDoc(userDocRef, { oneSignalPlayerId: change.current.id });
-            }
-        });
-
-    } catch (error) {
-        console.error("Error during OneSignal setup:", error);
-    }
-};
-
 
 interface AuthContextType {
   currentUser: (User & { uid: string }) | null;
@@ -90,7 +55,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
-        setupOneSignal(user.uid);
         const userDocRef = doc(db, 'users', user.uid);
         
         updateDoc(userDocRef, { online: true });
@@ -125,9 +89,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         setCurrentUser(null);
         setLoading(false);
-        if (OneSignal.initialized) {
-            OneSignal.logout();
-        }
       }
     });
 
@@ -170,9 +131,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             online: false,
             lastSeen: serverTimestamp()
         });
-    }
-    if (OneSignal.initialized) {
-        OneSignal.logout();
     }
     return signOut(auth);
   };
