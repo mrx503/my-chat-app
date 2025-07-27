@@ -31,12 +31,10 @@ const setupOneSignal = async (userId: string) => {
     if (typeof window === 'undefined' || !ONE_SIGNAL_APP_ID || OneSignal.initialized) return;
 
     try {
+        // Use the default OneSignal initialization. It will look for the service worker files
+        // in the root public directory. This is the most stable configuration.
         await OneSignal.init({
              appId: ONE_SIGNAL_APP_ID,
-             // Tell OneSignal to use our own service worker file
-             serviceWorkerPath: '/sw.js',
-             // The service worker will be scoped to the root of the site.
-             serviceWorkerParam: { scope: '/' },
         });
 
         OneSignal.login(userId);
