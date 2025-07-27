@@ -1,21 +1,11 @@
+
 {
-  "name": "Murrasil",
-  "short_name": "Murrasil",
+  "name": "duck",
+  "short_name": "duck",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f0f2f5",
-  "theme_color": "#3498db",
-  "description": "A modern chat application.",
-  "icons": [
-    {
-      "src": "/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+  "background_color": "#ffffff",
+  "theme_color": "#2089E6",
+  "gcm_sender_id": "482941778795",
+  "gcm_sender_id_comment": "Do not change the GCM Sender ID"
 }
