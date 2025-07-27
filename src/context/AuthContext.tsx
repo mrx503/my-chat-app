@@ -28,43 +28,32 @@ const ensureSystemBotExists = async () => {
 };
 
 const setupOneSignal = async (userId: string) => {
-    if (typeof window === 'undefined' || !ONE_SIGNAL_APP_ID) return;
-
-    // --- Start of Fix: Unregister old service workers ---
-    if ('serviceWorker' in navigator) {
-        try {
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            for (const registration of registrations) {
-                await registration.unregister();
-                console.log('Old service worker unregistered successfully.');
-            }
-        } catch (error) {
-            console.error('Error unregistering old service worker:', error);
-        }
-    }
-    // --- End of Fix ---
+    if (typeof window === 'undefined' || !ONE_SIGNAL_APP_ID || OneSignal.initialized) return;
 
     try {
-        await OneSignal.init({ appId: ONE_SIGNAL_APP_ID });
+        await OneSignal.init({
+             appId: ONE_SIGNAL_APP_ID,
+             // Tell OneSignal to use our own service worker file
+             serviceWorkerPath: '/sw.js',
+             // The service worker will be scoped to the root of the site.
+             serviceWorkerParam: { scope: '/' },
+        });
+
         OneSignal.login(userId);
 
         OneSignal.Notifications.addEventListener('permissionChange', (permission) => {
              console.log('OneSignal permission changed:', permission);
         });
-        
-        const playerId = OneSignal.User.PushSubscription.id;
-        if (playerId) {
-            const userDocRef = doc(db, 'users', userId);
-            await updateDoc(userDocRef, { oneSignalPlayerId: playerId });
-        } else {
-            // Wait for the subscription to be available
-            OneSignal.User.PushSubscription.addEventListener('change', async (change) => {
-                if (change.current.id) {
-                    const userDocRef = doc(db, 'users', userId);
-                    await updateDoc(userDocRef, { oneSignalPlayerId: change.current.id });
-                }
-            });
-        }
+
+        // Use an event listener to get the player ID when it becomes available
+        OneSignal.User.PushSubscription.addEventListener('change', async (change) => {
+            if (change.current.id) {
+                console.log("OneSignal Player ID found:", change.current.id);
+                const userDocRef = doc(db, 'users', userId);
+                await updateDoc(userDocRef, { oneSignalPlayerId: change.current.id });
+            }
+        });
+
     } catch (error) {
         console.error("Error initializing OneSignal:", error);
     }
