@@ -223,7 +223,6 @@ export default function ChatPage() {
         });
         setReplyingTo(null);
 
-        // Send Push Notification via OneSignal
         if (chat.contact?.oneSignalPlayerId) {
             try {
                 await sendOneSignalNotification({

@@ -54,8 +54,6 @@ const sendOneSignalNotificationFlow = ai.defineFlow(
         { id: 'reply', text: 'Reply' },
         { id: 'mark-read', text: 'Mark as read' }
     ];
-    // This icon will be used by default from the OneSignal dashboard or the service worker
-    // notification.chrome_web_icon = 'https://i.postimg.cc/Gtp5B5Gh/file-00000000a07c620a8c42c26f1f499972.png';
 
     try {
       await client.createNotification(notification);

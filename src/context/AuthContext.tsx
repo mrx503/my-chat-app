@@ -31,7 +31,6 @@ const setupOneSignal = async (userId: string) => {
     if (typeof window === 'undefined' || !ONE_SIGNAL_APP_ID) return;
 
     try {
-        // This check is crucial. If OneSignal is already initialized, do not re-initialize.
         if (OneSignal.initialized) {
             console.log("OneSignal already initialized.");
             return;
@@ -126,6 +125,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         setCurrentUser(null);
         setLoading(false);
+        if (OneSignal.initialized) {
+            OneSignal.logout();
+        }
       }
     });
 
@@ -151,7 +153,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
         coins: 0,
         systemMessagesQueue: [],
-        pushSubscription: null,
+        oneSignalPlayerId: null,
     };
     await setDoc(doc(db, "users", user.uid), userDoc);
     return userCredential;
@@ -169,7 +171,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             lastSeen: serverTimestamp()
         });
     }
-    OneSignal.logout();
+    if (OneSignal.initialized) {
+        OneSignal.logout();
+    }
     return signOut(auth);
   };
 
