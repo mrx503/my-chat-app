@@ -28,11 +28,23 @@ const ensureSystemBotExists = async () => {
 };
 
 const setupOneSignal = async (userId: string) => {
-    if (typeof window === 'undefined' || !ONE_SIGNAL_APP_ID || OneSignal.initialized) return;
+    if (typeof window === 'undefined' || !ONE_SIGNAL_APP_ID) return;
 
     try {
-        // Use the default OneSignal initialization. It will look for the service worker files
-        // in the root public directory. This is the most stable configuration.
+        console.log("Attempting to clean up old service workers before initializing OneSignal...");
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+            console.log("Unregistering old service worker:", registration);
+            await registration.unregister();
+        }
+        console.log("Cleanup complete. Initializing OneSignal...");
+        
+        // This check is crucial. If OneSignal is already initialized, do not re-initialize.
+        if (OneSignal.initialized) {
+            console.log("OneSignal already initialized.");
+            return;
+        }
+
         await OneSignal.init({
              appId: ONE_SIGNAL_APP_ID,
         });
@@ -43,19 +55,18 @@ const setupOneSignal = async (userId: string) => {
              console.log('OneSignal permission changed:', permission);
         });
 
-        // Use an event listener to get the player ID when it becomes available
         OneSignal.User.PushSubscription.addEventListener('change', async (change) => {
             if (change.current.id) {
-                console.log("OneSignal Player ID found:", change.current.id);
+                console.log("OneSignal Player ID received:", change.current.id);
                 const userDocRef = doc(db, 'users', userId);
                 await updateDoc(userDocRef, { oneSignalPlayerId: change.current.id });
             }
         });
 
     } catch (error) {
-        console.error("Error initializing OneSignal:", error);
+        console.error("Error during OneSignal setup:", error);
     }
-}
+};
 
 
 interface AuthContextType {
