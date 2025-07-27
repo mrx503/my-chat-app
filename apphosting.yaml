@@ -5,3 +5,13 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+# Pass secrets as environment variables to the Next.js server.
+# The keys in this map are the names of the environment variables, and the
+# values are the names of the secrets.
+secretEnv:
+  - key: 'ONE_SIGNAL_APP_ID'
+    secret: 'ONE_SIGNAL_APP_ID'
+  - key: 'ONE_SIGNAL_REST_API_KEY'
+    secret: 'ONE_SIGNAL_REST_API_KEY'
+  - key: 'NEXT_PUBLIC_ONE_SIGNAL_APP_ID'
+    secret: 'NEXT_PUBLIC_ONE_SIGNAL_APP_ID'
