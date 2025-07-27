@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "deploy": "firebase deploy --only apphosting"
+    "deploy": "firebase deploy --only apphosting --project duck0-98a94"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",
