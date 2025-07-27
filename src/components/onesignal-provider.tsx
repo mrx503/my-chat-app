@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import OneSignal from 'react-onesignal';
 import { useAuth } from '@/context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { ONE_SIGNAL_APP_ID } from '@/lib/env';
 
 // This flag ensures that OneSignal is initialized only once in the entire application lifecycle.
