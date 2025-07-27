@@ -148,6 +148,7 @@ export default function ChatPage() {
                 await addDoc(messagesColRef, {
                     text: result.reply,
                     senderId: currentUser.uid,
+                    senderName: currentUser.name || 'User',
                     timestamp: serverTimestamp(),
                     type: 'text',
                     status: 'sent',
@@ -216,6 +217,7 @@ export default function ChatPage() {
         await addDoc(messagesColRef, {
             text: messageText,
             senderId: currentUser.uid,
+            senderName: currentUser.name || 'User',
             timestamp: serverTimestamp(),
             type: 'text',
             status: 'sent',
@@ -257,6 +259,7 @@ export default function ChatPage() {
         await addDoc(messagesColRef, {
             text: '',
             senderId: currentUser.uid,
+            senderName: currentUser.name || 'User',
             timestamp: serverTimestamp(),
             type: 'audio',
             fileURL: audioBase64,
@@ -281,6 +284,7 @@ export default function ChatPage() {
             await addDoc(messagesColRef, {
                 text: '',
                 senderId: currentUser.uid,
+                senderName: currentUser.name || 'User',
                 timestamp: serverTimestamp(),
                 type: isImage ? 'image' : 'file',
                 fileURL: base64,

@@ -9,7 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { OneSignal } from '@onesignal/node-onesignal';
+import * as OneSignal from '@onesignal/node-onesignal';
 
 const SendOneSignalNotificationInputSchema = z.object({
   playerId: z.string().describe("The OneSignal Player ID of the recipient."),
@@ -38,18 +38,19 @@ const sendOneSignalNotificationFlow = ai.defineFlow(
       console.error('Cannot send notification: OneSignal keys are not configured in .env file.');
       return;
     }
-
-    const client = new OneSignal.DefaultApi({
-        appId: ONE_SIGNAL_APP_ID,
+    
+    const configuration = OneSignal.createConfiguration({
+        userKey: 'unused', // This is not used but required by the SDK type
         appKey: ONE_SIGNAL_REST_API_KEY,
     });
+    const client = new OneSignal.DefaultApi(configuration);
 
     const notification = new OneSignal.Notification();
     notification.app_id = ONE_SIGNAL_APP_ID;
     notification.include_player_ids = [playerId];
     notification.headings = { en: title };
     notification.contents = { en: body };
-    notification.web_url = `/chat/${chatId}`;
+    notification.web_url = `${process.env.NEXT_PUBLIC_BASE_URL || ''}/chat/${chatId}`;
     notification.web_buttons = [
         { id: 'reply', text: 'Reply' },
         { id: 'mark-read', text: 'Mark as read' }
