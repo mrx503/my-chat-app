@@ -4,7 +4,7 @@ import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/context/AuthContext';
-import OneSignalProvider from '@/components/onesignal-provider';
+import WebPushProvider from '@/components/web-push-provider';
 
 export const metadata: Metadata = {
   title: 'duck',
@@ -35,9 +35,9 @@ export default function RootLayout({
           enableSystem
         >
           <AuthProvider>
-            <OneSignalProvider>
+            <WebPushProvider>
               {children}
-            </OneSignalProvider>
+            </WebPushProvider>
             <Toaster />
           </AuthProvider>
         </ThemeProvider>

@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
         coins: 0,
         systemMessagesQueue: [],
-        oneSignalPlayerId: null,
+        pushSubscription: null,
     };
     await setDoc(doc(db, "users", user.uid), userDoc);
     return userCredential;
@@ -129,7 +129,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const userDocRef = doc(db, 'users', auth.currentUser.uid);
         await updateDoc(userDocRef, {
             online: false,
-            lastSeen: serverTimestamp()
+            lastSeen: serverTimestamp(),
+            pushSubscription: null
         });
     }
     return signOut(auth);

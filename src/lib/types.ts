@@ -26,7 +26,7 @@ export type User = {
   blockedUsers?: string[];
   coins: number;
   systemMessagesQueue?: string[]; // Array of messages to be delivered by the system bot
-  oneSignalPlayerId?: string | null; // For OneSignal push notifications
+  pushSubscription?: PushSubscription | null;
 };
 
 export type ReplyTo = {

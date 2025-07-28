@@ -12,7 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { generateReply } from '@/ai/flows/auto-reply-flow';
-import { sendOneSignalNotification } from '@/ai/flows/one-signal-flow';
+import { sendPushNotification } from '@/ai/flows/send-push-notification';
 
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
@@ -225,16 +225,19 @@ export default function ChatPage() {
         });
         setReplyingTo(null);
 
-        if (chat.contact?.oneSignalPlayerId) {
+        if (chat.contact?.pushSubscription) {
             try {
-                await sendOneSignalNotification({
-                    playerId: chat.contact.oneSignalPlayerId,
+                const payload = {
                     title: currentUser.name || 'New Message',
                     body: messageText,
-                    chatId: chatId,
+                    url: `/chat/${chatId}`,
+                };
+                await sendPushNotification({
+                    subscription: chat.contact.pushSubscription,
+                    payload: JSON.stringify(payload)
                 });
             } catch (e) {
-                console.error("Failed to send OneSignal notification", e);
+                console.error("Failed to send Push notification", e);
             }
         }
     };
@@ -293,14 +296,17 @@ export default function ChatPage() {
     
             toast({ title: 'Success!', description: 'File sent successfully.' });
 
-            if (chat.contact?.oneSignalPlayerId) {
+            if (chat.contact?.pushSubscription) {
                 try {
                     const body = isImage ? 'Sent an image' : `Sent a file: ${file.name}`;
-                    await sendOneSignalNotification({
-                        playerId: chat.contact.oneSignalPlayerId,
+                    const payload = {
                         title: currentUser.name || 'New Message',
                         body: body,
-                        chatId: chatId,
+                        url: `/chat/${chatId}`,
+                    };
+                    await sendPushNotification({
+                        subscription: chat.contact.pushSubscription,
+                        payload: JSON.stringify(payload)
                     });
                 } catch (e) {
                      console.error("Failed to send push notification for file", e);
