@@ -16,6 +16,7 @@ import { LogOut, MessageSquarePlus } from 'lucide-react';
 import SystemChatCard from '@/components/system-chat-card';
 import ProfileCard from '@/components/profile-card';
 import Logo from '@/components/logo';
+import NotificationPermissionHandler from '@/components/notification-permission-handler';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -276,7 +277,8 @@ export default function Home() {
                         onClick={handleSystemChatSelect}
                         className="mb-6"
                     />
-                    <Card>
+                    <NotificationPermissionHandler />
+                    <Card className="mt-6">
                         <CardHeader>
                             <CardTitle>Start or Continue a Chat</CardTitle>
                             <CardDescription>Enter a user ID or select a conversation.</CardDescription>

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { VAPID_PUBLIC_KEY } from '@/lib/env';
 import { urlBase64ToUint8Array } from '@/lib/utils';
@@ -9,74 +9,82 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 
+export const subscribeToPush = async (userId: string): Promise<boolean> => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.warn('Push messaging is not supported');
+        return false;
+    }
+
+    try {
+        const swRegistration = await navigator.serviceWorker.ready;
+        let subscription = await swRegistration.pushManager.getSubscription();
+        
+        if (!subscription) {
+            console.log('No subscription found, creating new one.');
+
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                console.error('Permission for Notifications was denied.');
+                // The NotificationPermissionHandler component will show a message.
+                return false;
+            }
+
+            const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+            subscription = await swRegistration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey,
+            });
+        }
+        
+        console.log('User is subscribed:', subscription);
+        const userDocRef = doc(db, 'users', userId);
+        // Using JSON.parse(JSON.stringify(...)) to convert the PushSubscription object to a plain JS object
+        await updateDoc(userDocRef, {
+            pushSubscription: JSON.parse(JSON.stringify(subscription)),
+        });
+        return true;
+
+    } catch (error) {
+        console.error('Failed to subscribe the user: ', error);
+        return false;
+    }
+};
+
+
 export default function WebPushProvider({ children }: { children: React.ReactNode }) {
     const { currentUser } = useAuth();
     const { toast } = useToast();
-    const isSubscribing = useRef(false);
+    const hasSubscribed = useRef(false);
 
-    useEffect(() => {
-        if (!currentUser || isSubscribing.current) {
+    const handleSubscription = useCallback(async () => {
+        if (!currentUser || hasSubscribed.current) {
             return;
         }
 
-        const subscribeToPush = async () => {
-            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-                console.warn('Push messaging is not supported');
-                return;
+        hasSubscribed.current = true; // Attempt subscription only once per session
+
+        if (Notification.permission === 'granted') {
+            const success = await subscribeToPush(currentUser.uid);
+            if (success) {
+                toast({
+                    title: 'Notifications Enabled',
+                    description: 'You will now receive notifications for new messages.',
+                });
+            } else {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Subscription Failed',
+                    description: 'Could not set up notifications. Please try again later.',
+                });
             }
-
-            isSubscribing.current = true;
-
-            try {
-                const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-                console.log('Service Worker registered:', swRegistration);
-                
-                let subscription = await swRegistration.pushManager.getSubscription();
-
-                if (subscription === null) {
-                    console.log('No subscription found, creating new one.');
-                    
-                    if (Notification.permission === 'denied') {
-                        toast({
-                            variant: 'destructive',
-                            title: 'Notifications Blocked',
-                            description: 'Please enable notifications in your browser settings to receive updates.',
-                        });
-                         isSubscribing.current = false;
-                        return;
-                    }
-
-                    const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-                    subscription = await swRegistration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey,
-                    });
-                }
-                
-                if (subscription) {
-                    console.log('User is subscribed:', subscription);
-                    const userDocRef = doc(db, 'users', currentUser.uid);
-                    await updateDoc(userDocRef, {
-                        pushSubscription: JSON.parse(JSON.stringify(subscription)),
-                    });
-                }
-            } catch (error) {
-                console.error('Failed to subscribe the user: ', error);
-                if (Notification.permission === 'denied') {
-                     toast({
-                        variant: 'destructive',
-                        title: 'Notifications Blocked',
-                        description: 'You have blocked notifications. Please enable them in your browser settings.',
-                    });
-                }
-            } finally {
-                isSubscribing.current = false;
-            }
-        };
-
-        subscribeToPush();
-
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser, toast]);
+
+    useEffect(() => {
+        // Automatically attempt to subscribe if permission is already granted
+        handleSubscription();
+    }, [handleSubscription]);
 
     return <>{children}</>;
 }
