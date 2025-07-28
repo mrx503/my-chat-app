@@ -14,13 +14,12 @@ const isOneSignalInitialized = { current: false };
 
 export default function OneSignalProvider({ children }: { children: React.ReactNode }) {
     const { currentUser } = useAuth();
-    const hasRun = useRef(false); // Used to track if the main effect has run
+    const hasRun = useRef(false); // Used to track if the main effect has run for the current user
 
     useEffect(() => {
-        // This effect should only run once per user session
-        if (!currentUser || hasRun.current) {
-            if (!currentUser && hasRun.current) {
-                // User logged out, so reset for the next login
+        // If there is no user, logout and do nothing further.
+        if (!currentUser) {
+            if (hasRun.current) {
                 console.log("User logged out, resetting OneSignal state.");
                 OneSignal.logout();
                 hasRun.current = false;
@@ -28,25 +27,35 @@ export default function OneSignalProvider({ children }: { children: React.ReactN
             return;
         }
 
-        const initializeAndLogin = async () => {
-            if (!isOneSignalInitialized.current) {
-                if (!ONE_SIGNAL_APP_ID) {
-                    console.error("OneSignal App ID is not configured.");
-                    return;
-                }
-                // The init function should only be called once in the entire app lifecycle
-                await OneSignal.init({ appId: ONE_SIGNAL_APP_ID });
-                isOneSignalInitialized.current = true;
-                console.log("OneSignal has been initialized.");
-            }
+        // If the effect has already run for this user, don't run it again.
+        if (hasRun.current) {
+            return;
+        }
 
-            // Now, handle user login and subscription
-            if (currentUser) {
-                hasRun.current = true; // Mark as run for this user session
+        const initializeAndLogin = async () => {
+            try {
+                // Explicitly log out to clear any previous user state.
+                await OneSignal.logout();
+                console.log("OneSignal logged out previous user.");
+
+                // Initialize OneSignal if it hasn't been already.
+                if (!isOneSignalInitialized.current) {
+                    if (!ONE_SIGNAL_APP_ID) {
+                        console.error("OneSignal App ID is not configured.");
+                        return;
+                    }
+                    await OneSignal.init({ appId: ONE_SIGNAL_APP_ID });
+                    isOneSignalInitialized.current = true;
+                    console.log("OneSignal has been initialized.");
+                }
+
+                // Now, log in the current user.
                 console.log(`Logging in OneSignal for user: ${currentUser.uid}`);
                 await OneSignal.login(currentUser.uid);
-                console.log(`OneSignal login successful.`);
+                console.log(`OneSignal login successful for ${currentUser.uid}`);
+                hasRun.current = true; // Mark as run for this user session.
 
+                // Add listener for Player ID changes
                 OneSignal.User.PushSubscription.addEventListener('change', (change) => {
                     if (change.current.id && currentUser) {
                         console.log("OneSignal Player ID updated:", change.current.id);
@@ -54,12 +63,15 @@ export default function OneSignalProvider({ children }: { children: React.ReactN
                         updateDoc(userDocRef, { oneSignalPlayerId: change.current.id });
                     }
                 });
+
+            } catch (error) {
+                console.error("Error during OneSignal setup:", error);
             }
         };
 
         initializeAndLogin();
 
-    }, [currentUser]); // This effect now correctly depends on the user state
+    }, [currentUser]);
 
     return <>{children}</>;
 }
