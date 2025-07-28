@@ -1,73 +1,68 @@
-// This file MUST be in the /public directory
+// This service worker file is intentionally left almost empty.
+// It is required for Firebase and web push notifications to work,
+// but the actual logic for displaying notifications is handled by
+// the browser based on the options passed from the client-side code.
 
-self.addEventListener('push', (event) => {
-  if (!event.data) {
-    console.log('Push event but no data');
-    return;
-  }
+self.addEventListener('install', (event) => {
+    self.skipWaiting();
+});
 
+// This listener handles displaying the notification itself
+self.addEventListener('push', event => {
   try {
     const data = event.data.json();
-    const title = data.title || 'New Message';
+    
+    // Log for debugging purposes
+    console.log("Push received", data);
+
     const options = {
       body: data.body,
-      // Icon that appears within the notification itself
-      icon: '/logo.png',
-      // Small monochrome icon for the status bar (on Android)
-      badge: '/logo.png', 
-      // Vibration pattern: 200ms vibrate, 100ms pause, 200ms vibrate
-      vibrate: [200, 100, 200],
-      // Ensures each new notification from the same chat makes a sound/vibrates
-      renotify: true,
-      // Groups notifications so they don't spam the user
-      tag: data.tag || 'duck-chat-notification',
-      // The URL to open when the notification body is clicked
+      icon: '/logo.png',     // Main icon for the notification body
+      badge: '/logo.png',    // Small monochrome icon for the status bar (on Android)
+      vibrate: [200, 100, 200, 100, 200, 100, 200], // A simple vibration pattern
       data: {
-        url: data.url,
-      },
-      actions: [
-        {
-          action: 'open_chat',
-          title: 'Open Chat',
-        },
-      ],
+        url: data.url, // Pass the URL to the click handler
+      }
     };
 
-    event.waitUntil(self.registration.showNotification(title, options));
+    event.waitUntil(
+      self.registration.showNotification(data.title, options)
+    );
   } catch (error) {
-    console.error('Error parsing push data:', error);
-    const title = 'New Message';
+    console.error("Error handling push event:", error);
+    // Fallback notification
     const options = {
-      body: event.data.text(),
+      body: "You have a new message.",
       icon: '/logo.png',
+      badge: '/logo.png',
     };
-    event.waitUntil(self.registration.showNotification(title, options));
+     event.waitUntil(
+      self.registration.showNotification("New Message", options)
+    );
   }
 });
 
-self.addEventListener('notificationclick', (event) => {
-  const notification = event.notification;
-  notification.close();
+// This listener handles what happens when the user clicks the notification
+self.addEventListener('notificationclick', event => {
+  event.notification.close(); // Close the notification
 
-  const urlToOpen = notification.data?.url || '/';
+  const urlToOpen = event.notification.data.url;
 
   event.waitUntil(
-    clients
-      .matchAll({
-        type: 'window',
-        includeUncontrolled: true,
-      })
-      .then((clientList) => {
-        // If a window for the app is already open, focus it.
-        for (const client of clientList) {
-          if (client.url === urlToOpen && 'focus' in client) {
-            return client.focus();
-          }
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true,
+    }).then(clientList => {
+      // If a window for the app is already open, focus it
+      for (const client of clientList) {
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
         }
-        // Otherwise, open a new window.
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
-        }
-      })
+      }
+      // Otherwise, open a new window
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
   );
 });
