@@ -1,70 +1,73 @@
-// This file is the service worker that handles push notifications.
+// This file MUST be in the /public directory
 
-// Listen for push events from the server
-self.addEventListener('push', function (event) {
-  if (event.data) {
-    try {
-      const data = event.data.json();
-      const { title, body, url, icon, tag } = data;
+self.addEventListener('push', (event) => {
+  if (!event.data) {
+    console.log('Push event but no data');
+    return;
+  }
 
-      // These options control the appearance and behavior of the notification.
-      const options = {
-        body: body,
-        icon: icon || '/favicon.ico', // The main icon for the notification
-        badge: '/badge-96.png', // A monochrome icon for the status bar (Android)
-        vibrate: [200, 100, 200], // A simple vibration pattern
-        tag: tag || 'new-message', // Groups notifications together
-        renotify: true, // Notifies the user for each new message, even with the same tag
-        actions: [ // Adds action buttons to the notification
-            { action: 'open_chat', title: 'Open Chat' }
-        ],
-        data: {
-          url: url, // Attaches the URL to open when the notification is clicked
+  try {
+    const data = event.data.json();
+    const title = data.title || 'New Message';
+    const options = {
+      body: data.body,
+      // Icon that appears within the notification itself
+      icon: '/logo.png',
+      // Small monochrome icon for the status bar (on Android)
+      badge: '/logo.png', 
+      // Vibration pattern: 200ms vibrate, 100ms pause, 200ms vibrate
+      vibrate: [200, 100, 200],
+      // Ensures each new notification from the same chat makes a sound/vibrates
+      renotify: true,
+      // Groups notifications so they don't spam the user
+      tag: data.tag || 'duck-chat-notification',
+      // The URL to open when the notification body is clicked
+      data: {
+        url: data.url,
+      },
+      actions: [
+        {
+          action: 'open_chat',
+          title: 'Open Chat',
         },
-      };
+      ],
+    };
 
-      event.waitUntil(self.registration.showNotification(title, options));
-    } catch (e) {
-      console.error('Error processing push event data:', e);
-      // Fallback for simple text payloads
-      const title = 'New Notification';
-      const options = {
-        body: event.data.text(),
-        icon: '/favicon.ico',
-        badge: '/badge-96.png',
-      };
-      event.waitUntil(self.registration.showNotification(title, options));
-    }
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch (error) {
+    console.error('Error parsing push data:', error);
+    const title = 'New Message';
+    const options = {
+      body: event.data.text(),
+      icon: '/logo.png',
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
   }
 });
 
-// Listen for clicks on the notification
-self.addEventListener('notificationclick', function (event) {
-  event.notification.close(); // Always close the notification when clicked
+self.addEventListener('notificationclick', (event) => {
+  const notification = event.notification;
+  notification.close();
 
-  const urlToOpen = event.notification.data.url;
+  const urlToOpen = notification.data?.url || '/';
 
-  if (urlToOpen) {
-    event.waitUntil(
-      clients
-        .matchAll({
-          type: 'window',
-          includeUncontrolled: true,
-        })
-        .then(function (clientList) {
-          // If a window for the chat is already open, focus it.
-          for (var i = 0; i < clientList.length; i++) {
-            var client = clientList[i];
-            // A simple check to see if the URL matches.
-            if (client.url.includes(urlToOpen) && 'focus' in client) {
-              return client.focus();
-            }
+  event.waitUntil(
+    clients
+      .matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      })
+      .then((clientList) => {
+        // If a window for the app is already open, focus it.
+        for (const client of clientList) {
+          if (client.url === urlToOpen && 'focus' in client) {
+            return client.focus();
           }
-          // If no window is found, open a new one.
-          if (clients.openWindow) {
-            return clients.openWindow(urlToOpen);
-          }
-        })
-    );
-  }
+        }
+        // Otherwise, open a new window.
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      })
+  );
 });
