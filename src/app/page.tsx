@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, setDoc, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, setDoc, getDocs, orderBy, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Chat, User, Message } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LogOut, MessageSquarePlus } from 'lucide-react';
 import SystemChatCard from '@/components/system-chat-card';
 import ProfileCard from '@/components/profile-card';
+import Logo from '@/components/logo';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -250,7 +251,10 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen bg-muted/30">
         <header className="hidden lg:flex items-center justify-between p-4 bg-background border-b shadow-sm">
-            <h1 className="text-xl font-bold text-primary">duck</h1>
+            <div className="flex items-center gap-2">
+                <Logo className="h-8 w-8" />
+                <h1 className="text-xl font-bold text-primary">duck</h1>
+            </div>
             <Button variant="outline" onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4"/>
                 Logout
