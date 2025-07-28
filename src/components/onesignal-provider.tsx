@@ -10,62 +10,66 @@ import { ONE_SIGNAL_APP_ID } from '@/lib/env';
 
 export default function OneSignalProvider({ children }: { children: React.ReactNode }) {
     const { currentUser } = useAuth();
-    const initialized = useRef(false);
+    const isInitialized = useRef(false);
 
-    // Effect for initializing OneSignal once
     useEffect(() => {
-        if (initialized.current || !ONE_SIGNAL_APP_ID) {
+        if (isInitialized.current || !ONE_SIGNAL_APP_ID) {
             return;
         }
-        initialized.current = true;
-        
-        const init = async () => {
+
+        const initializeOneSignal = async () => {
             try {
+                // Initialize OneSignal only once
                 await OneSignal.init({ appId: ONE_SIGNAL_APP_ID });
+                isInitialized.current = true;
+                console.log("OneSignal Initialized successfully.");
+
+                // Now that it's initialized, handle the current user state
+                if (auth.currentUser) {
+                    OneSignal.login(auth.currentUser.uid);
+                    console.log(`OneSignal login called for user: ${auth.currentUser.uid}`);
+                }
+
             } catch (error) {
                 console.error("Error initializing OneSignal:", error);
-                initialized.current = false; // Allow retry on failure
             }
         };
-        init();
-    }, []);
 
-    // Effect for handling user login/logout with OneSignal
+        initializeOneSignal();
+
+    }, []); // This effect runs only once on mount
+
     useEffect(() => {
-        if (!initialized.current) {
+        // This effect handles user changes AFTER OneSignal has been initialized.
+        if (!isInitialized.current || !currentUser) {
+            // If a user logs out, logout from OneSignal
+            if (OneSignal.User.isLoggedIn()) {
+                 OneSignal.logout();
+                 console.log("OneSignal logout called.");
+            }
             return;
         }
 
-        const handleUserChange = async () => {
-            if (currentUser) {
-                // User is logged in, associate with OneSignal
-                OneSignal.login(currentUser.uid);
+        // User is logged in, and OneSignal is initialized.
+        if (!OneSignal.User.isLoggedIn()) {
+             OneSignal.login(currentUser.uid);
+             console.log(`OneSignal login called on user change for: ${currentUser.uid}`);
+        }
 
-                // Add listener for Player ID changes
-                OneSignal.User.PushSubscription.addEventListener('change', async (change) => {
-                    if (change.current.id && change.current.id !== currentUser.oneSignalPlayerId) {
-                        console.log("OneSignal Player ID updated:", change.current.id);
-                        const userDocRef = doc(db, 'users', currentUser.uid);
-                        await updateDoc(userDocRef, { oneSignalPlayerId: change.current.id });
-                    }
-                });
-
-            } else {
-                // User is logged out
-                if (OneSignal.User.PushSubscription.id) {
-                     OneSignal.logout();
-                }
+        const onPlayerIdChange = (change: any) => {
+            if (change.current.id && change.current.id !== currentUser.oneSignalPlayerId) {
+                console.log("OneSignal Player ID updated:", change.current.id);
+                const userDocRef = doc(db, 'users', currentUser.uid);
+                updateDoc(userDocRef, { oneSignalPlayerId: change.current.id });
             }
         };
 
-        handleUserChange();
+        OneSignal.User.PushSubscription.addEventListener('change', onPlayerIdChange);
 
-        // Cleanup function for the listener
         return () => {
-            OneSignal.User.PushSubscription.removeEventListener('change');
+            OneSignal.User.PushSubscription.removeEventListener('change', onPlayerIdChange);
         };
-
-    }, [currentUser]);
+    }, [currentUser]); // This effect reacts to user login/logout
 
     return <>{children}</>;
 }
