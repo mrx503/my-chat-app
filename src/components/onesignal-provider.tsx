@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'react';
 import OneSignal from 'react-onesignal';
 import { useAuth } from '@/context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { ONE_SIGNAL_APP_ID } from '@/lib/env';
 
 export default function OneSignalProvider({ children }: { children: React.ReactNode }) {
@@ -41,7 +41,9 @@ export default function OneSignalProvider({ children }: { children: React.ReactN
 
     useEffect(() => {
         // This effect handles user changes AFTER OneSignal has been initialized.
-        if (!isInitialized.current || !currentUser) {
+        if (!isInitialized.current) return;
+
+        if (!currentUser) {
             // If a user logs out, logout from OneSignal
             if (OneSignal.User.isLoggedIn()) {
                  OneSignal.logout();
