@@ -1,44 +1,32 @@
 
-// This service worker file is intentionally left empty.
-// Firebase's messaging SDK will handle the push event logic automatically
-// when the app is in the background. For foreground messages,
-// the logic is handled within the main application code (WebPushProvider).
-
-// We add a basic event listener to show it's installed.
-self.addEventListener('install', (event) => {
-  console.log('Service Worker installing.');
-});
-
-self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating.');
-});
-
-self.addEventListener('push', (event) => {
+// This file is intentionally left blank in this project.
+// Firebase SDKs will be loaded and initialized automatically.
+// You can add custom service worker logic here if needed.
+self.addEventListener('push', event => {
   console.log('[Service Worker] Push Received.');
   
   if (!event.data) {
     console.error('[Service Worker] Push event but no data');
     return;
   }
+  
+  const pushData = event.data.json();
+  console.log('[Service Worker] Push data:', pushData);
 
-  const data = event.data.json();
-  console.log('[Service Worker] Push data:', data);
-
-  const title = data.title || 'New Notification';
+  const title = pushData.title || 'New Message';
   const options = {
-    body: data.body || 'Something new happened!',
-    icon: '/duck-icon-192.png', // A default icon
-    badge: '/duck-badge-72.png', // A badge for the notification bar
+    body: pushData.body || 'You received a new message.',
+    icon: '/icon-192x192.png', // Make sure you have an icon in your public folder
+    badge: '/badge-72x72.png', // And a badge icon
     data: {
-      url: data.url || '/'
+      url: pushData.url || '/'
     }
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-
-self.addEventListener('notificationclick', (event) => {
+self.addEventListener('notificationclick', event => {
   console.log('[Service Worker] Notification click Received.');
 
   event.notification.close();
@@ -47,13 +35,16 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     clients.matchAll({
-      type: "window"
-    }).then((clientList) => {
+      type: 'window',
+      includeUncontrolled: true
+    }).then(clientList => {
+      // If a window for this app is already open, focus it.
       for (const client of clientList) {
         if (client.url === urlToOpen && 'focus' in client) {
           return client.focus();
         }
       }
+      // Otherwise, open a new window.
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }

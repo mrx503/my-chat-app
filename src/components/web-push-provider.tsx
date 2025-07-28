@@ -16,7 +16,9 @@ export const subscribeToPush = async (userId: string): Promise<boolean> => {
     }
 
     try {
-        const swRegistration = await navigator.serviceWorker.ready;
+        const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        console.log('Service Worker registered successfully:', swRegistration);
+        
         let subscription = await swRegistration.pushManager.getSubscription();
         
         if (!subscription) {
@@ -25,7 +27,6 @@ export const subscribeToPush = async (userId: string): Promise<boolean> => {
             const permission = await Notification.requestPermission();
             if (permission !== 'granted') {
                 console.error('Permission for Notifications was denied.');
-                // The NotificationPermissionHandler component will show a message.
                 return false;
             }
 
@@ -38,7 +39,6 @@ export const subscribeToPush = async (userId: string): Promise<boolean> => {
         
         console.log('User is subscribed:', subscription);
         const userDocRef = doc(db, 'users', userId);
-        // Using JSON.parse(JSON.stringify(...)) to convert the PushSubscription object to a plain JS object
         await updateDoc(userDocRef, {
             pushSubscription: JSON.parse(JSON.stringify(subscription)),
         });
@@ -57,26 +57,24 @@ export default function WebPushProvider({ children }: { children: React.ReactNod
     const hasSubscribed = useRef(false);
 
     const handleSubscription = useCallback(async () => {
-        if (!currentUser || hasSubscribed.current) {
+        if (!currentUser || hasSubscribed.current || Notification.permission !== 'granted') {
             return;
         }
 
         hasSubscribed.current = true; // Attempt subscription only once per session
 
-        if (Notification.permission === 'granted') {
-            const success = await subscribeToPush(currentUser.uid);
-            if (success) {
-                toast({
-                    title: 'Notifications Enabled',
-                    description: 'You will now receive notifications for new messages.',
-                });
-            } else {
-                 toast({
-                    variant: 'destructive',
-                    title: 'Subscription Failed',
-                    description: 'Could not set up notifications. Please try again later.',
-                });
-            }
+        const success = await subscribeToPush(currentUser.uid);
+        if (success) {
+            toast({
+                title: 'Notifications Enabled',
+                description: 'You will now receive notifications for new messages.',
+            });
+        } else {
+             toast({
+                variant: 'destructive',
+                title: 'Subscription Failed',
+                description: 'Could not set up notifications. Please try again later.',
+            });
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser, toast]);
