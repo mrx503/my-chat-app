@@ -39,25 +39,35 @@ const sendOneSignalNotificationFlow = ai.defineFlow(
       return;
     }
     
-    const configuration = OneSignal.createConfiguration({
-        userKey: 'unused', // This is not used but required by the SDK type
-        appKey: ONE_SIGNAL_REST_API_KEY,
-    });
-    const client = new OneSignal.DefaultApi(configuration);
+    const client = new OneSignal.DefaultApi(OneSignal.createConfiguration({
+        authMethods: {
+            app_key: {
+                tokenProvider: {
+                    getToken() {
+                        return ONE_SIGNAL_REST_API_KEY!;
+                    }
+                }
+            }
+        }
+    }));
 
     const notification = new OneSignal.Notification();
     notification.app_id = ONE_SIGNAL_APP_ID;
     notification.include_player_ids = [playerId];
     notification.headings = { en: title };
     notification.contents = { en: body };
-    notification.web_url = `${process.env.NEXT_PUBLIC_BASE_URL || ''}/chat/${chatId}`;
+    // The web_url should be the base URL. The client-side code will handle routing.
+    notification.web_url = `${process.env.NEXT_PUBLIC_BASE_URL || ''}/`;
+    // Pass the chatId in the data payload so the client can navigate to the correct chat.
+    notification.data = { chatId: chatId };
     notification.web_buttons = [
         { id: 'reply', text: 'Reply' },
         { id: 'mark-read', text: 'Mark as read' }
     ];
 
     try {
-      await client.createNotification(notification);
+      const response = await client.createNotification(notification);
+      console.log("OneSignal notification sent successfully:", response);
     } catch (error: any) {
       console.error("Error sending OneSignal notification", error?.body || error);
     }
