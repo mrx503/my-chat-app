@@ -17,19 +17,27 @@ export const subscribeToPush = async (userId: string): Promise<boolean> => {
 
     try {
         const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        
+        // Force the waiting service worker to become the active service worker.
+        if (swRegistration.waiting) {
+            swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+        
+        // Check for updates to the service worker.
+        swRegistration.update();
+
         console.log('Service Worker registered successfully:', swRegistration);
         
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            console.error('Permission for Notifications was denied.');
+            return false;
+        }
+
         let subscription = await swRegistration.pushManager.getSubscription();
         
         if (!subscription) {
             console.log('No subscription found, creating new one.');
-
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') {
-                console.error('Permission for Notifications was denied.');
-                return false;
-            }
-
             const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
             subscription = await swRegistration.pushManager.subscribe({
                 userVisibleOnly: true,
@@ -69,19 +77,15 @@ export default function WebPushProvider({ children }: { children: React.ReactNod
                 title: 'Notifications Enabled',
                 description: 'You will now receive notifications for new messages.',
             });
-        } else {
-             toast({
-                variant: 'destructive',
-                title: 'Subscription Failed',
-                description: 'Could not set up notifications. Please try again later.',
-            });
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser, toast]);
 
     useEffect(() => {
         // Automatically attempt to subscribe if permission is already granted
-        handleSubscription();
+        if (Notification.permission === 'granted') {
+             handleSubscription();
+        }
     }, [handleSubscription]);
 
     return <>{children}</>;

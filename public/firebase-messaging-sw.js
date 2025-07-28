@@ -1,92 +1,94 @@
-// This file must be in the public folder.
 
+// The service worker needs to be present to handle background notifications.
+// It must be in the public folder.
+
+// This event listener is fired when the service worker is installed.
+self.addEventListener('install', (event) => {
+  // This forces the waiting service worker to become the active service worker.
+  self.skipWaiting();
+  console.log('Service Worker: Installed');
+});
+
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker: Activated');
+});
+
+
+// Listen for incoming push notifications
 self.addEventListener('push', (event) => {
+  console.log('Service Worker: Push Received.');
+  
   if (!event.data) {
     console.error('Push event but no data');
     return;
   }
-  
+
   try {
     const data = event.data.json();
-    
+    console.log('Service Worker: Push data', data);
+
     const title = data.title || 'New Message';
     const options = {
-      // Body of the notification
       body: data.body || 'You have a new message.',
-      
-      // Main icon that appears next to the text
-      icon: '/logo.png', // Main visual icon
-
-      // Small monochrome icon for the status bar (on Android)
+      // The icon to be displayed in the notification.
+      icon: '/logo.png', 
+      // A small icon shown in the status bar on Android.
       badge: '/logo.png',
-
-      // A larger image to display within the notification
-      image: 'https://placehold.co/300x200.png', // Placeholder for sender avatar or image preview
-
-      // Vibration pattern: Vibrate 200ms, pause 100ms, vibrate 200ms
+      // A vibration pattern to run with the display of the notification.
       vibrate: [200, 100, 200],
-      
-      // Makes the notification stay until the user interacts with it
-      requireInteraction: true,
-
-      // Timestamp for when the message was received
+      // A timestamp associated with a notification.
       timestamp: Date.now(),
-      
-      // Actions the user can take
+      // The URL to open when the user clicks the notification.
+      data: {
+        url: data.url || '/',
+      },
+      // Actions to display in the notification.
       actions: [
         {
           action: 'open_chat',
-          title: 'Open Chat'
-        }
+          title: 'Open Chat',
+        },
       ],
-      
-      // Data to pass to the notificationclick event
-      data: {
-        url: data.url || '/'
-      }
     };
 
-    event.waitUntil(
-      self.registration.showNotification(title, options)
-    );
-  } catch (error) {
-    console.error('Error parsing push data:', error);
-    // Fallback for plain text data
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch (e) {
+    console.error('Error parsing push data:', e);
+    // Fallback for non-JSON data
     const title = 'New Message';
     const options = {
-        body: event.data.text(),
-        icon: '/logo.png',
-        badge: '/logo.png',
-        data: {
-            url: '/'
-        }
+      body: event.data.text(),
+      icon: '/logo.png',
+      badge: '/logo.png',
+      data: {
+        url: '/',
+      },
     };
-    event.waitUntil(
-        self.registration.showNotification(title, options)
-    );
+    event.waitUntil(self.registration.showNotification(title, options));
   }
 });
 
+// Listen for clicks on the notification
 self.addEventListener('notificationclick', (event) => {
+  console.log('Service Worker: Notification clicked.');
+  
   // Close the notification
   event.notification.close();
 
-  // Get the URL from the notification data
-  const urlToOpen = event.notification.data.url || '/';
+  const urlToOpen = event.notification.data.url;
 
-  // Open the app/URL
+  // This looks at all open tabs and focuses one if it's already open.
+  // Otherwise, it opens a new tab.
   event.waitUntil(
     clients.matchAll({
       type: 'window',
-      includeUncontrolled: true
+      includeUncontrolled: true,
     }).then((clientList) => {
-      // If a window for the app is already open, focus it
       for (const client of clientList) {
         if (client.url === urlToOpen && 'focus' in client) {
           return client.focus();
         }
       }
-      // Otherwise, open a new window
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
