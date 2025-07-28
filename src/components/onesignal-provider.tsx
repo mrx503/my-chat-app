@@ -14,55 +14,52 @@ const isOneSignalInitialized = { current: false };
 
 export default function OneSignalProvider({ children }: { children: React.ReactNode }) {
     const { currentUser } = useAuth();
-    const ranLogin = useRef(false);
-    const ranLogout = useRef(false);
+    const hasRun = useRef(false); // Used to track if the main effect has run
 
     useEffect(() => {
-        if (!isOneSignalInitialized.current && ONE_SIGNAL_APP_ID) {
-            isOneSignalInitialized.current = true; // Set this flag immediately
-            OneSignal.init({ appId: ONE_SIGNAL_APP_ID }).then(() => {
-                console.log("OneSignal Initialized successfully.");
-                // This will run after init completes and handle the user state
-                // by triggering the second useEffect.
-            }).catch(error => {
-                isOneSignalInitialized.current = false; // Reset on failure
-                console.error("Error initializing OneSignal:", error);
-            });
+        // This effect should only run once per user session
+        if (!currentUser || hasRun.current) {
+            if (!currentUser && hasRun.current) {
+                // User logged out, so reset for the next login
+                console.log("User logged out, resetting OneSignal state.");
+                OneSignal.logout();
+                hasRun.current = false;
+            }
+            return;
         }
-    }, []); // Empty dependency array ensures this runs only once per component mount.
 
-    useEffect(() => {
-        // This effect waits for OneSignal to be ready and handles user changes.
-        OneSignal.ready(() => {
-            if (currentUser && !ranLogin.current) {
-                console.log(`OneSignal login for user: ${currentUser.uid}`);
-                OneSignal.login(currentUser.uid);
-                ranLogin.current = true;
-                ranLogout.current = false;
+        const initializeAndLogin = async () => {
+            if (!isOneSignalInitialized.current) {
+                if (!ONE_SIGNAL_APP_ID) {
+                    console.error("OneSignal App ID is not configured.");
+                    return;
+                }
+                // The init function should only be called once in the entire app lifecycle
+                await OneSignal.init({ appId: ONE_SIGNAL_APP_ID });
+                isOneSignalInitialized.current = true;
+                console.log("OneSignal has been initialized.");
+            }
 
-                const onPlayerIdChange = (change: any) => {
+            // Now, handle user login and subscription
+            if (currentUser) {
+                hasRun.current = true; // Mark as run for this user session
+                console.log(`Logging in OneSignal for user: ${currentUser.uid}`);
+                await OneSignal.login(currentUser.uid);
+                console.log(`OneSignal login successful.`);
+
+                OneSignal.User.PushSubscription.addEventListener('change', (change) => {
                     if (change.current.id && currentUser) {
                         console.log("OneSignal Player ID updated:", change.current.id);
                         const userDocRef = doc(db, 'users', currentUser.uid);
                         updateDoc(userDocRef, { oneSignalPlayerId: change.current.id });
                     }
-                };
-        
-                OneSignal.User.PushSubscription.addEventListener('change', onPlayerIdChange);
-
-                // Cleanup listener on component unmount or user change
-                return () => {
-                    OneSignal.User.PushSubscription.removeEventListener('change', onPlayerIdChange);
-                };
-
-            } else if (!currentUser && !ranLogout.current) {
-                console.log("OneSignal logout called.");
-                OneSignal.logout();
-                ranLogout.current = true;
-                ranLogin.current = false;
+                });
             }
-        });
-    }, [currentUser]); // This effect reacts to user login/logout.
+        };
+
+        initializeAndLogin();
+
+    }, [currentUser]); // This effect now correctly depends on the user state
 
     return <>{children}</>;
 }
