@@ -1,53 +1,70 @@
+// This file is the service worker that handles push notifications.
 
-// This file is intentionally left blank in this project.
-// Firebase SDKs will be loaded and initialized automatically.
-// You can add custom service worker logic here if needed.
-self.addEventListener('push', event => {
-  console.log('[Service Worker] Push Received.');
-  
-  if (!event.data) {
-    console.error('[Service Worker] Push event but no data');
-    return;
-  }
-  
-  const pushData = event.data.json();
-  console.log('[Service Worker] Push data:', pushData);
+// Listen for push events from the server
+self.addEventListener('push', function (event) {
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      const { title, body, url, icon, tag } = data;
 
-  const title = pushData.title || 'New Message';
-  const options = {
-    body: pushData.body || 'You received a new message.',
-    icon: '/icon-192x192.png', // Make sure you have an icon in your public folder
-    badge: '/badge-72x72.png', // And a badge icon
-    data: {
-      url: pushData.url || '/'
+      // These options control the appearance and behavior of the notification.
+      const options = {
+        body: body,
+        icon: icon || '/favicon.ico', // The main icon for the notification
+        badge: '/badge-96.png', // A monochrome icon for the status bar (Android)
+        vibrate: [200, 100, 200], // A simple vibration pattern
+        tag: tag || 'new-message', // Groups notifications together
+        renotify: true, // Notifies the user for each new message, even with the same tag
+        actions: [ // Adds action buttons to the notification
+            { action: 'open_chat', title: 'Open Chat' }
+        ],
+        data: {
+          url: url, // Attaches the URL to open when the notification is clicked
+        },
+      };
+
+      event.waitUntil(self.registration.showNotification(title, options));
+    } catch (e) {
+      console.error('Error processing push event data:', e);
+      // Fallback for simple text payloads
+      const title = 'New Notification';
+      const options = {
+        body: event.data.text(),
+        icon: '/favicon.ico',
+        badge: '/badge-96.png',
+      };
+      event.waitUntil(self.registration.showNotification(title, options));
     }
-  };
-
-  event.waitUntil(self.registration.showNotification(title, options));
+  }
 });
 
-self.addEventListener('notificationclick', event => {
-  console.log('[Service Worker] Notification click Received.');
+// Listen for clicks on the notification
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close(); // Always close the notification when clicked
 
-  event.notification.close();
+  const urlToOpen = event.notification.data.url;
 
-  const urlToOpen = event.notification.data.url || '/';
-
-  event.waitUntil(
-    clients.matchAll({
-      type: 'window',
-      includeUncontrolled: true
-    }).then(clientList => {
-      // If a window for this app is already open, focus it.
-      for (const client of clientList) {
-        if (client.url === urlToOpen && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // Otherwise, open a new window.
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
-    })
-  );
+  if (urlToOpen) {
+    event.waitUntil(
+      clients
+        .matchAll({
+          type: 'window',
+          includeUncontrolled: true,
+        })
+        .then(function (clientList) {
+          // If a window for the chat is already open, focus it.
+          for (var i = 0; i < clientList.length; i++) {
+            var client = clientList[i];
+            // A simple check to see if the URL matches.
+            if (client.url.includes(urlToOpen) && 'focus' in client) {
+              return client.focus();
+            }
+          }
+          // If no window is found, open a new one.
+          if (clients.openWindow) {
+            return clients.openWindow(urlToOpen);
+          }
+        })
+    );
+  }
 });
