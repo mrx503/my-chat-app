@@ -1,63 +1,71 @@
 
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import OneSignal from 'react-onesignal';
 import { useAuth } from '@/context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { ONE_SIGNAL_APP_ID } from '@/lib/env';
-
-// This flag ensures that OneSignal is initialized only once in the entire application lifecycle.
-let isOneSignalInitialized = false;
 
 export default function OneSignalProvider({ children }: { children: React.ReactNode }) {
     const { currentUser } = useAuth();
+    const initialized = useRef(false);
 
+    // Effect for initializing OneSignal once
     useEffect(() => {
-        const setupOneSignal = async (user: any) => {
-            if (isOneSignalInitialized || !ONE_SIGNAL_APP_ID) {
-                return;
-            }
-            isOneSignalInitialized = true;
-            
+        if (initialized.current || !ONE_SIGNAL_APP_ID) {
+            return;
+        }
+        initialized.current = true;
+        
+        const init = async () => {
             try {
                 await OneSignal.init({ appId: ONE_SIGNAL_APP_ID });
-                OneSignal.login(user.uid);
+            } catch (error) {
+                console.error("Error initializing OneSignal:", error);
+                initialized.current = false; // Allow retry on failure
+            }
+        };
+        init();
+    }, []);
 
+    // Effect for handling user login/logout with OneSignal
+    useEffect(() => {
+        if (!initialized.current) {
+            return;
+        }
+
+        const handleUserChange = async () => {
+            if (currentUser) {
+                // User is logged in, associate with OneSignal
+                OneSignal.login(currentUser.uid);
+
+                // Add listener for Player ID changes
                 OneSignal.User.PushSubscription.addEventListener('change', async (change) => {
-                    if (change.current.id && change.current.id !== user.oneSignalPlayerId) {
+                    if (change.current.id && change.current.id !== currentUser.oneSignalPlayerId) {
                         console.log("OneSignal Player ID updated:", change.current.id);
-                        const userDocRef = doc(db, 'users', user.uid);
+                        const userDocRef = doc(db, 'users', currentUser.uid);
                         await updateDoc(userDocRef, { oneSignalPlayerId: change.current.id });
                     }
                 });
-            } catch (error) {
-                console.error("Error initializing OneSignal:", error);
-                isOneSignalInitialized = false; // Reset on failure to allow retry
+
+            } else {
+                // User is logged out
+                if (OneSignal.User.PushSubscription.id) {
+                     OneSignal.logout();
+                }
             }
         };
 
-        if (currentUser) {
-            setupOneSignal(currentUser);
-        } else {
-            if (isOneSignalInitialized) {
-                OneSignal.logout();
-                isOneSignalInitialized = false;
-            }
-        }
-    }, [currentUser]);
-    
-    useEffect(() => {
-        // This effect ensures that logout is clean even if the component unmounts
+        handleUserChange();
+
+        // Cleanup function for the listener
         return () => {
-            if (isOneSignalInitialized && !auth.currentUser) {
-                OneSignal.logout();
-                isOneSignalInitialized = false;
-            }
+            OneSignal.User.PushSubscription.removeEventListener('change');
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+
+    }, [currentUser]);
 
     return <>{children}</>;
 }
