@@ -9,9 +9,10 @@ import type { User, Clip, Chat } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MessageCircle, Video, Loader2 } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Video, Loader2, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function UserProfilePage() {
     const params = useParams();
