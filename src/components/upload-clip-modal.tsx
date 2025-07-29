@@ -5,7 +5,7 @@ import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, UploadCloud } from 'lucide-react';
+import { Loader2, Video, UploadCloud } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from './ui/textarea';
 
@@ -97,20 +97,9 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
         </DialogHeader>
         
         <div className="py-4 space-y-4">
-            {videoSrc ? (
+            {videoSrc && (
                  <div className="space-y-2">
                     <video src={videoSrc} controls className="w-full rounded-md max-h-[400px]" />
-                    <Button variant="link" className="p-0 h-auto" onClick={() => fileInputRef.current?.click()}>
-                        Change video
-                    </Button>
-                </div>
-            ) : (
-                <div 
-                    className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50"
-                    onClick={() => fileInputRef.current?.click()}
-                >
-                    <UploadCloud className="w-10 h-10 text-muted-foreground mb-2"/>
-                    <p className="text-sm text-muted-foreground">Click to select a video file</p>
                 </div>
             )}
            
@@ -121,6 +110,11 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
                 className="hidden" 
                 accept="video/*"
             />
+
+            <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+                <Video className="mr-2 h-4 w-4" />
+                {videoFile ? 'Change Video' : 'Select Video'}
+            </Button>
           
             <Textarea
                 placeholder="Write a caption..."
