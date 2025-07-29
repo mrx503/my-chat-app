@@ -48,7 +48,7 @@ const sendPushNotificationFlow = ai.defineFlow(
     }
     
     webpush.setVapidDetails(
-      'mailto:test@example.com',
+      'mailto:<someone@example.com>',
       VAPID_PUBLIC_KEY,
       VAPID_PRIVATE_KEY
     );
