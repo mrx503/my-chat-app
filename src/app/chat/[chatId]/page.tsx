@@ -276,14 +276,13 @@ export default function ChatPage() {
         });
     }
 
-    const handleSendFile = async (base64: string, file: File, caption: string) => {
+    const handleSendFile = async (fileUrl: string, file: File, caption: string) => {
         if (!chatId || !currentUser || isBlocked || amIBlocked || isSystemChat) return;
          if (chat?.encrypted) {
             toast({ variant: 'destructive', title: 'Chat is Encrypted', description: 'You must decrypt the chat to send files.' });
             return;
         }
 
-        toast({ title: 'Sending file...', description: 'Please wait.' });
         try {
             const isImage = file.type.startsWith('image/');
             const isVideo = file.type.startsWith('video/');
@@ -296,13 +295,11 @@ export default function ChatPage() {
                 senderName: currentUser.name || 'User',
                 timestamp: serverTimestamp(),
                 type: type,
-                fileURL: base64,
+                fileURL: fileUrl,
                 fileName: file.name
             };
             await addDoc(messagesColRef, newMessage);
     
-            toast({ title: 'Success!', description: 'File sent successfully.' });
-            
             // Update chat metadata
             const chatDocRef = doc(db, 'chats', chatId);
             const contactId = chat.users.find(id => id !== currentUser.uid);

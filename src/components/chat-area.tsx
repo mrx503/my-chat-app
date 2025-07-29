@@ -15,7 +15,7 @@ interface ChatAreaProps extends React.HTMLAttributes<HTMLDivElement> {
   chat: Chat;
   messages: Message[];
   onNewMessage: (message: string) => void;
-  onSendFile: (base64: string, file: File, caption: string) => void;
+  onSendFile: (fileUrl: string, file: File, caption: string) => void;
   onSendVoiceMessage: (audioBase64: string) => void;
   onDeleteMessage: (messageId: string, type: 'me' | 'everyone') => void;
   onReplyToMessage: (message: Message) => void;

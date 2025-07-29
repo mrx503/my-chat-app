@@ -13,13 +13,11 @@ import FilePreviewModal from './file-preview-modal';
 
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
-  onSendFile: (base64: string, file: File, caption: string) => void;
+  onSendFile: (fileUrl: string, file: File, caption: string) => void;
   onSendVoiceMessage: (audioBase64: string) => void;
   isAutoReplyActive: boolean;
   onToggleAutoReply: () => void;
 }
-
-const MAX_FILE_SIZE_BYTES = 1048576; // 1MB Firestore limit
 
 export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMessage, isAutoReplyActive, onToggleAutoReply }: MessageInputProps) {
   const [message, setMessage] = useState('');
@@ -100,16 +98,6 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > MAX_FILE_SIZE_BYTES) {
-        toast({
-          variant: 'destructive',
-          title: 'File too large',
-          description: `The file must be less than 1MB.`,
-        });
-        event.target.value = '';
-        return;
-      }
-      
       const reader = new FileReader();
       reader.onload = (e) => {
         setPreviewSrc(e.target?.result as string);
@@ -120,11 +108,37 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
      if(event.target) event.target.value = '';
   };
 
-  const handleSendFileWithCaption = (caption: string) => {
-    if (previewFile && previewSrc) {
-        onSendFile(previewSrc, previewFile, caption);
+  const handleSendFileWithCaption = async (caption: string) => {
+    if (!previewFile || !previewSrc) return;
+    
+    toast({ title: 'Uploading file...', description: 'Please wait.' });
+
+    const formData = new FormData();
+    formData.append('file', previewFile);
+    formData.append('upload_preset', 'duck-chat'); // Use an unsigned upload preset
+
+    try {
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/auto/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      const fileUrl = data.secure_url;
+      
+      onSendFile(fileUrl, previewFile, caption);
+      toast({ title: 'Success!', description: 'File sent successfully.' });
+      
+    } catch (error) {
+      console.error('Error uploading to Cloudinary:', error);
+      toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload the file. Please try again.' });
+    } finally {
+      handleClosePreview();
     }
-    handleClosePreview();
   };
 
   const handleClosePreview = () => {
