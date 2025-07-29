@@ -115,7 +115,7 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
 
     const formData = new FormData();
     formData.append('file', previewFile);
-    formData.append('upload_preset', 'duck-chat'); // Use an unsigned upload preset
+    formData.append('upload_preset', 'duck-chat'); // Use the correct unsigned upload preset
 
     try {
       const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/auto/upload`, {
