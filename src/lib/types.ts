@@ -95,3 +95,15 @@ export type NotificationPayload = {
   icon?: string;
   tag?: string;
 };
+
+export type Clip = {
+  id: string;
+  videoUrl: string;
+  caption: string;
+  uploaderId: string;
+  uploaderName: string;
+  uploaderAvatar: string;
+  timestamp: Timestamp;
+  likes: string[]; // Array of user IDs who liked the clip
+  commentsCount: number;
+};

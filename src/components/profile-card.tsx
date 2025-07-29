@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Copy, Camera, Wallet, LogOut } from 'lucide-react';
+import { Copy, Camera, Wallet, LogOut, Clapperboard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -153,10 +153,16 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                             <span className="sr-only">Copy User ID</span>
                         </Button>
                     </div>
-                    <Button className="w-full" onClick={() => router.push('/wallet')}>
-                        <Wallet className="mr-2 h-4 w-4"/>
-                        View Wallet
-                    </Button>
+                    <div className="flex gap-2">
+                         <Button className="w-full" onClick={() => router.push('/wallet')}>
+                            <Wallet className="mr-2 h-4 w-4"/>
+                            View Wallet
+                        </Button>
+                        <Button className="w-full" variant="secondary" onClick={() => router.push('/clips')}>
+                            <Clapperboard className="mr-2 h-4 w-4"/>
+                            View Clips
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
         </div>
