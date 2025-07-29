@@ -9,7 +9,6 @@ import MessageInput from './message-input';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { ShieldAlert, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import ReplyPreview from './reply-preview';
 
 interface ChatAreaProps extends React.HTMLAttributes<HTMLDivElement> {
   chat: Chat;
@@ -18,9 +17,6 @@ interface ChatAreaProps extends React.HTMLAttributes<HTMLDivElement> {
   onSendFile: (fileUrl: string, file: File, caption: string) => void;
   onSendVoiceMessage: (audioBase64: string) => void;
   onDeleteMessage: (messageId: string, type: 'me' | 'everyone') => void;
-  onReplyToMessage: (message: Message) => void;
-  replyingTo: Message | null;
-  setReplyingTo: (message: Message | null) => void;
   onSetEncryption: (password: string) => void;
   onDecrypt: (password: string) => Promise<boolean>;
   isBlocked: boolean;
@@ -34,14 +30,13 @@ interface ChatAreaProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export default function ChatArea({ 
     chat, messages, onNewMessage, onSendFile, onSendVoiceMessage, onDeleteMessage, 
-    onReplyToMessage, replyingTo, setReplyingTo, 
     onSetEncryption, onDecrypt,
     isBlocked, onDeleteChat, onBlockUser, isSelfBlocked,
     isAutoReplyActive, onToggleAutoReply, isSystemChat, className 
 }: ChatAreaProps) {
     
   const handleSendMessage = (message: string) => {
-    if (message.trim() || replyingTo) { // Allow sending empty message if it's a reply
+    if (message.trim()) {
       onNewMessage(message);
     }
   };
@@ -92,12 +87,6 @@ export default function ChatArea({
 
     return (
       <div className="flex flex-col">
-          {replyingTo && (
-              <ReplyPreview 
-                  message={replyingTo}
-                  onCancelReply={() => setReplyingTo(null)}
-              />
-          )}
           <MessageInput 
             onSendMessage={handleSendMessage} 
             onSendFile={onSendFile}
@@ -125,7 +114,6 @@ export default function ChatArea({
         messages={messages} 
         contactAvatar={chat.contact?.avatar} 
         onDeleteMessage={onDeleteMessage}
-        onReplyToMessage={onReplyToMessage}
         isEncrypted={chat.encrypted ?? false}
       />
       {renderInputArea()}

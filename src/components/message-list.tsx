@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
-import { Check, CheckCheck, File, Reply, PlayCircle, Trash2, Mic, Image as ImageIcon } from 'lucide-react';
+import { Check, CheckCheck, File, PlayCircle, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   AlertDialog,
@@ -20,9 +20,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import ReplyContent from './reply-content';
 import Lightbox from './lightbox';
-import { motion, AnimatePresence, useAnimation, PanInfo } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 
 interface MessageListProps {
@@ -30,7 +29,6 @@ interface MessageListProps {
   contactAvatar: string;
   isEncrypted: boolean;
   onDeleteMessage: (messageId: string, type: 'me' | 'everyone') => void;
-  onReplyToMessage: (message: Message) => void;
 }
 
 function FormattedTime({ timestamp }: { timestamp: any }) {
@@ -151,128 +149,80 @@ const MessageBubble = ({
     isCurrentUser, 
     contactAvatar, 
     isEncrypted, 
-    onReplyToMessage, 
     onDeleteMessage,
     onMediaClick,
-    revealedMessageId,
-    setRevealedMessageId
 }: {
     message: Message,
     isCurrentUser: boolean,
     contactAvatar: string,
     isEncrypted: boolean,
-    onReplyToMessage: (message: Message) => void,
     onDeleteMessage: (messageId: string, type: 'me' | 'everyone') => void,
-    onMediaClick: (message: Message) => void,
-    revealedMessageId: string | null,
-    setRevealedMessageId: (id: string | null) => void
+    onMediaClick: (message: Message) => void
 }) => {
-    const controls = useAnimation();
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const messageRef = useRef<HTMLDivElement>(null);
+    const [isLongPress, setIsLongPress] = useState(false);
+    const timerRef = useRef<NodeJS.Timeout>();
 
-    const isRevealed = revealedMessageId === message.id;
+    const handlePressStart = () => {
+        timerRef.current = setTimeout(() => {
+            setIsLongPress(true);
+        }, 500); // 500ms for long press
+    };
 
-    useEffect(() => {
-        if (isRevealed) {
-            const dragValue = isCurrentUser ? -140 : 140; // width of buttons
-            controls.start({ x: dragValue });
-        } else {
-            controls.start({ x: 0 });
-        }
-    }, [isRevealed, controls, isCurrentUser]);
-    
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (messageRef.current && !messageRef.current.contains(event.target as Node)) {
-                if(isRevealed) {
-                    setRevealedMessageId(null);
-                }
-            }
-        };
-
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, [isRevealed, setRevealedMessageId]);
-
-
-    const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-        const dragThreshold = 50;
-        const isSwipe = Math.abs(info.offset.x) > dragThreshold;
-
-        if (isSwipe) {
-            setRevealedMessageId(message.id);
-        } else {
-            controls.start({ x: 0, transition: { type: "spring", stiffness: 300, damping: 30 } });
+    const handlePressEnd = () => {
+        if(timerRef.current) {
+            clearTimeout(timerRef.current);
         }
     };
     
     const confirmDelete = (type: 'me' | 'everyone') => {
         onDeleteMessage(message.id, type);
         setShowDeleteDialog(false);
-        setRevealedMessageId(null);
     };
 
     return (
-        <div ref={messageRef} className={cn('flex items-end gap-2 max-w-xl w-full relative', isCurrentUser ? 'self-end flex-row-reverse' : 'self-start')}>
+        <div className={cn('flex items-end gap-2 max-w-xl w-full', isCurrentUser ? 'self-end flex-row-reverse' : 'self-start')}
+             onTouchStart={handlePressStart}
+             onTouchEnd={handlePressEnd}
+             onMouseDown={handlePressStart}
+             onMouseUp={handlePressEnd}
+             onMouseLeave={handlePressEnd}
+        >
              <Avatar className="h-8 w-8 self-end flex-shrink-0">
                 <AvatarImage src={isCurrentUser ? (message.senderAvatar || '') : contactAvatar} alt="Avatar" data-ai-hint="profile picture" />
                 <AvatarFallback>{isCurrentUser ? message.senderName?.[0].toUpperCase() : 'C'}</AvatarFallback>
             </Avatar>
             <div className="flex-1 overflow-hidden relative">
-                
-                 {/* Action Buttons Container */}
-                 <div className={cn(
-                    'absolute inset-y-0 flex items-center', 
-                    isCurrentUser ? 'left-full' : 'right-full'
-                )}>
-                    <div className={cn(
-                        'flex items-center bg-muted/80 rounded-lg p-1', 
-                        isCurrentUser ? 'ml-2' : 'mr-2'
-                    )}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onReplyToMessage(message)}>
-                            <Reply className="h-4 w-4" />
-                        </Button>
-                        {isCurrentUser && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setShowDeleteDialog(true)}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        )}
-                    </div>
-                </div>
-
-                <motion.div
-                    drag="x"
-                    dragConstraints={isCurrentUser ? { left: -140, right: 0 } : { left: 0, right: 140 }}
-                    dragElastic={0.1}
-                    onDragEnd={handleDragEnd}
-                    animate={controls}
-                    className="z-10 relative"
-                    style={{ touchAction: 'pan-y' }}
-                >
-                    <div
-                        className={cn(
-                            'rounded-xl shadow-sm break-words w-fit',
-                            isCurrentUser
-                                ? 'bg-primary text-primary-foreground ml-auto'
-                                : 'bg-muted text-card-foreground mr-auto',
-                            message.isDeleted && 'bg-transparent shadow-none p-0',
-                            (message.type === 'image' || message.type === 'video') ? 'p-1 bg-transparent dark:bg-transparent shadow-none' : 'p-3'
-                        )}
-                        onClickCapture={(e) => {
-                            // Prevent click when revealing actions
-                            if(isRevealed) {
-                                e.stopPropagation();
-                                setRevealedMessageId(null);
-                            }
-                        }}
+                <AnimatePresence>
+                {isLongPress && isCurrentUser && !message.isDeleted && (
+                     <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className={cn("absolute z-20", isCurrentUser ? "right-0 -top-10" : "left-0 -top-10")}
                     >
-                        {message.replyTo && !isEncrypted && <ReplyContent reply={message.replyTo} isCurrentUserReply={isCurrentUser} />}
-                        <MessageContent message={message} isEncrypted={isEncrypted} onMediaClick={onMediaClick} />
-                    </div>
-                </motion.div>
+                         <Button variant="destructive" size="icon" className="rounded-full h-9 w-9" onClick={() => setShowDeleteDialog(true)}>
+                            <Trash2 className="h-4 w-4"/>
+                         </Button>
+                    </motion.div>
+                )}
+                </AnimatePresence>
+
+                <div
+                    className={cn(
+                        'rounded-xl shadow-sm break-words w-fit',
+                        isCurrentUser
+                            ? 'bg-primary text-primary-foreground ml-auto'
+                            : 'bg-muted text-card-foreground mr-auto',
+                        message.isDeleted && 'bg-transparent shadow-none p-0',
+                        (message.type === 'image' || message.type === 'video') ? 'p-1 bg-transparent dark:bg-transparent shadow-none' : 'p-3'
+                    )}
+                    onClick={() => {
+                        if (isLongPress) setIsLongPress(false);
+                    }}
+                >
+                    <MessageContent message={message} isEncrypted={isEncrypted} onMediaClick={onMediaClick} />
+                </div>
             </div>
              <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <AlertDialogContent>
@@ -298,13 +248,11 @@ const MessageBubble = ({
 };
 
 
-export default function MessageList({ messages, contactAvatar, isEncrypted, onDeleteMessage, onReplyToMessage }: MessageListProps) {
+export default function MessageList({ messages, contactAvatar, isEncrypted, onDeleteMessage }: MessageListProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const { currentUser } = useAuth();
   
   const [lightboxMessage, setLightboxMessage] = useState<Message | null>(null);
-  const [revealedMessageId, setRevealedMessageId] = useState<string | null>(null);
-
 
   useEffect(() => {
     if (viewportRef.current) {
@@ -357,11 +305,8 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                                 isCurrentUser={isCurrentUser}
                                 contactAvatar={contactAvatar}
                                 isEncrypted={isEncrypted}
-                                onReplyToMessage={onReplyToMessage}
                                 onDeleteMessage={onDeleteMessage}
                                 onMediaClick={handleMediaClick}
-                                revealedMessageId={revealedMessageId}
-                                setRevealedMessageId={setRevealedMessageId}
                             />
                             <div className={cn("flex items-center text-xs text-muted-foreground px-2 pb-1 mt-1 w-full", isCurrentUser ? "justify-end" : "justify-start pl-12")}>
                                 <FormattedTime timestamp={message.timestamp} />

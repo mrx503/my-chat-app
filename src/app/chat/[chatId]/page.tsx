@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, writeBatch, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Chat, Message, User, ReplyTo } from '@/lib/types';
+import type { Chat, Message, User } from '@/lib/types';
 import ChatArea from '@/components/chat-area';
 import { Bot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -26,7 +26,6 @@ export default function ChatPage() {
 
     const [chat, setChat] = useState<Chat | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
-    const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const [loading, setLoading] = useState(true);
     const [isBlocked, setIsBlocked] = useState(false);
     const [amIBlocked, setAmIBlocked] = useState(false);
@@ -194,19 +193,6 @@ export default function ChatPage() {
 
         const messagesColRef = collection(db, 'chats', chatId, 'messages');
         
-        let replyToObject: ReplyTo | null = null;
-        if (replyingTo) {
-            const senderName = replyingTo.senderId === currentUser.uid ? 'You' : chat?.contact.name || '...';
-            replyToObject = {
-                messageId: replyingTo.id,
-                messageText: replyingTo.text,
-                senderId: replyingTo.senderId,
-                senderName: senderName,
-                type: replyingTo.type,
-                fileName: replyingTo.fileName ?? '',
-            };
-        }
-        
         const newMessage = {
             text: messageText,
             senderId: currentUser.uid,
@@ -214,10 +200,8 @@ export default function ChatPage() {
             timestamp: serverTimestamp(),
             type: 'text',
             status: 'sent',
-            ...(replyingTo && { replyTo: replyToObject })
         };
         await addDoc(messagesColRef, newMessage);
-        setReplyingTo(null);
 
         // Update chat metadata
         const chatDocRef = doc(db, 'chats', chatId);
@@ -392,7 +376,6 @@ export default function ChatPage() {
                     type: 'text',
                     fileURL: '',
                     fileName: '',
-                    replyTo: null,
                     isDeleted: true
                 });
                 toast({ title: 'Message deleted for everyone' });
@@ -401,10 +384,6 @@ export default function ChatPage() {
             console.error("Error deleting message:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the message.' });
         }
-    };
-
-    const handleReplyToMessage = (message: Message) => {
-        setReplyingTo(message);
     };
 
     const handleToggleAutoReply = () => {
@@ -476,9 +455,6 @@ export default function ChatPage() {
                 onSendFile={handleSendFile}
                 onSendVoiceMessage={handleSendVoiceMessage}
                 onDeleteMessage={handleDeleteMessage}
-                onReplyToMessage={handleReplyToMessage}
-                replyingTo={replyingTo}
-                setReplyingTo={setReplyingTo}
                 onSetEncryption={handleSetEncryption}
                 onDecrypt={handleDecrypt}
                 isBlocked={isBlocked || amIBlocked}
