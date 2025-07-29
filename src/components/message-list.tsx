@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -149,27 +148,30 @@ const MessageWrapper = ({
     message, 
     children, 
     onDeleteRequest, 
-    onReplyRequest 
+    onReplyRequest,
+    isRevealed,
+    onToggleReveal
 }: { 
     message: Message; 
     children: React.ReactNode; 
     onDeleteRequest: (type: 'me' | 'everyone') => void;
     onReplyRequest: () => void;
+    isRevealed: boolean;
+    onToggleReveal: () => void;
 }) => {
     const { currentUser } = useAuth();
-    const [isRevealed, setIsRevealed] = useState(false);
     const pressTimer = useRef<NodeJS.Timeout>();
     const isCurrentUser = message.senderId === currentUser?.uid;
 
     const handleAction = (action: () => void) => {
         action();
-        setIsRevealed(false);
+        onToggleReveal(); // Close menu after action
     };
     
     const handlePointerDown = () => {
         if (message.isDeleted) return;
         pressTimer.current = setTimeout(() => {
-            setIsRevealed(true);
+            onToggleReveal();
         }, 500); // 500ms for long press
     };
 
@@ -180,7 +182,7 @@ const MessageWrapper = ({
     const handleContextMenu = (e: React.MouseEvent) => {
         e.preventDefault();
         if (message.isDeleted) return;
-        setIsRevealed(true);
+        onToggleReveal();
     };
 
     return (
@@ -193,6 +195,7 @@ const MessageWrapper = ({
                         initial={{ y: 10, opacity: 0}}
                         animate={{ y: 0, opacity: 1}}
                         exit={{ y: 10, opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                     >
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" onClick={() => handleAction(onReplyRequest)}>
                           <Reply className="h-5 w-5" />
@@ -213,7 +216,6 @@ const MessageWrapper = ({
             
             <div
                 className="relative z-10 bg-transparent"
-                onClick={() => { if(isRevealed) setIsRevealed(false); }}
                 onContextMenu={handleContextMenu}
                 onTouchStart={handlePointerDown}
                 onTouchEnd={handlePointerUp}
@@ -233,6 +235,8 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<{ id: string, type: 'me' | 'everyone' } | null>(null);
   const [lightboxMessage, setLightboxMessage] = useState<Message | null>(null);
+  const [revealedMessageId, setRevealedMessageId] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (viewportRef.current) {
@@ -263,6 +267,10 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     }
   };
 
+  const toggleReveal = (messageId: string) => {
+    setRevealedMessageId(prevId => (prevId === messageId ? null : messageId));
+  };
+
   if (!currentUser) {
     return null; 
   }
@@ -275,7 +283,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
         message={lightboxMessage}
         onClose={() => setLightboxMessage(null)}
       />
-      <ScrollArea className="flex-1" viewportRef={viewportRef}>
+      <ScrollArea className="flex-1" viewportRef={viewportRef} onClick={() => setRevealedMessageId(null)}>
         <div className="p-4 space-y-4">
           {visibleMessages.map((message) => {
             const isCurrentUser = message.senderId === currentUser.uid;
@@ -320,6 +328,8 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                     message={message} 
                     onDeleteRequest={(type) => handleDeleteRequest(message.id, type)}
                     onReplyRequest={() => handleReplyRequest(message)}
+                    isRevealed={revealedMessageId === message.id}
+                    onToggleReveal={() => toggleReveal(message.id)}
                  >
                     {messageBubble}
                  </MessageWrapper>
