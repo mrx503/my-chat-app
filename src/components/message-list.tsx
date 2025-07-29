@@ -8,8 +8,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
-import { Check, CheckCheck, File, User, Users, Reply, PlayCircle } from 'lucide-react';
+import { Check, CheckCheck, File, User, Users, Reply, PlayCircle, MoreVertical } from 'lucide-react';
 import { Button } from './ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +26,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { motion, AnimatePresence } from 'framer-motion';
 import ReplyContent from './reply-content';
 import Lightbox from './lightbox';
 
@@ -144,99 +149,12 @@ const MessageContent = ({ message, isEncrypted, onMediaClick }: { message: Messa
     );
 };
 
-const MessageWrapper = ({ 
-    message, 
-    children, 
-    onDeleteRequest, 
-    onReplyRequest,
-    isRevealed,
-    onToggleReveal
-}: { 
-    message: Message; 
-    children: React.ReactNode; 
-    onDeleteRequest: (type: 'me' | 'everyone') => void;
-    onReplyRequest: () => void;
-    isRevealed: boolean;
-    onToggleReveal: () => void;
-}) => {
-    const { currentUser } = useAuth();
-    const pressTimer = useRef<NodeJS.Timeout>();
-    const isCurrentUser = message.senderId === currentUser?.uid;
-
-    const handleAction = (action: () => void) => {
-        action();
-        onToggleReveal(); // Close menu after action
-    };
-    
-    const handlePointerDown = () => {
-        if (message.isDeleted) return;
-        pressTimer.current = setTimeout(() => {
-            onToggleReveal();
-        }, 500); // 500ms for long press
-    };
-
-    const handlePointerUp = () => {
-        clearTimeout(pressTimer.current);
-    };
-    
-    const handleContextMenu = (e: React.MouseEvent) => {
-        e.preventDefault();
-        if (message.isDeleted) return;
-        onToggleReveal();
-    };
-
-    return (
-        <div className="relative w-full">
-            <AnimatePresence>
-                {isRevealed && !message.isDeleted && (
-                    <motion.div 
-                        className={cn("absolute z-20 flex items-center bg-background p-1 rounded-full shadow-lg",
-                         isCurrentUser ? "bottom-full right-8 mb-1" : "bottom-full left-8 mb-1")}
-                        initial={{ y: 10, opacity: 0}}
-                        animate={{ y: 0, opacity: 1}}
-                        exit={{ y: 10, opacity: 0 }}
-                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    >
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" onClick={() => handleAction(onReplyRequest)}>
-                          <Reply className="h-5 w-5" />
-                      </Button>
-                      {isCurrentUser && (
-                        <>
-                           <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => handleAction(() => onDeleteRequest('me'))}>
-                                <User className="h-5 w-5" />
-                           </Button>
-                           <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => handleAction(() => onDeleteRequest('everyone'))}>
-                               <Users className="h-5 w-5" />
-                           </Button>
-                        </>
-                      )}
-                    </motion.div>
-                )}
-            </AnimatePresence>
-            
-            <div
-                className="relative z-10 bg-transparent"
-                onContextMenu={handleContextMenu}
-                onTouchStart={handlePointerDown}
-                onTouchEnd={handlePointerUp}
-                onMouseDown={handlePointerDown}
-                onMouseUp={handlePointerUp}
-                onMouseLeave={handlePointerUp}
-            >
-                {children}
-            </div>
-        </div>
-    );
-};
-
 export default function MessageList({ messages, contactAvatar, isEncrypted, onDeleteMessage, onReplyToMessage }: MessageListProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const { currentUser } = useAuth();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<{ id: string, type: 'me' | 'everyone' } | null>(null);
   const [lightboxMessage, setLightboxMessage] = useState<Message | null>(null);
-  const [revealedMessageId, setRevealedMessageId] = useState<string | null>(null);
-
 
   useEffect(() => {
     if (viewportRef.current) {
@@ -257,18 +175,10 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     setSelectedMessage(null);
   };
 
-  const handleReplyRequest = (message: Message) => {
-    onReplyToMessage(message);
-  }
-
   const handleMediaClick = (message: Message) => {
     if (!isEncrypted && (message.type === 'image' || message.type === 'video')) {
       setLightboxMessage(message);
     }
-  };
-
-  const toggleReveal = (messageId: string) => {
-    setRevealedMessageId(prevId => (prevId === messageId ? null : messageId));
   };
 
   if (!currentUser) {
@@ -283,15 +193,16 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
         message={lightboxMessage}
         onClose={() => setLightboxMessage(null)}
       />
-      <ScrollArea className="flex-1" viewportRef={viewportRef} onClick={() => setRevealedMessageId(null)}>
+      <ScrollArea className="flex-1" viewportRef={viewportRef}>
         <div className="p-4 space-y-4">
           {visibleMessages.map((message) => {
             const isCurrentUser = message.senderId === currentUser.uid;
             
-            const messageBubble = (
+            return (
                  <div
+                    key={message.id}
                     className={cn(
-                        'flex items-end gap-3 w-fit max-w-xl group',
+                        'flex items-end gap-2 w-full max-w-xl group relative',
                         isCurrentUser ? 'ml-auto flex-row-reverse' : 'mr-auto'
                     )}
                 >
@@ -300,8 +211,8 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                       <AvatarFallback>{isCurrentUser ? currentUser.email?.[0].toUpperCase() : 'C'}</AvatarFallback>
                     </Avatar>
                     
-                    <div className="flex flex-col gap-1">
-                        <div
+                    <div className="flex flex-col gap-1 items-start">
+                         <div
                             className={cn(
                                 'rounded-xl shadow-sm break-words',
                                 isCurrentUser
@@ -314,25 +225,39 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                             {message.replyTo && !isEncrypted && <ReplyContent reply={message.replyTo} isCurrentUserReply={isCurrentUser} />}
                             <MessageContent message={message} isEncrypted={isEncrypted} onMediaClick={handleMediaClick} />
                         </div>
-                        <div className={cn("flex items-center text-xs text-muted-foreground", isCurrentUser ? "justify-end" : "justify-start")}>
+                        <div className={cn("flex items-center text-xs text-muted-foreground", isCurrentUser ? "justify-end w-full" : "justify-start")}>
                             <FormattedTime timestamp={message.timestamp} />
                             {isCurrentUser && !message.isDeleted && <ReadReceipt status={message.status} />}
                         </div>
                     </div>
+                    {!message.isDeleted && (
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className={cn("h-7 w-7 absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity", isCurrentUser ? "left-0 -translate-x-full" : "right-0 translate-x-full")}>
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onClick={() => onReplyToMessage(message)}>
+                                    <Reply className="mr-2 h-4 w-4" />
+                                    <span>Reply</span>
+                                </DropdownMenuItem>
+                                {isCurrentUser && (
+                                    <>
+                                        <DropdownMenuItem onClick={() => handleDeleteRequest(message.id, 'me')} className="text-destructive">
+                                            <User className="mr-2 h-4 w-4" />
+                                            <span>Delete for me</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleDeleteRequest(message.id, 'everyone')} className="text-destructive">
+                                            <Users className="mr-2 h-4 w-4" />
+                                            <span>Delete for everyone</span>
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                 </div>
-            );
-            
-            return (
-                 <MessageWrapper 
-                    key={message.id} 
-                    message={message} 
-                    onDeleteRequest={(type) => handleDeleteRequest(message.id, type)}
-                    onReplyRequest={() => handleReplyRequest(message)}
-                    isRevealed={revealedMessageId === message.id}
-                    onToggleReveal={() => toggleReveal(message.id)}
-                 >
-                    {messageBubble}
-                 </MessageWrapper>
             );
           })}
         </div>
