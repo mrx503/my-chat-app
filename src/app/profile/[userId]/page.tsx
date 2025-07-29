@@ -3,21 +3,20 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp, setDoc, orderBy } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp, setDoc, orderBy, updateDoc, arrayUnion, arrayRemove, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { User, Clip, Chat } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MessageCircle, Video, Loader2, Play } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Video, Loader2, Play, UserPlus, UserCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import Image from 'next/image';
 import Link from 'next/link';
 
 export default function UserProfilePage() {
     const params = useParams();
     const router = useRouter();
-    const { currentUser } = useAuth();
+    const { currentUser, updateCurrentUser } = useAuth();
     const { toast } = useToast();
 
     const userId = params.userId as string;
@@ -25,8 +24,9 @@ export default function UserProfilePage() {
     const [profileUser, setProfileUser] = useState<User | null>(null);
     const [userClips, setUserClips] = useState<Clip[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isFollowing, setIsFollowing] = useState(false); // Placeholder
+    const [isFollowing, setIsFollowing] = useState(false);
     const [isChatting, setIsChatting] = useState(false);
+    const [isFollowLoading, setIsFollowLoading] = useState(false);
     
     useEffect(() => {
         if (!userId) return;
@@ -34,7 +34,6 @@ export default function UserProfilePage() {
         const fetchUserProfile = async () => {
             setLoading(true);
             try {
-                // Fetch user data
                 const userDocRef = doc(db, 'users', userId);
                 const userDoc = await getDoc(userDocRef);
 
@@ -43,9 +42,13 @@ export default function UserProfilePage() {
                     router.push('/');
                     return;
                 }
-                setProfileUser({ id: userDoc.id, ...userDoc.data() } as User);
+                const userData = { id: userDoc.id, ...userDoc.data() } as User;
+                setProfileUser(userData);
 
-                // Fetch user clips
+                if (currentUser) {
+                    setIsFollowing(userData.followers?.includes(currentUser.uid) ?? false);
+                }
+
                 const clipsRef = collection(db, 'clips');
                 const q = query(clipsRef, where('uploaderId', '==', userId), orderBy('timestamp', 'desc'));
                 const clipsSnapshot = await getDocs(q);
@@ -61,19 +64,71 @@ export default function UserProfilePage() {
         };
 
         fetchUserProfile();
-    }, [userId, router, toast]);
+    }, [userId, router, toast, currentUser]);
 
-    const handleFollow = () => {
-        // Placeholder for follow logic
-        setIsFollowing(!isFollowing);
-        toast({ title: isFollowing ? 'Unfollowed' : 'Followed', description: `You are now ${isFollowing ? 'unfollowing' : 'following'} ${profileUser?.name}.` });
+    const handleFollow = async () => {
+        if (!currentUser || !profileUser || isFollowLoading) return;
+
+        setIsFollowLoading(true);
+        const currentUserRef = doc(db, 'users', currentUser.uid);
+        const profileUserRef = doc(db, 'users', profileUser.id);
+        
+        try {
+            await runTransaction(db, async (transaction) => {
+                const currentUserDoc = await transaction.get(currentUserRef);
+                const profileUserDoc = await transaction.get(profileUserRef);
+
+                if (!currentUserDoc.exists() || !profileUserDoc.exists()) {
+                    throw "Cannot find user data.";
+                }
+
+                const currentUserData = currentUserDoc.data();
+                const profileUserData = profileUserDoc.data();
+
+                const iAmFollowing = currentUserData.following?.includes(profileUser.id) ?? false;
+
+                if (iAmFollowing) {
+                    // Unfollow
+                    transaction.update(currentUserRef, { following: arrayRemove(profileUser.id) });
+                    transaction.update(profileUserRef, { followers: arrayRemove(currentUser.uid) });
+                } else {
+                    // Follow
+                    transaction.update(currentUserRef, { following: arrayUnion(profileUser.id) });
+                    transaction.update(profileUserRef, { followers: arrayUnion(currentUser.uid) });
+                }
+            });
+
+            // Optimistic UI updates
+            setIsFollowing(!isFollowing);
+            setProfileUser(prev => prev ? ({
+                ...prev,
+                followers: isFollowing 
+                    ? prev.followers?.filter(id => id !== currentUser.uid)
+                    : [...(prev.followers || []), currentUser.uid]
+            }) : null);
+
+            updateCurrentUser({
+                following: isFollowing
+                    ? currentUser.following?.filter(id => id !== profileUser.id)
+                    : [...(currentUser.following || []), profileUser.id]
+            });
+
+            toast({
+                title: isFollowing ? 'Unfollowed' : 'Followed!',
+                description: `You are now ${isFollowing ? 'unfollowing' : 'following'} ${profileUser?.name}.`,
+            });
+        } catch (error) {
+            console.error("Follow/unfollow error:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'An error occurred. Please try again.' });
+        } finally {
+            setIsFollowLoading(false);
+        }
     };
 
     const handleStartChat = async () => {
         if (!currentUser || !profileUser || currentUser.uid === profileUser.uid) return;
         setIsChatting(true);
         try {
-            // Check for existing chat
             const chatsRef = collection(db, 'chats');
             const q = query(chatsRef, 
                 where('users', 'array-contains', currentUser.uid)
@@ -92,7 +147,6 @@ export default function UserProfilePage() {
             if (existingChat) {
                 router.push(`/chat/${existingChat.id}`);
             } else {
-                // Create new chat
                 const now = serverTimestamp();
                 const newChatRef = await addDoc(collection(db, 'chats'), {
                     users: [currentUser.uid, profileUser.uid].sort(),
@@ -154,11 +208,10 @@ export default function UserProfilePage() {
                             <h2 className="text-2xl sm:text-3xl font-bold">{profileUser.name}</h2>
                             <p className="text-muted-foreground">@{profileUser.email?.split('@')[0]}</p>
                             
-                            {/* Stats placeholder */}
                             <div className="flex gap-4 justify-center sm:justify-start mt-2">
                                 <div><span className="font-bold">{userClips.length}</span> Clips</div>
-                                <div><span className="font-bold">1.2k</span> Followers</div>
-                                <div><span className="font-bold">345</span> Following</div>
+                                <div><span className="font-bold">{profileUser.followers?.length ?? 0}</span> Followers</div>
+                                <div><span className="font-bold">{profileUser.following?.length ?? 0}</span> Following</div>
                             </div>
                         </div>
                     </div>
@@ -166,8 +219,9 @@ export default function UserProfilePage() {
                     {/* Action Buttons */}
                      {currentUser && currentUser.uid !== profileUser.uid && (
                         <div className="flex gap-2 mb-8">
-                            <Button className="flex-1" onClick={handleFollow} variant={isFollowing ? 'secondary' : 'default'}>
-                                {isFollowing ? 'Following' : 'Follow'}
+                            <Button className="flex-1" onClick={handleFollow} variant={isFollowing ? 'secondary' : 'default'} disabled={isFollowLoading}>
+                                {isFollowLoading ? <Loader2 className="animate-spin" /> : isFollowing ? <UserCheck /> : <UserPlus />}
+                                <span className="ml-2">{isFollowing ? 'Following' : 'Follow'}</span>
                             </Button>
                             <Button className="flex-1" variant="outline" onClick={handleStartChat} disabled={isChatting}>
                                 {isChatting ? <Loader2 className="animate-spin" /> : <MessageCircle />}

@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { collection, getDocs, limit, orderBy, query, startAfter, serverTimestamp, addDoc, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, startAfter, serverTimestamp, addDoc, doc, updateDoc, arrayUnion, arrayRemove, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Clip } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
@@ -12,11 +12,11 @@ import { Button } from '@/components/ui/button';
 import { Heart, MessageCircle, ArrowLeft, Video, Plus, Loader2, Play, Gift } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import UploadClipModal from '@/components/upload-clip-modal';
-import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import CommentsModal from '@/components/comments-modal';
 
 
-const ClipPlayer = ({ clip, onLike, currentUserId }: { clip: Clip, onLike: (clipId: string, likes: string[]) => void, currentUserId: string | undefined }) => {
+const ClipPlayer = ({ clip, onLike, onComment, currentUserId }: { clip: Clip, onLike: (clipId: string, likes: string[]) => void, onComment: (clipId: string) => void, currentUserId: string | undefined }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const { toast } = useToast();
@@ -52,7 +52,11 @@ const ClipPlayer = ({ clip, onLike, currentUserId }: { clip: Clip, onLike: (clip
 
     const handleCommentClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        toast({ title: "Coming Soon!", description: "The ability to comment on clips is coming soon." });
+        if (!currentUserId) {
+            toast({ variant: 'destructive', title: "Login Required", description: "You need to be logged in to comment." });
+            return;
+        }
+        onComment(clip.id);
     }
 
     const handleProfileClick = (e: React.MouseEvent) => {
@@ -144,6 +148,8 @@ export default function ClipsPage() {
     const [lastVisible, setLastVisible] = useState<any>(null);
     const [hasMore, setHasMore] = useState(true);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
+    const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
 
     const observer = useRef<IntersectionObserver>();
     const lastClipElementRef = useRef(null);
@@ -294,6 +300,20 @@ export default function ClipsPage() {
         }
     };
 
+    const handleOpenComments = (clipId: string) => {
+        setSelectedClipId(clipId);
+        setIsCommentsModalOpen(true);
+    };
+
+    const handleCommentsUpdate = (clipId: string, newCount: number) => {
+        setClips(prevClips => prevClips.map(clip => {
+            if (clip.id === clipId) {
+                return { ...clip, commentsCount: newCount };
+            }
+            return clip;
+        }));
+    };
+
     if (loading && clips.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center h-screen bg-black text-white">
@@ -318,7 +338,7 @@ export default function ClipsPage() {
             <div className="h-full w-full snap-y snap-mandatory overflow-y-scroll" id="clips-container">
                 {clips.map((clip, index) => (
                     <div ref={index === clips.length - 1 ? lastClipElementRef : null} key={clip.id} className="h-full w-full snap-start relative">
-                        <ClipPlayer clip={clip} onLike={handleLike} currentUserId={currentUser?.uid} />
+                        <ClipPlayer clip={clip} onLike={handleLike} onComment={handleOpenComments} currentUserId={currentUser?.uid} />
                     </div>
                 ))}
 
@@ -352,6 +372,16 @@ export default function ClipsPage() {
                 onClose={() => setIsUploadModalOpen(false)}
                 onUpload={handleUploadComplete}
             />
+
+            {selectedClipId && currentUser && (
+                <CommentsModal 
+                    isOpen={isCommentsModalOpen}
+                    onClose={() => setIsCommentsModalOpen(false)}
+                    clipId={selectedClipId}
+                    currentUser={currentUser}
+                    onCommentsUpdate={handleCommentsUpdate}
+                />
+            )}
         </div>
     );
 }

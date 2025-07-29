@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useRef } from 'react';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Copy, Camera, Wallet, LogOut, Clapperboard } from 'lucide-react';
+import { Copy, Camera, Wallet, LogOut, Clapperboard, User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -68,7 +69,6 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                     canvas.height = height;
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    // Get the data URL from the canvas
                     const dataUrl = canvas.toDataURL(file.type, quality);
                     resolve(dataUrl);
                 };
@@ -89,14 +89,11 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
             try {
                 toast({ title: 'Updating picture...', description: 'Please wait.' });
                 
-                // 1. Compress and get base64 data URL
                 const dataUrl = await compressAndEncode(file);
                 
-                // 2. Update the user document in Firestore
                 const userDocRef = doc(db, 'users', currentUser.uid);
                 await updateDoc(userDocRef, { avatar: dataUrl });
                 
-                // 3. Update local state
                 updateCurrentUser({ avatar: dataUrl });
 
                 toast({ title: 'Success', description: 'Profile picture updated!' });
@@ -105,7 +102,6 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to update profile picture.' });
             }
         }
-        // Reset file input
         if (event.target) {
             event.target.value = '';
         }
@@ -153,12 +149,16 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                             <span className="sr-only">Copy User ID</span>
                         </Button>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                          <Button className="w-full" onClick={() => router.push('/wallet')}>
                             <Wallet className="mr-2 h-4 w-4"/>
-                            View Wallet
+                            Wallet
                         </Button>
-                        <Button className="w-full" variant="secondary" onClick={() => router.push('/clips')}>
+                        <Button className="w-full" variant="outline" onClick={() => router.push(`/profile/${currentUser.uid}`)}>
+                            <UserIcon className="mr-2 h-4 w-4"/>
+                            Profile
+                        </Button>
+                         <Button className="w-full col-span-2" variant="secondary" onClick={() => router.push('/clips')}>
                             <Clapperboard className="mr-2 h-4 w-4"/>
                             View Clips
                         </Button>

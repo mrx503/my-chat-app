@@ -24,6 +24,8 @@ export type User = {
     showLastSeen?: boolean;
   };
   blockedUsers?: string[];
+  followers?: string[];
+  following?: string[];
   coins: number;
   systemMessagesQueue?: string[]; // Array of messages to be delivered by the system bot
   pushSubscription?: PushSubscription | null;
@@ -107,3 +109,13 @@ export type Clip = {
   likes: string[]; // Array of user IDs who liked the clip
   commentsCount: number;
 };
+
+export type Comment = {
+    id: string;
+    text: string;
+    userId: string;
+    userName: string;
+    userAvatar: string;
+    timestamp: Timestamp;
+};
+
