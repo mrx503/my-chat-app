@@ -2,20 +2,27 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { collection, getDocs, limit, orderBy, query, startAfter, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, startAfter, serverTimestamp, addDoc, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Clip, User } from '@/lib/types';
+import type { Clip } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, ArrowLeft, Video, Plus, Loader2, Play } from 'lucide-react';
+import { Heart, MessageCircle, ArrowLeft, Video, Plus, Loader2, Play, Gift } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import UploadClipModal from '@/components/upload-clip-modal';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
-const ClipPlayer = ({ clip }: { clip: Clip }) => {
+
+const ClipPlayer = ({ clip, onLike, currentUserId }: { clip: Clip, onLike: (clipId: string, likes: string[]) => void, currentUserId: string | undefined }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const { toast } = useToast();
+    const router = useRouter();
+
+    const isLiked = currentUserId ? clip.likes.includes(currentUserId) : false;
 
     const togglePlay = () => {
         if (videoRef.current) {
@@ -28,6 +35,31 @@ const ClipPlayer = ({ clip }: { clip: Clip }) => {
             }
         }
     };
+    
+    const handleLikeClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!currentUserId) {
+            toast({ variant: 'destructive', title: "Login Required", description: "You need to be logged in to like a clip." });
+            return;
+        }
+        onLike(clip.id, clip.likes);
+    };
+    
+     const handleSupportClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        toast({ title: "Coming Soon!", description: "The ability to support creators is coming soon." });
+    };
+
+    const handleCommentClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        toast({ title: "Coming Soon!", description: "The ability to comment on clips is coming soon." });
+    }
+
+    const handleProfileClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        router.push(`/profile/${clip.uploaderId}`);
+    }
+
 
     useEffect(() => {
         const video = videoRef.current;
@@ -73,24 +105,28 @@ const ClipPlayer = ({ clip }: { clip: Clip }) => {
             )}
 
             <div className="absolute bottom-0 left-0 p-4 text-white w-full bg-gradient-to-t from-black/50 to-transparent">
-                <div className="flex items-center gap-2 mb-2">
+                 <button className="flex items-center gap-2 mb-2 w-full text-left" onClick={handleProfileClick}>
                     <Avatar className="h-10 w-10 border-2 border-white">
                         <AvatarImage src={clip.uploaderAvatar} alt={clip.uploaderName} />
                         <AvatarFallback>{clip.uploaderName?.[0]}</AvatarFallback>
                     </Avatar>
                     <p className="font-bold">{clip.uploaderName}</p>
-                </div>
+                 </button>
                 <p className="text-sm">{clip.caption}</p>
             </div>
 
             <div className="absolute bottom-20 right-2 flex flex-col gap-4 text-white">
-                <button className="flex flex-col items-center">
-                    <Heart className="h-8 w-8" />
+                <button className="flex flex-col items-center" onClick={handleLikeClick}>
+                    <Heart className={cn("h-8 w-8", isLiked && "fill-red-500 text-red-500")} />
                     <span className="text-xs">{clip.likes.length}</span>
                 </button>
-                <button className="flex flex-col items-center">
+                <button className="flex flex-col items-center" onClick={handleCommentClick}>
                     <MessageCircle className="h-8 w-8" />
                     <span className="text-xs">{clip.commentsCount}</span>
+                </button>
+                 <button className="flex flex-col items-center" onClick={handleSupportClick}>
+                    <Gift className="h-8 w-8" />
+                    <span className="text-xs">Support</span>
                 </button>
             </div>
         </div>
@@ -113,7 +149,7 @@ export default function ClipsPage() {
     const lastClipElementRef = useRef(null);
 
     const fetchClips = async (initial = false) => {
-        if (!hasMore) return;
+        if (!hasMore && !initial) return;
         
         if (initial) {
              setLoading(true);
@@ -134,6 +170,7 @@ export default function ClipsPage() {
             
             if (documentSnapshots.empty) {
                 setHasMore(false);
+                if (initial) setClips([]);
                 return;
             }
 
@@ -145,7 +182,6 @@ export default function ClipsPage() {
             if (initial) {
                 setClips(newClips);
             } else {
-                // To avoid duplicates, filter out clips that are already present
                 setClips(prev => [...prev, ...newClips.filter(nc => !prev.some(pc => pc.id === nc.id))]);
             }
 
@@ -160,21 +196,23 @@ export default function ClipsPage() {
     
     useEffect(() => {
         fetchClips(true);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     
     useEffect(() => {
         if (loadingMore || !hasMore || !lastClipElementRef.current) return;
 
-        observer.current = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting) {
+        const currentObserver = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && hasMore && !loadingMore) {
                 fetchClips();
             }
         });
 
         if (lastClipElementRef.current) {
-            observer.current.observe(lastClipElementRef.current);
+            currentObserver.observe(lastClipElementRef.current);
         }
+
+        observer.current = currentObserver;
 
         return () => {
             if (observer.current) {
@@ -182,14 +220,14 @@ export default function ClipsPage() {
             }
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loadingMore, hasMore, clips]);
+    }, [clips, hasMore, loadingMore]);
 
 
     const handleUploadComplete = async (videoUrl: string, caption: string) => {
         if (!currentUser) return;
 
         try {
-            const newClip = {
+            const newClipData = {
                 videoUrl,
                 caption,
                 uploaderId: currentUser.uid,
@@ -200,9 +238,14 @@ export default function ClipsPage() {
                 commentsCount: 0,
             };
             
-            const docRef = await addDoc(collection(db, 'clips'), newClip);
+            const docRef = await addDoc(collection(db, 'clips'), newClipData);
             
-            const newClipWithId = { id: docRef.id, ...newClip, timestamp: new Date() } as Clip;
+            // Create a client-side version of the clip to prepend to the list
+            const newClipWithId: Clip = { 
+                id: docRef.id, 
+                ...newClipData, 
+                timestamp: new Date() 
+            } as any; // Cast because serverTimestamp is different from Date
             
             setClips(prevClips => [newClipWithId, ...prevClips]);
             setIsUploadModalOpen(false);
@@ -211,6 +254,43 @@ export default function ClipsPage() {
         } catch (error) {
             console.error("Error adding new clip:", error);
             toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not save your clip.' });
+        }
+    };
+
+    const handleLike = async (clipId: string, currentLikes: string[]) => {
+        if (!currentUser) return;
+        const clipRef = doc(db, 'clips', clipId);
+        const isLiked = currentLikes.includes(currentUser.uid);
+
+        // Optimistic update
+        setClips(prevClips => prevClips.map(clip => {
+            if (clip.id === clipId) {
+                return {
+                    ...clip,
+                    likes: isLiked 
+                        ? clip.likes.filter(id => id !== currentUser.uid)
+                        : [...clip.likes, currentUser.uid]
+                };
+            }
+            return clip;
+        }));
+
+        try {
+            if (isLiked) {
+                await updateDoc(clipRef, { likes: arrayRemove(currentUser.uid) });
+            } else {
+                await updateDoc(clipRef, { likes: arrayUnion(currentUser.uid) });
+            }
+        } catch (error) {
+            console.error("Error updating like:", error);
+            // Revert optimistic update on error
+             setClips(prevClips => prevClips.map(clip => {
+                if (clip.id === clipId) {
+                    return { ...clip, likes: currentLikes };
+                }
+                return clip;
+            }));
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not update like.' });
         }
     };
 
@@ -235,10 +315,10 @@ export default function ClipsPage() {
                 </Button>
             </header>
 
-            <div className="h-full w-full snap-y snap-mandatory overflow-y-scroll">
+            <div className="h-full w-full snap-y snap-mandatory overflow-y-scroll" id="clips-container">
                 {clips.map((clip, index) => (
-                    <div ref={index === clips.length - 1 ? lastClipElementRef : null} key={clip.id} className="h-full w-full snap-start">
-                        <ClipPlayer clip={clip} />
+                    <div ref={index === clips.length - 1 ? lastClipElementRef : null} key={clip.id} className="h-full w-full snap-start relative">
+                        <ClipPlayer clip={clip} onLike={handleLike} currentUserId={currentUser?.uid} />
                     </div>
                 ))}
 
@@ -247,7 +327,7 @@ export default function ClipsPage() {
                         <Loader2 className="h-10 w-10 animate-spin text-white" />
                     </div>
                 )}
-                 {!hasMore && clips.length > 0 && (
+                 {!loading && !hasMore && clips.length > 0 && (
                      <div className="h-full w-full snap-start flex items-center justify-center text-white text-center">
                         <div>
                             <p className="text-lg font-semibold">You've reached the end</p>
