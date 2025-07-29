@@ -146,66 +146,65 @@ const MessageContent = ({ message, isEncrypted, onMediaClick }: { message: Messa
 };
 
 
-const MessageBubble = ({ message, isCurrentUser, contactAvatar, isEncrypted, onReplyToMessage, handleDeleteRequest, onMediaClick, isRevealed, setRevealedMessageId }: any) => {
+const MessageBubble = ({ message, isCurrentUser, contactAvatar, isEncrypted, onReplyToMessage, handleDeleteRequest, onMediaClick, revealedMessageId, setRevealedMessageId }: any) => {
 
-    const dragDirection = isCurrentUser ? "right" : "left";
-    const dragConstraints = isCurrentUser ? { left: -100, right: 0 } : { left: 0, right: 100 };
-    const revealedX = isCurrentUser ? -90 : 90;
+    const isRevealed = revealedMessageId === message.id;
+
+    const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: any) => {
+        const dragThreshold = 50;
+        const offset = info.offset.x;
+        
+        // If dragged far enough, reveal actions. Otherwise, snap back.
+        if (isCurrentUser && offset < -dragThreshold) {
+            setRevealedMessageId(message.id);
+        } else if (!isCurrentUser && offset > dragThreshold) {
+             setRevealedMessageId(message.id);
+        } else {
+             setRevealedMessageId(null);
+        }
+    };
+    
+    const handleWrapperClick = () => {
+        if (isRevealed) {
+            setRevealedMessageId(null);
+        }
+    }
 
     return (
         <div
             className={cn(
-                'flex items-end gap-2 w-full max-w-xl group relative',
+                'flex items-end gap-2 w-full max-w-xl relative',
                 isCurrentUser ? 'ml-auto flex-row-reverse' : 'mr-auto'
             )}
-            onClick={() => isRevealed && setRevealedMessageId(null)}
+            onClick={handleWrapperClick}
         >
             <Avatar className="h-8 w-8 self-end flex-shrink-0">
                 <AvatarImage src={isCurrentUser ? (message.senderAvatar || '') : contactAvatar} alt="Avatar" data-ai-hint="profile picture" />
                 <AvatarFallback>{isCurrentUser ? message.senderName?.[0].toUpperCase() : 'C'}</AvatarFallback>
             </Avatar>
 
-            <div className="relative overflow-hidden w-full">
-                <AnimatePresence>
-                    {isRevealed && !message.isDeleted && (
-                        <motion.div
-                            className={cn(
-                                "absolute inset-y-0 flex items-center gap-1",
-                                isCurrentUser ? "right-full mr-2" : "left-full ml-2"
-                            )}
-                            initial={{ width: 0, opacity: 0 }}
-                            animate={{ width: "auto", opacity: 1 }}
-                            exit={{ width: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-muted" onClick={() => onReplyToMessage(message)}>
-                                <Reply className="h-4 w-4" />
-                            </Button>
-                            {isCurrentUser && (
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-muted text-destructive" onClick={() => handleDeleteRequest(message.id, 'everyone')}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            )}
-                        </motion.div>
+            <div className="relative w-full overflow-hidden">
+                {/* Action Buttons (positioned behind) */}
+                <div className={cn("absolute inset-y-0 flex items-center gap-1", isCurrentUser ? "right-0" : "left-0")}>
+                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={(e) => {e.stopPropagation(); onReplyToMessage(message);}}>
+                        <Reply className="h-4 w-4" />
+                    </Button>
+                    {isCurrentUser && (
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive" onClick={(e) => {e.stopPropagation(); handleDeleteRequest(message.id, 'everyone');}}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
                     )}
-                </AnimatePresence>
+                </div>
 
+                {/* Draggable Message Content */}
                 <motion.div
                     drag="x"
-                    dragConstraints={dragConstraints}
-                    onDragEnd={(event, info) => {
-                        const threshold = isCurrentUser ? -50 : 50;
-                        const shouldReveal = isCurrentUser ? info.offset.x < threshold : info.offset.x > threshold;
-                        if (shouldReveal) {
-                            setRevealedMessageId(message.id);
-                        } else {
-                            if (isRevealed) setRevealedMessageId(null);
-                        }
-                    }}
-                    animate={{ x: isRevealed ? revealedX : 0 }}
+                    dragConstraints={isCurrentUser ? { left: -100, right: 0 } : { left: 0, right: 100 }}
+                    dragElastic={0.1}
+                    onDragEnd={handleDragEnd}
+                    animate={{ x: isRevealed ? (isCurrentUser ? -90 : 90) : 0 }}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    className="flex flex-col gap-1 w-full"
-                    style={{ zIndex: 10 }} // Ensure the dragged item is on top
+                    className="flex flex-col gap-1 w-full bg-background/50 dark:bg-muted/50 rounded-lg z-10"
                 >
                     <div
                         className={cn(
@@ -220,7 +219,7 @@ const MessageBubble = ({ message, isCurrentUser, contactAvatar, isEncrypted, onR
                         {message.replyTo && !isEncrypted && <ReplyContent reply={message.replyTo} isCurrentUserReply={isCurrentUser} />}
                         <MessageContent message={message} isEncrypted={isEncrypted} onMediaClick={onMediaClick} />
                     </div>
-                     <div className={cn("flex items-center text-xs text-muted-foreground", isCurrentUser ? "justify-end w-full" : "justify-start")}>
+                     <div className={cn("flex items-center text-xs text-muted-foreground px-2 pb-1", isCurrentUser ? "justify-end w-full" : "justify-start")}>
                         <FormattedTime timestamp={message.timestamp} />
                         {isCurrentUser && !message.isDeleted && <ReadReceipt status={message.status} />}
                     </div>
@@ -264,6 +263,11 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
       setLightboxMessage(message);
     }
   };
+  
+   const handleReplyAction = (message: Message) => {
+    setRevealedMessageId(null); // Close the revealed actions
+    onReplyToMessage(message);
+  };
 
   if (!currentUser) {
     return null; 
@@ -282,7 +286,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
         message={lightboxMessage}
         onClose={() => setLightboxMessage(null)}
       />
-      <ScrollArea className="flex-1" viewportRef={viewportRef} onClick={() => setRevealedMessageId(null)}>
+      <ScrollArea className="flex-1" viewportRef={viewportRef} onClick={() => revealedMessageId && setRevealedMessageId(null)}>
         <div className="p-4 space-y-4">
           {visibleMessages.map((message) => {
             const isCurrentUser = message.senderId === currentUser.uid;
@@ -293,10 +297,10 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                     isCurrentUser={isCurrentUser}
                     contactAvatar={contactAvatar}
                     isEncrypted={isEncrypted}
-                    onReplyToMessage={onReplyToMessage}
+                    onReplyToMessage={handleReplyAction}
                     handleDeleteRequest={handleDeleteRequest}
                     onMediaClick={handleMediaClick}
-                    isRevealed={revealedMessageId === message.id}
+                    revealedMessageId={revealedMessageId}
                     setRevealedMessageId={setRevealedMessageId}
                 />
             );
