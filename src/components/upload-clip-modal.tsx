@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, UploadCloud } from 'lucide-react';
-import { useToast } from './use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Textarea } from './ui/textarea';
 
 interface UploadClipModalProps {
