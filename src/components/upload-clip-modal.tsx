@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, UploadCloud, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from './ui/textarea';
+import { Input } from './ui/input';
 
 interface UploadClipModalProps {
   isOpen: boolean;
