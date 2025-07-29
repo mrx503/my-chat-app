@@ -4,8 +4,7 @@
 import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Loader2, Video, UploadCloud } from 'lucide-react';
+import { Loader2, UploadCloud, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from './ui/textarea';
 
@@ -26,6 +25,10 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && file.type.startsWith('video/')) {
+        if (file.size > 50 * 1024 * 1024) { // 50MB limit
+            toast({ variant: 'destructive', title: 'File Too Large', description: 'Please select a video file smaller than 50MB.' });
+            return;
+        }
         setVideoFile(file);
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -37,6 +40,10 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
     }
     if (event.target) event.target.value = '';
   };
+  
+  const triggerFileSelect = () => {
+    fileInputRef.current?.click();
+  }
 
   const handleSend = async () => {
     if (!videoFile) {
@@ -97,12 +104,6 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
         </DialogHeader>
         
         <div className="py-4 space-y-4">
-            {videoSrc && (
-                 <div className="space-y-2">
-                    <video src={videoSrc} controls className="w-full rounded-md max-h-[400px]" />
-                </div>
-            )}
-           
             <Input 
                 type="file" 
                 ref={fileInputRef} 
@@ -110,17 +111,38 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
                 className="hidden" 
                 accept="video/*"
             />
-
-            <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
-                <Video className="mr-2 h-4 w-4" />
-                {videoFile ? 'Change Video' : 'Select Video'}
-            </Button>
-          
+            {videoSrc ? (
+                 <div className="space-y-2 relative">
+                    <video src={videoSrc} controls className="w-full rounded-md max-h-[400px]" />
+                    <Button 
+                        variant="destructive" 
+                        size="icon" 
+                        className="absolute top-2 right-2 rounded-full h-8 w-8"
+                        onClick={() => {
+                            setVideoFile(null);
+                            setVideoSrc(null);
+                        }}
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+            ) : (
+                <div 
+                    className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={triggerFileSelect}
+                >
+                    <UploadCloud className="h-12 w-12 text-muted-foreground" />
+                    <p className="mt-2 text-sm font-semibold text-primary">Click to select a video</p>
+                    <p className="text-xs text-muted-foreground">Max file size: 50MB</p>
+                </div>
+            )}
+           
             <Textarea
                 placeholder="Write a caption..."
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
                 rows={3}
+                disabled={!videoFile}
             />
         </div>
         
