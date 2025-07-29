@@ -20,7 +20,14 @@ export default function ReplyContent({ reply, className, isCurrentUserReply }: R
             return (
                 <div className="flex items-center gap-2">
                     <ImageIcon className="h-4 w-4" />
-                    <span>Image</span>
+                    <span>{reply.messageText || "Image"}</span>
+                </div>
+            )
+        case 'video':
+             return (
+                <div className="flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    <span>{reply.messageText || "Video"}</span>
                 </div>
             )
         case 'file':

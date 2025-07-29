@@ -41,7 +41,7 @@ export default function ChatArea({
 }: ChatAreaProps) {
     
   const handleSendMessage = (message: string) => {
-    if (message.trim()) {
+    if (message.trim() || replyingTo) { // Allow sending empty message if it's a reply
       onNewMessage(message);
     }
   };

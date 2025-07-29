@@ -379,16 +379,20 @@ export default function ChatPage() {
     
         try {
             if (type === 'me') {
+                // This approach is tricky as it's client-side only. 
+                // A better approach would be a subcollection on the user doc `deletedMessages`
+                // But for simplicity, we'll just filter it out on the client for now.
                 const updatedMessages = messages.filter(m => m.id !== messageId);
                 setMessages(updatedMessages);
-
                 toast({ title: 'Message hidden', description: 'The message has been hidden for you.' });
+
             } else if (type === 'everyone') {
                 await updateDoc(messageDocRef, {
                     text: 'This message was deleted.',
                     type: 'text',
                     fileURL: '',
                     fileName: '',
+                    replyTo: null,
                     isDeleted: true
                 });
                 toast({ title: 'Message deleted for everyone' });
