@@ -22,11 +22,8 @@ export default function ChatList({ chats, onChatSelect }: ChatListProps) {
     setIsClient(true);
   }, []);
 
-  const sortedChats = [...chats].sort((a, b) => {
-    const timeA = a.contact?.lastMessageTimestamp?.toMillis() || 0;
-    const timeB = b.contact?.lastMessageTimestamp?.toMillis() || 0;
-    return timeB - timeA;
-  });
+  // Chats are now pre-sorted by the Firestore query
+  const sortedChats = chats;
 
   const formatTimestamp = (timestamp?: any) => {
     if (!timestamp || !isClient) return '';
@@ -44,6 +41,8 @@ export default function ChatList({ chats, onChatSelect }: ChatListProps) {
         return date.toLocaleDateString('en-US');
         }
     } catch (e) {
+        // Handle cases where timestamp might not be a Firestore timestamp yet
+        // during new chat creation before first message.
         return '';
     }
   }
@@ -70,12 +69,12 @@ export default function ChatList({ chats, onChatSelect }: ChatListProps) {
               </div>
               <div className="flex-1 overflow-hidden">
                 <h3 className="font-semibold truncate">{chat.contact.name}</h3>
-                <p className="text-sm text-muted-foreground truncate">{chat.contact.lastMessage}</p>
+                <p className="text-sm text-muted-foreground truncate">{chat.lastMessageText || 'No messages yet'}</p>
               </div>
               <div className="flex flex-col items-end space-y-1 self-start">
-                <span className="text-xs text-muted-foreground">{formatTimestamp(chat.contact.lastMessageTimestamp)}</span>
-                {chat.contact.unreadMessages && chat.contact.unreadMessages > 0 && (
-                  <Badge className="bg-primary text-primary-foreground rounded-full h-5 w-5 flex items-center justify-center p-0">{chat.contact.unreadMessages}</Badge>
+                <span className="text-xs text-muted-foreground">{formatTimestamp(chat.lastMessageTimestamp)}</span>
+                {chat.unreadMessages && chat.unreadMessages > 0 && (
+                  <Badge className="bg-primary text-primary-foreground rounded-full h-5 w-5 flex items-center justify-center p-0">{chat.unreadMessages}</Badge>
                 )}
               </div>
             </button>

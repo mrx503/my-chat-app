@@ -55,6 +55,9 @@ export type Message = {
 };
 
 export type Contact = User & {
+  // These properties are now part of the main Chat object
+  // and will be removed from here in the refactor.
+  // Kept for transient compatibility during refactoring.
   lastMessage?: string;
   lastMessageTimestamp?: Timestamp;
   unreadMessages?: number;
@@ -63,11 +66,20 @@ export type Contact = User & {
 export type Chat = {
   id: string;
   users: string[]; // array of user UIDs
-  contact: Contact; // The other user in the chat
+  contact: Contact; // The other user in the chat, enriched at runtime
   createdAt: Timestamp;
   encrypted?: boolean;
   chatPassword?: string;
   deletedFor?: string[];
+
+  // --- NEW OPTIMIZED FIELDS ---
+  lastMessageText?: string;
+  lastMessageTimestamp?: Timestamp;
+  lastMessageSenderId?: string;
+  unreadCount?: { [uid: string]: number }; // Map of UID to their unread count
+  
+  // This is a transient property populated at runtime
+  unreadMessages?: number; 
 };
 
 export type WithdrawalRequest = {

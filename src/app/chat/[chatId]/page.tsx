@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, writeBatch } from 'firebase/firestore';
+import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, writeBatch, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Chat, Message, User, ReplyTo } from '@/lib/types';
 import ChatArea from '@/components/chat-area';
@@ -114,7 +114,7 @@ export default function ChatPage() {
 
         const messagesColRef = collection(db, 'chats', chatId, 'messages');
         const q = query(messagesColRef, orderBy('timestamp', 'asc'));
-        const unsubscribeMessages = onSnapshot(q, (snapshot) => {
+        const unsubscribeMessages = onSnapshot(q, async (snapshot) => {
             const newMessages = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
@@ -129,6 +129,13 @@ export default function ChatPage() {
                         handleAutoReply(latestMessage.text);
                     }
                 }
+            }
+             // Mark chat as read for the current user
+            if (currentUser) {
+                const chatDocRef = doc(db, 'chats', chatId);
+                await updateDoc(chatDocRef, {
+                    [`unreadCount.${currentUser.uid}`]: 0
+                });
             }
         });
 
@@ -145,7 +152,8 @@ export default function ChatPage() {
             const result = await generateReply({ message: incomingMessage });
             if(result.reply) {
                 const messagesColRef = collection(db, 'chats', chatId, 'messages');
-                await addDoc(messagesColRef, {
+                
+                const newMessage = {
                     text: result.reply,
                     senderId: currentUser.uid,
                     senderName: currentUser.name || 'User',
@@ -153,6 +161,17 @@ export default function ChatPage() {
                     type: 'text',
                     status: 'sent',
                     isAutoReply: true,
+                };
+                await addDoc(messagesColRef, newMessage);
+                
+                // Update chat metadata
+                const chatDocRef = doc(db, 'chats', chatId);
+                const contactId = chat?.users.find(id => id !== currentUser.uid);
+                await updateDoc(chatDocRef, {
+                    lastMessageText: newMessage.text,
+                    lastMessageTimestamp: newMessage.timestamp,
+                    lastMessageSenderId: newMessage.senderId,
+                    [`unreadCount.${contactId}`]: increment(1)
                 });
             }
         } catch (error) {
@@ -165,32 +184,6 @@ export default function ChatPage() {
         }
     }
 
-    useEffect(() => {
-        if (!chat?.contact || !currentUser) return;
-        markMessagesAsRead(chat.contact.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [messages, chat?.contact, currentUser]);
-
-    const markMessagesAsRead = async (contactId: string) => {
-        if (!chatId || !currentUser) return;
-    
-        const messagesToUpdate = messages.filter(
-            (msg) => msg.senderId === contactId && msg.status !== 'read'
-        );
-
-        if (messagesToUpdate.length === 0) return;
-    
-        try {
-            const batch = writeBatch(db);
-            messagesToUpdate.forEach((msg) => {
-                const messageRef = doc(db, 'chats', chatId, 'messages', msg.id);
-                batch.update(messageRef, { status: 'read' });
-            });
-            await batch.commit();
-        } catch (error) {
-            console.error("Error marking messages as read: ", error);
-        }
-    };
 
     const handleNewMessage = async (messageText: string) => {
         if (!chatId || !messageText.trim() || !currentUser || isBlocked || amIBlocked || isSystemChat) return;
@@ -213,8 +206,8 @@ export default function ChatPage() {
                 fileName: replyingTo.fileName ?? '',
             };
         }
-
-        await addDoc(messagesColRef, {
+        
+        const newMessage = {
             text: messageText,
             senderId: currentUser.uid,
             senderName: currentUser.name || 'User',
@@ -222,8 +215,19 @@ export default function ChatPage() {
             type: 'text',
             status: 'sent',
             ...(replyingTo && { replyTo: replyToObject })
-        });
+        };
+        await addDoc(messagesColRef, newMessage);
         setReplyingTo(null);
+
+        // Update chat metadata
+        const chatDocRef = doc(db, 'chats', chatId);
+        const contactId = chat.users.find(id => id !== currentUser.uid);
+        await updateDoc(chatDocRef, {
+            lastMessageText: newMessage.text,
+            lastMessageTimestamp: newMessage.timestamp,
+            lastMessageSenderId: newMessage.senderId,
+            [`unreadCount.${contactId}`]: increment(1)
+        });
 
         if (chat.contact?.pushSubscription) {
             try {
@@ -259,7 +263,7 @@ export default function ChatPage() {
         }
 
         const messagesColRef = collection(db, 'chats', chatId, 'messages');
-        await addDoc(messagesColRef, {
+        const newMessage = {
             text: '',
             senderId: currentUser.uid,
             senderName: currentUser.name || 'User',
@@ -267,6 +271,17 @@ export default function ChatPage() {
             type: 'audio',
             fileURL: audioBase64,
             fileName: `voice-message-${uuidv4()}.webm`,
+        };
+        await addDoc(messagesColRef, newMessage);
+        
+        // Update chat metadata
+        const chatDocRef = doc(db, 'chats', chatId);
+        const contactId = chat.users.find(id => id !== currentUser.uid);
+        await updateDoc(chatDocRef, {
+            lastMessageText: "Voice Message",
+            lastMessageTimestamp: newMessage.timestamp,
+            lastMessageSenderId: newMessage.senderId,
+            [`unreadCount.${contactId}`]: increment(1)
         });
     }
 
@@ -284,7 +299,7 @@ export default function ChatPage() {
             const isImage = file.type.startsWith('image/');
             
             const messagesColRef = collection(db, 'chats', chatId, 'messages');
-            await addDoc(messagesColRef, {
+            const newMessage = {
                 text: '',
                 senderId: currentUser.uid,
                 senderName: currentUser.name || 'User',
@@ -292,9 +307,22 @@ export default function ChatPage() {
                 type: isImage ? 'image' : 'file',
                 fileURL: base64,
                 fileName: file.name
-            });
+            };
+            await addDoc(messagesColRef, newMessage);
     
             toast({ title: 'Success!', description: 'File sent successfully.' });
+            
+            // Update chat metadata
+            const chatDocRef = doc(db, 'chats', chatId);
+            const contactId = chat.users.find(id => id !== currentUser.uid);
+            const lastMessageText = isImage ? 'Image' : file.name;
+            await updateDoc(chatDocRef, {
+                lastMessageText: lastMessageText,
+                lastMessageTimestamp: newMessage.timestamp,
+                lastMessageSenderId: newMessage.senderId,
+                [`unreadCount.${contactId}`]: increment(1)
+            });
+
 
             if (chat.contact?.pushSubscription) {
                 try {

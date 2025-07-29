@@ -3,9 +3,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, setDoc, getDocs, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, setDoc, getDocs, orderBy, updateDoc, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Chat, User, Message } from '@/lib/types';
+import type { Chat, User } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import ChatList from "@/components/chat-list";
 import { Button } from '@/components/ui/button';
@@ -39,7 +39,11 @@ export default function Home() {
     }
 
     const chatsCollection = collection(db, 'chats');
-    const q = query(chatsCollection, where('users', 'array-contains', currentUser.uid));
+    const q = query(
+        chatsCollection, 
+        where('users', 'array-contains', currentUser.uid),
+        orderBy('lastMessageTimestamp', 'desc')
+    );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       const chatsDataPromises = snapshot.docs.map(async (docSnapshot) => {
@@ -71,30 +75,10 @@ export default function Home() {
             }
         }
         
-        const messagesQuery = query(
-          collection(db, 'chats', chatData.id, 'messages'), 
-          orderBy('timestamp', 'desc')
-        );
-        const messagesSnapshot = await getDocs(messagesQuery);
-        
-        let unreadCount = 0;
-        let lastMessageText = '';
-        let lastMessageTimestamp: any = chatData.createdAt;
+        // Use pre-calculated unread count from chat document
+        const unreadCount = chatData.unreadCount?.[currentUser.uid] ?? 0;
+        chatData.unreadMessages = unreadCount;
 
-        if (!messagesSnapshot.empty) {
-            const messages = messagesSnapshot.docs.map(d => d.data() as Message);
-            lastMessageText = messages[0].text || messages[0].type || '...';
-            lastMessageTimestamp = messages[0].timestamp;
-            
-            unreadCount = messages.filter(
-                (msg) => msg.senderId !== currentUser.uid && msg.status !== 'read'
-            ).length;
-        }
-
-        chatData.contact.unreadMessages = unreadCount;
-        chatData.contact.lastMessage = lastMessageText;
-        chatData.contact.lastMessageTimestamp = lastMessageTimestamp;
-        
         if (isSystemChat) {
           setSystemUnreadCount(unreadCount);
         }
@@ -112,11 +96,12 @@ export default function Home() {
       setLoading(false);
     }, (error) => {
         console.error("Error fetching chats:", error);
+        toast({variant: 'destructive', title: 'Error fetching chats', description: 'Please try again later.'})
         setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [currentUser, router]);
+  }, [currentUser, router, toast]);
   
   useEffect(() => {
       const deliverQueuedMessages = async () => {
@@ -143,22 +128,34 @@ export default function Home() {
                   chatRef = chatSnapshot.docs[0].ref;
               } else {
                   chatRef = doc(collection(db, 'chats'));
+                  const now = serverTimestamp();
                   await setDoc(chatRef, {
                       users: [currentUser.uid, SYSTEM_BOT_UID].sort(),
-                      createdAt: serverTimestamp(),
+                      createdAt: now,
                       encrypted: false,
                       deletedFor: [],
+                      lastMessageTimestamp: now,
+                      lastMessageText: "Welcome!",
+                      unreadCount: { [currentUser.uid]: 1 }
                   });
               }
               
               const messagesColRef = collection(chatRef, 'messages');
               for (const messageText of messagesToProcess) {
-                  await addDoc(messagesColRef, {
+                  const newMessage = {
                       senderId: SYSTEM_BOT_UID,
                       text: messageText,
                       timestamp: serverTimestamp(),
                       type: 'text',
                       status: 'sent'
+                  };
+                  await addDoc(messagesColRef, newMessage);
+                  
+                  await updateDoc(chatRef, {
+                      lastMessageText: messageText,
+                      lastMessageTimestamp: newMessage.timestamp,
+                      lastMessageSenderId: SYSTEM_BOT_UID,
+                      [`unreadCount.${currentUser.uid}`]: increment(1)
                   });
               }
               
@@ -223,11 +220,15 @@ export default function Home() {
             return;
         }
 
+        const now = serverTimestamp();
         const newChatRef = await addDoc(collection(db, 'chats'), {
             users: [currentUser.uid, searchUserId].sort(),
-            createdAt: serverTimestamp(),
+            createdAt: now,
             encrypted: false,
             deletedFor: [],
+            lastMessageTimestamp: now,
+            lastMessageText: '',
+            unreadCount: { [currentUser.uid]: 0, [searchUserId]: 0 }
         });
         
         router.push(`/chat/${newChatRef.id}`);
