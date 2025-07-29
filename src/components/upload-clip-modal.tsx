@@ -36,9 +36,10 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
             setVideoSrc(e.target?.result as string);
         };
         reader.readAsDataURL(file);
-    } else {
-        toast({ variant: 'destructive', title: 'Invalid File', description: 'Please select a video file.' });
+    } else if (file) {
+        toast({ variant: 'destructive', title: 'Invalid File Type', description: 'Please select a valid video file.' });
     }
+    // Reset the input so the same file can be selected again
     if (event.target) event.target.value = '';
   };
   
