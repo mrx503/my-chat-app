@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import ReplyContent from './reply-content';
 import Lightbox from './lightbox';
-import { motion, AnimatePresence, useAnimation } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation, PanInfo } from 'framer-motion';
 
 
 interface MessageListProps {
@@ -146,75 +146,111 @@ const MessageContent = ({ message, isEncrypted, onMediaClick }: { message: Messa
 };
 
 
-const MessageBubble = ({ message, isCurrentUser, contactAvatar, isEncrypted, onReplyToMessage, onDeleteMessage }: any) => {
+const MessageBubble = ({ 
+    message, 
+    isCurrentUser, 
+    contactAvatar, 
+    isEncrypted, 
+    onReplyToMessage, 
+    onDeleteMessage,
+    onMediaClick,
+    revealedMessageId,
+    setRevealedMessageId
+}: {
+    message: Message,
+    isCurrentUser: boolean,
+    contactAvatar: string,
+    isEncrypted: boolean,
+    onReplyToMessage: (message: Message) => void,
+    onDeleteMessage: (messageId: string, type: 'me' | 'everyone') => void,
+    onMediaClick: (message: Message) => void,
+    revealedMessageId: string | null,
+    setRevealedMessageId: (id: string | null) => void
+}) => {
     const controls = useAnimation();
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const [messageIdToDelete, setMessageIdToDelete] = useState<string | null>(null);
+    const messageRef = useRef<HTMLDivElement>(null);
 
-    const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: any) => {
-        const dragThreshold = isCurrentUser ? -50 : 50;
-        
-        if ((isCurrentUser && info.offset.x < dragThreshold) || (!isCurrentUser && info.offset.x > dragThreshold)) {
-            // Do nothing on drag, swipe is for reply
+    const isRevealed = revealedMessageId === message.id;
+
+    useEffect(() => {
+        if (isRevealed) {
+            const dragValue = isCurrentUser ? -140 : 140; // width of buttons
+            controls.start({ x: dragValue });
         } else {
             controls.start({ x: 0 });
         }
-    };
+    }, [isRevealed, controls, isCurrentUser]);
+    
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (messageRef.current && !messageRef.current.contains(event.target as Node)) {
+                if(isRevealed) {
+                    setRevealedMessageId(null);
+                }
+            }
+        };
 
-    const handleSwipeReply = (event: MouseEvent | TouchEvent | PointerEvent, info: any) => {
-        const swipeThreshold = 50;
-        if (Math.abs(info.offset.x) > swipeThreshold) {
-            onReplyToMessage(message);
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isRevealed, setRevealedMessageId]);
+
+
+    const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+        const dragThreshold = 50;
+        const isSwipe = Math.abs(info.offset.x) > dragThreshold;
+
+        if (isSwipe) {
+            setRevealedMessageId(message.id);
+        } else {
+            controls.start({ x: 0, transition: { type: "spring", stiffness: 300, damping: 30 } });
         }
-        controls.start({ x: 0 }); // Snap back after swipe
-    }
-
+    };
+    
     const confirmDelete = (type: 'me' | 'everyone') => {
-        if (messageIdToDelete) {
-            onDeleteMessage(messageIdToDelete, type);
-        }
+        onDeleteMessage(message.id, type);
         setShowDeleteDialog(false);
-        setMessageIdToDelete(null);
-    };
-
-    const handleLongPress = () => {
-        if (isCurrentUser) {
-            setMessageIdToDelete(message.id);
-            setShowDeleteDialog(true);
-        }
+        setRevealedMessageId(null);
     };
 
     return (
-        <>
-        <div className={cn('flex items-end gap-2 max-w-xl w-full relative', isCurrentUser ? 'self-end flex-row-reverse' : 'self-start')}>
+        <div ref={messageRef} className={cn('flex items-end gap-2 max-w-xl w-full relative', isCurrentUser ? 'self-end flex-row-reverse' : 'self-start')}>
              <Avatar className="h-8 w-8 self-end flex-shrink-0">
                 <AvatarImage src={isCurrentUser ? (message.senderAvatar || '') : contactAvatar} alt="Avatar" data-ai-hint="profile picture" />
                 <AvatarFallback>{isCurrentUser ? message.senderName?.[0].toUpperCase() : 'C'}</AvatarFallback>
             </Avatar>
             <div className="flex-1 overflow-hidden relative">
-                <motion.div 
-                    className={cn("absolute inset-y-0 flex items-center z-0", isCurrentUser ? "right-full pr-2" : "left-full pl-2")}
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={controls}
-                >
-                    <Reply className="h-5 w-5 text-muted-foreground" />
-                </motion.div>
+                
+                 {/* Action Buttons Container */}
+                 <div className={cn(
+                    'absolute inset-y-0 flex items-center', 
+                    isCurrentUser ? 'left-full' : 'right-full'
+                )}>
+                    <div className={cn(
+                        'flex items-center bg-muted/80 rounded-lg p-1', 
+                        isCurrentUser ? 'ml-2' : 'mr-2'
+                    )}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onReplyToMessage(message)}>
+                            <Reply className="h-4 w-4" />
+                        </Button>
+                        {isCurrentUser && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setShowDeleteDialog(true)}>
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
                 <motion.div
                     drag="x"
-                    dragConstraints={{ left: 0, right: 0 }}
-                    dragElastic={0.2}
-                    onDrag={(event, info) => {
-                       const x = info.offset.x;
-                       if ((isCurrentUser && x > 0) || (!isCurrentUser && x < 0)) {
-                           //
-                       } else {
-                           controls.set({ x: x / 3, scale: 0.5 + Math.min(Math.abs(x) / 200, 0.5), opacity: Math.min(Math.abs(x) / 50, 1) });
-                       }
-                    }}
-                    onDragEnd={handleSwipeReply}
+                    dragConstraints={isCurrentUser ? { left: -140, right: 0 } : { left: 0, right: 140 }}
+                    dragElastic={0.1}
+                    onDragEnd={handleDragEnd}
+                    animate={controls}
                     className="z-10 relative"
-                    onContextMenu={(e) => { e.preventDefault(); handleLongPress(); }}
-                    onDoubleClick={handleLongPress}
+                    style={{ touchAction: 'pan-y' }}
                 >
                     <div
                         className={cn(
@@ -225,37 +261,39 @@ const MessageBubble = ({ message, isCurrentUser, contactAvatar, isEncrypted, onR
                             message.isDeleted && 'bg-transparent shadow-none p-0',
                             (message.type === 'image' || message.type === 'video') ? 'p-1 bg-transparent dark:bg-transparent shadow-none' : 'p-3'
                         )}
+                        onClickCapture={(e) => {
+                            // Prevent click when revealing actions
+                            if(isRevealed) {
+                                e.stopPropagation();
+                                setRevealedMessageId(null);
+                            }
+                        }}
                     >
                         {message.replyTo && !isEncrypted && <ReplyContent reply={message.replyTo} isCurrentUserReply={isCurrentUser} />}
-                        <MessageContent message={message} isEncrypted={isEncrypted} onMediaClick={() => {}} />
+                        <MessageContent message={message} isEncrypted={isEncrypted} onMediaClick={onMediaClick} />
                     </div>
                 </motion.div>
             </div>
+             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Message?</AlertDialogTitle>
+                  </AlertDialogHeader>
+                    <AlertDialogDescription>
+                      This action cannot be undone.
+                    </AlertDialogDescription>
+                  <AlertDialogFooter className="sm:justify-between gap-2">
+                    <Button variant="destructive" onClick={() => confirmDelete('everyone')}>
+                        <Trash2 className="mr-2"/> Delete for Everyone
+                    </Button>
+                    <Button variant="outline" onClick={() => confirmDelete('me')}>
+                        Delete for Me
+                    </Button>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
-        <div className={cn("flex items-center text-xs text-muted-foreground px-2 pb-1 mt-1 w-full", isCurrentUser ? "justify-end" : "justify-start pl-12")}>
-            <FormattedTime timestamp={message.timestamp} />
-            {isCurrentUser && !message.isDeleted && <ReadReceipt status={message.status} />}
-        </div>
-        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Message</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete this message? This action may not be reversible.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="sm:justify-between gap-2">
-                <Button variant="destructive" onClick={() => confirmDelete('everyone')}>
-                    <Trash2 className="mr-2"/> Delete for Everyone
-                </Button>
-                <Button variant="outline" onClick={() => confirmDelete('me')}>
-                    <Trash2 className="mr-2"/> Delete for Me
-                </Button>
-                <AlertDialogCancel onClick={() => setMessageIdToDelete(null)}>Cancel</AlertDialogCancel>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-        </>
     );
 };
 
@@ -265,6 +303,8 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
   const { currentUser } = useAuth();
   
   const [lightboxMessage, setLightboxMessage] = useState<Message | null>(null);
+  const [revealedMessageId, setRevealedMessageId] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (viewportRef.current) {
@@ -311,15 +351,23 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                         transition={{ duration: 0.3, type: 'spring' }}
                         className={cn("flex flex-col", isCurrentUser ? "items-end" : "items-start")}
                     >
-                        <MessageBubble
-                            message={message}
-                            isCurrentUser={isCurrentUser}
-                            contactAvatar={contactAvatar}
-                            isEncrypted={isEncrypted}
-                            onReplyToMessage={onReplyToMessage}
-                            onDeleteMessage={onDeleteMessage}
-                            onMediaClick={handleMediaClick}
-                        />
+                         <div className="w-full flex flex-col">
+                            <MessageBubble
+                                message={message}
+                                isCurrentUser={isCurrentUser}
+                                contactAvatar={contactAvatar}
+                                isEncrypted={isEncrypted}
+                                onReplyToMessage={onReplyToMessage}
+                                onDeleteMessage={onDeleteMessage}
+                                onMediaClick={handleMediaClick}
+                                revealedMessageId={revealedMessageId}
+                                setRevealedMessageId={setRevealedMessageId}
+                            />
+                            <div className={cn("flex items-center text-xs text-muted-foreground px-2 pb-1 mt-1 w-full", isCurrentUser ? "justify-end" : "justify-start pl-12")}>
+                                <FormattedTime timestamp={message.timestamp} />
+                                {isCurrentUser && !message.isDeleted && <ReadReceipt status={message.status} />}
+                            </div>
+                        </div>
                     </motion.div>
                 );
               })}
