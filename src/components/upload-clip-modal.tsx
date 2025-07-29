@@ -25,9 +25,15 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type.startsWith('video/')) {
+    if (file) {
+        if (!file.type.startsWith('video/')) {
+            toast({ variant: 'destructive', title: 'Invalid File Type', description: 'Please select a valid video file.' });
+            if (event.target) event.target.value = '';
+            return;
+        }
         if (file.size > 50 * 1024 * 1024) { // 50MB limit
             toast({ variant: 'destructive', title: 'File Too Large', description: 'Please select a video file smaller than 50MB.' });
+            if (event.target) event.target.value = '';
             return;
         }
         setVideoFile(file);
@@ -36,8 +42,6 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
             setVideoSrc(e.target?.result as string);
         };
         reader.readAsDataURL(file);
-    } else if (file) {
-        toast({ variant: 'destructive', title: 'Invalid File Type', description: 'Please select a valid video file.' });
     }
     if (event.target) event.target.value = '';
   };
@@ -86,6 +90,7 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
     setCaption('');
     setVideoFile(null);
     setVideoSrc(null);
+    setIsUploading(false);
   }
 
   const handleClose = () => {
@@ -111,7 +116,6 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
                 ref={fileInputRef} 
                 onChange={handleFileChange} 
                 className="hidden" 
-                accept="video/*"
             />
             {videoSrc ? (
                  <div className="space-y-2 relative">
@@ -124,15 +128,17 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
                             setVideoFile(null);
                             setVideoSrc(null);
                         }}
+                        disabled={isUploading}
                     >
                         <X className="h-4 w-4" />
                     </Button>
                 </div>
             ) : (
-                <Button variant="outline" className="w-full h-32" onClick={triggerFileSelect}>
+                <Button variant="outline" className="w-full h-32" onClick={triggerFileSelect} disabled={isUploading}>
                     <div className="flex flex-col items-center justify-center gap-2">
                          <Video className="h-10 w-10 text-primary" />
-                         <span className="font-semibold">Select Video from Gallery</span>
+                         <span className="font-semibold">Select Video</span>
+                         <span className="text-sm text-muted-foreground">Tap to choose a video from your device</span>
                     </div>
                 </Button>
             )}
