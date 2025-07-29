@@ -170,7 +170,7 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
                 ref={fileInputRef} 
                 onChange={handleFileChange} 
                 className="hidden" 
-                accept="image/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                accept="image/*,video/*"
             />
             
             <Button variant="ghost" size="icon" onClick={handleAttachmentClick}>
