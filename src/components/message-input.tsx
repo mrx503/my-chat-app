@@ -108,13 +108,13 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
       };
       reader.readAsDataURL(file);
     }
+     // Reset the input so the same file can be selected again
      if(event.target) event.target.value = '';
   };
 
   const handleSendFileWithCaption = async (caption: string) => {
     if (!previewFile || !previewSrc) return;
     
-    // Close the modal immediately and show a toast
     handleClosePreview();
     toast({ title: 'Uploading file...', description: 'Please wait.' });
 
@@ -128,19 +128,19 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
       const data = await response.json();
+      if (!response.ok || data.error) {
+        throw new Error(data.error?.message || 'Upload failed');
+      }
+      
       const fileUrl = data.secure_url;
       
       onSendFile(fileUrl, previewFile, caption);
       toast({ title: 'Success!', description: 'File sent successfully.' });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading to Cloudinary:', error);
-      toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload the file. Please try again.' });
+      toast({ variant: 'destructive', title: 'Upload Failed', description: error.message || 'Could not upload the file. Please try again.' });
     }
   };
 
@@ -174,7 +174,7 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
                 ref={fileInputRef} 
                 onChange={handleFileChange} 
                 className="hidden" 
-                accept="image/*,video/*"
+                accept="image/*,video/*,audio/*"
             />
             
             <Button variant="ghost" size="icon" onClick={handleAttachmentClick}>

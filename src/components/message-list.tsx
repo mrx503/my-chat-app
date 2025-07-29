@@ -158,23 +158,30 @@ const MessageWrapper = ({
 }) => {
     const { currentUser } = useAuth();
     const [isRevealed, setIsRevealed] = useState(false);
-
+    const pressTimer = useRef<NodeJS.Timeout>();
     const isCurrentUser = message.senderId === currentUser?.uid;
-
-    const handleLongPress = () => {
-      if (!message.isDeleted) {
-        setIsRevealed(prev => !prev);
-      }
-    };
 
     const handleAction = (action: () => void) => {
         action();
         setIsRevealed(false);
     };
     
-    useEffect(() => {
-        setIsRevealed(false);
-    }, [message.id]);
+    const handlePointerDown = () => {
+        if (message.isDeleted) return;
+        pressTimer.current = setTimeout(() => {
+            setIsRevealed(true);
+        }, 500); // 500ms for long press
+    };
+
+    const handlePointerUp = () => {
+        clearTimeout(pressTimer.current);
+    };
+    
+    const handleContextMenu = (e: React.MouseEvent) => {
+        e.preventDefault();
+        if (message.isDeleted) return;
+        setIsRevealed(true);
+    };
 
     return (
         <div className="relative w-full">
@@ -206,8 +213,13 @@ const MessageWrapper = ({
             
             <div
                 className="relative z-10 bg-transparent"
-                onContextMenu={(e) => { e.preventDefault(); handleLongPress(); }}
                 onClick={() => { if(isRevealed) setIsRevealed(false); }}
+                onContextMenu={handleContextMenu}
+                onTouchStart={handlePointerDown}
+                onTouchEnd={handlePointerUp}
+                onMouseDown={handlePointerDown}
+                onMouseUp={handlePointerUp}
+                onMouseLeave={handlePointerUp}
             >
                 {children}
             </div>
@@ -237,7 +249,6 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     if (selectedMessage) {
       onDeleteMessage(selectedMessage.id, selectedMessage.type);
     }
-    // Always close dialog and reset state
     setShowDeleteDialog(false);
     setSelectedMessage(null);
   };
