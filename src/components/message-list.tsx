@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
-import { Check, CheckCheck, File, User, Users, CornerUpLeft, Reply, PlayCircle } from 'lucide-react';
+import { Check, CheckCheck, File, User, Users, Reply, PlayCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   AlertDialog,
@@ -236,9 +236,10 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
   const confirmDelete = () => {
     if (selectedMessage) {
       onDeleteMessage(selectedMessage.id, selectedMessage.type);
-      setShowDeleteDialog(false);
-      setSelectedMessage(null);
     }
+    // Always close dialog and reset state
+    setShowDeleteDialog(false);
+    setSelectedMessage(null);
   };
 
   const handleReplyRequest = (message: Message) => {

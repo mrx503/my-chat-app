@@ -30,6 +30,8 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
 
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
 
   const handleMicClick = async () => {
     if (isRecording) {
@@ -102,6 +104,7 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
       reader.onload = (e) => {
         setPreviewSrc(e.target?.result as string);
         setPreviewFile(file);
+        setIsPreviewOpen(true);
       };
       reader.readAsDataURL(file);
     }
@@ -111,6 +114,8 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
   const handleSendFileWithCaption = async (caption: string) => {
     if (!previewFile || !previewSrc) return;
     
+    // Close the modal immediately and show a toast
+    handleClosePreview();
     toast({ title: 'Uploading file...', description: 'Please wait.' });
 
     const formData = new FormData();
@@ -136,12 +141,11 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
     } catch (error) {
       console.error('Error uploading to Cloudinary:', error);
       toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload the file. Please try again.' });
-    } finally {
-      handleClosePreview();
     }
   };
 
   const handleClosePreview = () => {
+    setIsPreviewOpen(false);
     setPreviewFile(null);
     setPreviewSrc(null);
   };
@@ -149,7 +153,7 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
   return (
     <>
       <FilePreviewModal
-        isOpen={!!previewFile}
+        isOpen={isPreviewOpen}
         onClose={handleClosePreview}
         file={previewFile}
         fileSrc={previewSrc}
