@@ -4,7 +4,7 @@
 import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, UploadCloud, X } from 'lucide-react';
+import { Loader2, Video, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from './ui/textarea';
 import { Input } from './ui/input';
@@ -39,7 +39,6 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
     } else if (file) {
         toast({ variant: 'destructive', title: 'Invalid File Type', description: 'Please select a valid video file.' });
     }
-    // Reset the input so the same file can be selected again
     if (event.target) event.target.value = '';
   };
   
@@ -73,6 +72,7 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
       
         onUpload(data.secure_url, caption);
         resetState();
+        onClose();
 
     } catch (error: any) {
         console.error('Error uploading to Cloudinary:', error);
@@ -115,11 +115,11 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
             />
             {videoSrc ? (
                  <div className="space-y-2 relative">
-                    <video src={videoSrc} controls className="w-full rounded-md max-h-[400px]" />
+                    <video src={videoSrc} controls className="w-full rounded-md max-h-[400px] bg-black" />
                     <Button 
                         variant="destructive" 
                         size="icon" 
-                        className="absolute top-2 right-2 rounded-full h-8 w-8"
+                        className="absolute top-2 right-2 rounded-full h-8 w-8 z-10"
                         onClick={() => {
                             setVideoFile(null);
                             setVideoSrc(null);
@@ -129,14 +129,12 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
                     </Button>
                 </div>
             ) : (
-                <div 
-                    className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={triggerFileSelect}
-                >
-                    <UploadCloud className="h-12 w-12 text-muted-foreground" />
-                    <p className="mt-2 text-sm font-semibold text-primary">Click to select a video</p>
-                    <p className="text-xs text-muted-foreground">Max file size: 50MB</p>
-                </div>
+                <Button variant="outline" className="w-full h-32" onClick={triggerFileSelect}>
+                    <div className="flex flex-col items-center justify-center gap-2">
+                         <Video className="h-10 w-10 text-primary" />
+                         <span className="font-semibold">Select Video from Gallery</span>
+                    </div>
+                </Button>
             )}
            
             <Textarea
@@ -144,7 +142,7 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
                 rows={3}
-                disabled={!videoFile}
+                disabled={!videoFile || isUploading}
             />
         </div>
         
