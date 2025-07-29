@@ -18,7 +18,7 @@ import CommentsModal from '@/components/comments-modal';
 
 const ClipPlayer = ({ clip, onLike, onComment, currentUserId }: { clip: Clip, onLike: (clipId: string, likes: string[]) => void, onComment: (clipId: string) => void, currentUserId: string | undefined }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(true); // Autoplay by default
     const { toast } = useToast();
     const router = useRouter();
 
@@ -107,32 +107,35 @@ const ClipPlayer = ({ clip, onLike, onComment, currentUserId }: { clip: Clip, on
                     <Play className="h-20 w-20 text-white/70" />
                 </div>
             )}
+            
+            <div className="absolute bottom-0 left-0 right-0 p-4 flex justify-between items-end">
+                <div className="text-white w-[75%] space-y-2">
+                    <button className="flex items-center gap-2 text-left" onClick={handleProfileClick}>
+                        <Avatar className="h-10 w-10 border-2 border-white">
+                            <AvatarImage src={clip.uploaderAvatar} alt={clip.uploaderName} />
+                            <AvatarFallback>{clip.uploaderName?.[0]}</AvatarFallback>
+                        </Avatar>
+                        <p className="font-bold text-lg">{clip.uploaderName}</p>
+                    </button>
+                    <p className="text-sm">{clip.caption}</p>
+                </div>
 
-            <div className="absolute bottom-0 left-0 p-4 text-white w-full bg-gradient-to-t from-black/50 to-transparent">
-                 <button className="flex items-center gap-2 mb-2 w-full text-left" onClick={handleProfileClick}>
-                    <Avatar className="h-10 w-10 border-2 border-white">
-                        <AvatarImage src={clip.uploaderAvatar} alt={clip.uploaderName} />
-                        <AvatarFallback>{clip.uploaderName?.[0]}</AvatarFallback>
-                    </Avatar>
-                    <p className="font-bold">{clip.uploaderName}</p>
-                 </button>
-                <p className="text-sm">{clip.caption}</p>
+                <div className="flex flex-col-reverse items-center gap-5 text-white">
+                    <button className="flex flex-col items-center gap-1" onClick={handleSupportClick}>
+                        <Gift className="h-8 w-8" />
+                        <span className="text-xs font-semibold">Support</span>
+                    </button>
+                    <button className="flex flex-col items-center gap-1" onClick={handleCommentClick}>
+                        <MessageCircle className="h-8 w-8" />
+                        <span className="text-xs font-semibold">{clip.commentsCount || 0}</span>
+                    </button>
+                    <button className="flex flex-col items-center gap-1" onClick={handleLikeClick}>
+                        <Heart className={cn("h-8 w-8 transition-colors", isLiked && "fill-red-500 text-red-500")} />
+                        <span className="text-xs font-semibold">{clip.likes.length || 0}</span>
+                    </button>
+                </div>
             </div>
 
-            <div className="absolute bottom-20 right-2 flex flex-col gap-4 text-white">
-                <button className="flex flex-col items-center" onClick={handleLikeClick}>
-                    <Heart className={cn("h-8 w-8", isLiked && "fill-red-500 text-red-500")} />
-                    <span className="text-xs">{clip.likes.length}</span>
-                </button>
-                <button className="flex flex-col items-center" onClick={handleCommentClick}>
-                    <MessageCircle className="h-8 w-8" />
-                    <span className="text-xs">{clip.commentsCount}</span>
-                </button>
-                 <button className="flex flex-col items-center" onClick={handleSupportClick}>
-                    <Gift className="h-8 w-8" />
-                    <span className="text-xs">Support</span>
-                </button>
-            </div>
         </div>
     );
 };
@@ -325,7 +328,7 @@ export default function ClipsPage() {
     
     return (
         <div className="h-screen w-screen bg-black overflow-hidden relative">
-            <header className="absolute top-0 left-0 z-10 p-4 flex justify-between w-full items-center">
+            <header className="absolute top-0 left-0 z-10 p-4 flex justify-between w-full items-center bg-gradient-to-b from-black/50 to-transparent">
                 <Button variant="ghost" size="icon" className="text-white hover:bg-white/20" onClick={() => router.back()}>
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
