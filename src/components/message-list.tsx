@@ -325,3 +325,5 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     </>
   );
 }
+
+    
