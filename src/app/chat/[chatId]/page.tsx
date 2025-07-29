@@ -246,15 +246,6 @@ export default function ChatPage() {
         }
     };
     
-    const readFileAsBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = (error) => reject(error);
-        });
-    };
-
     const handleSendVoiceMessage = async (audioBase64: string) => {
         if (!chatId || !currentUser || isBlocked || amIBlocked || isSystemChat) return;
         if (chat?.encrypted) {
@@ -278,33 +269,33 @@ export default function ChatPage() {
         const chatDocRef = doc(db, 'chats', chatId);
         const contactId = chat.users.find(id => id !== currentUser.uid);
         await updateDoc(chatDocRef, {
-            lastMessageText: "Voice Message",
+            lastMessageText: "🎙️ Voice Message",
             lastMessageTimestamp: newMessage.timestamp,
             lastMessageSenderId: newMessage.senderId,
             [`unreadCount.${contactId}`]: increment(1)
         });
     }
 
-    const handleSendFile = async (file: File) => {
+    const handleSendFile = async (base64: string, file: File, caption: string) => {
         if (!chatId || !currentUser || isBlocked || amIBlocked || isSystemChat) return;
-        if (chat?.encrypted) {
+         if (chat?.encrypted) {
             toast({ variant: 'destructive', title: 'Chat is Encrypted', description: 'You must decrypt the chat to send files.' });
             return;
         }
-        
-        toast({ title: 'Sending file...', description: 'Please wait.' });
 
+        toast({ title: 'Sending file...', description: 'Please wait.' });
         try {
-            const base64 = await readFileAsBase64(file);
             const isImage = file.type.startsWith('image/');
+            const isVideo = file.type.startsWith('video/');
+            const type = isImage ? 'image' : isVideo ? 'video' : 'file';
             
             const messagesColRef = collection(db, 'chats', chatId, 'messages');
             const newMessage = {
-                text: '',
+                text: caption,
                 senderId: currentUser.uid,
                 senderName: currentUser.name || 'User',
                 timestamp: serverTimestamp(),
-                type: isImage ? 'image' : 'file',
+                type: type,
                 fileURL: base64,
                 fileName: file.name
             };
@@ -315,7 +306,14 @@ export default function ChatPage() {
             // Update chat metadata
             const chatDocRef = doc(db, 'chats', chatId);
             const contactId = chat.users.find(id => id !== currentUser.uid);
-            const lastMessageText = isImage ? 'Image' : file.name;
+            let lastMessageText = "📄 File";
+            if (isImage) lastMessageText = "📷 Image";
+            if (isVideo) lastMessageText = "📹 Video";
+
+            if (caption) {
+                lastMessageText = caption;
+            }
+
             await updateDoc(chatDocRef, {
                 lastMessageText: lastMessageText,
                 lastMessageTimestamp: newMessage.timestamp,
@@ -323,10 +321,9 @@ export default function ChatPage() {
                 [`unreadCount.${contactId}`]: increment(1)
             });
 
-
             if (chat.contact?.pushSubscription) {
                 try {
-                    const body = isImage ? 'Sent an image' : `Sent a file: ${file.name}`;
+                    const body = caption || `Sent ${type === 'image' ? 'an image' : type === 'video' ? 'a video' : 'a file'}`;
                     const payload = {
                         title: currentUser.name || 'New Message',
                         body: body,

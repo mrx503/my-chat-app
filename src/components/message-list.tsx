@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
-import { Check, CheckCheck, File, User, Users, CornerUpLeft, Reply } from 'lucide-react';
+import { Check, CheckCheck, File, User, Users, CornerUpLeft, Reply, PlayCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   AlertDialog,
@@ -21,8 +21,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { motion, useMotionValue, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import ReplyContent from './reply-content';
+import Lightbox from './lightbox';
 
 interface MessageListProps {
   messages: Message[];
@@ -67,59 +68,81 @@ const ReadReceipt = ({ status }: { status?: 'sent' | 'read' }) => {
     return null;
 };
 
-const encryptMessage = (text: string) => {
-  return text.split('').map(char => char.charCodeAt(0)).join(' ');
-}
-
-const decryptMessage = (encryptedText: string) => {
-    return encryptedText.split(' ').map(code => String.fromCharCode(parseInt(code))).join('');
-}
-
-
-const MessageContent = ({ message, isEncrypted }: { message: Message; isEncrypted: boolean }) => {
+const MessageContent = ({ message, isEncrypted, onMediaClick }: { message: Message; isEncrypted: boolean, onMediaClick: (message: Message) => void; }) => {
     if (message.isDeleted) {
         return <p className="whitespace-pre-wrap break-words text-muted-foreground italic">This message was deleted</p>;
     }
 
-    const messageText = isEncrypted && message.text ? encryptMessage(message.text) : message.text;
+    const messageText = message.text;
 
-    switch (message.type) {
-        case 'image':
-             if (!message.fileURL) return null;
-            return (
-                <div className="relative w-60 h-48 rounded-md overflow-hidden">
-                    <Image
-                        src={message.fileURL}
-                        alt={message.fileName || 'Sent image'}
-                        layout="fill"
-                        className={cn("object-contain rounded-md", isEncrypted && "blur-md")}
-                        data-ai-hint="sent image"
-                    />
-                </div>
-            );
-        case 'file':
-            if (!message.fileURL) return null;
-            return (
-                <a href={message.fileURL} target="_blank" rel="noopener noreferrer" download={message.fileName}>
-                    <Button variant="outline" className="h-auto">
-                        <div className="flex items-center gap-3 py-2 px-3">
-                            <File className="h-6 w-6" />
-                            <div className="text-left">
-                                <p className={cn("font-semibold break-all", isEncrypted && "blur-sm")}>{message.fileName}</p>
-                                <p className="text-xs text-muted-foreground">Click to download</p>
-                            </div>
+    const renderMedia = () => {
+        switch (message.type) {
+            case 'image':
+                if (!message.fileURL) return null;
+                return (
+                    <button onClick={() => onMediaClick(message)} className="relative w-60 h-48 rounded-md overflow-hidden cursor-pointer block">
+                         <Image
+                            src={message.fileURL}
+                            alt={message.fileName || 'Sent image'}
+                            layout="fill"
+                            className={cn("object-cover rounded-md", isEncrypted && "blur-md")}
+                            data-ai-hint="sent image"
+                        />
+                    </button>
+                );
+            case 'video':
+                 if (!message.fileURL) return null;
+                return (
+                    <button onClick={() => onMediaClick(message)} className="relative w-60 h-48 rounded-md overflow-hidden cursor-pointer block bg-black">
+                        <video
+                            src={message.fileURL}
+                            className={cn("object-contain w-full h-full", isEncrypted && "blur-md")}
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <PlayCircle className="h-12 w-12 text-white/80" />
                         </div>
-                    </Button>
-                </a>
-            );
-        case 'audio':
-            if (!message.fileURL) return null;
-            return (
-                <audio controls src={message.fileURL} className={cn("max-w-[250px]", isEncrypted && "filter blur-sm")} />
-            );
-        default:
-            return <p className="whitespace-pre-wrap break-words">{messageText}</p>;
-    }
+                    </button>
+                );
+            case 'file':
+                if (!message.fileURL) return null;
+                return (
+                    <a href={message.fileURL} target="_blank" rel="noopener noreferrer" download={message.fileName}>
+                        <Button variant="outline" className="h-auto">
+                            <div className="flex items-center gap-3 py-2 px-3">
+                                <File className="h-6 w-6" />
+                                <div className="text-left">
+                                    <p className={cn("font-semibold break-all", isEncrypted && "blur-sm")}>{message.fileName}</p>
+                                    <p className="text-xs text-muted-foreground">Click to download</p>
+                                </div>
+                            </div>
+                        </Button>
+                    </a>
+                );
+            case 'audio':
+                if (!message.fileURL) return null;
+                return (
+                    <audio controls src={message.fileURL} className={cn("max-w-[250px]", isEncrypted && "filter blur-sm")} />
+                );
+            default:
+                return null;
+        }
+    };
+    
+    const mediaElement = renderMedia();
+
+    return (
+        <div className="flex flex-col gap-1">
+            {mediaElement}
+            {messageText && (
+                <p className={cn(
+                    "whitespace-pre-wrap break-words",
+                     mediaElement && messageText && 'px-3 pt-2 pb-1'
+                )}>
+                    {messageText}
+                </p>
+            )}
+        </div>
+    );
 };
 
 const MessageWrapper = ({ 
@@ -134,103 +157,60 @@ const MessageWrapper = ({
     onReplyRequest: () => void;
 }) => {
     const { currentUser } = useAuth();
-    const x = useMotionValue(0);
     const [isRevealed, setIsRevealed] = useState(false);
 
     const isCurrentUser = message.senderId === currentUser?.uid;
-    const dragThreshold = isCurrentUser ? -50 : 50;
-    
-    const getRevealPosition = () => {
-        if (!isCurrentUser) return 80; // Only reply
-        if (message.isDeleted) return 0;
-        
-        let position = -80; // start with reply
-        if (!message.isDeleted) {
-             position -= 80; // add space for delete buttons
-        }
-        return position;
-    }
 
-    const handleDragEnd = (event: any, info: any) => {
-        const shouldReveal = isCurrentUser ? info.offset.x < dragThreshold : info.offset.x > dragThreshold;
-        if (shouldReveal && !message.isDeleted) {
-            setIsRevealed(true);
-            x.set(getRevealPosition());
-        } else {
-            setIsRevealed(false);
-            x.set(0);
-        }
+    const handleLongPress = () => {
+      if (!message.isDeleted) {
+        setIsRevealed(prev => !prev);
+      }
     };
 
     const handleAction = (action: () => void) => {
         action();
         setIsRevealed(false);
-        x.set(0);
     };
     
     useEffect(() => {
         setIsRevealed(false);
-        x.set(0);
-    }, [message.id, x]);
-    
-    const dragProps = (message.isDeleted) ? {} : {
-        drag: "x" as const,
-        dragConstraints: { left: 0, right: 0 },
-        onDragEnd: handleDragEnd,
-        style: { x },
-    };
+    }, [message.id]);
 
     return (
-        <div className="relative w-full overflow-hidden">
+        <div className="relative w-full">
             <AnimatePresence>
                 {isRevealed && !message.isDeleted && (
                     <motion.div 
-                        className={cn("absolute inset-y-0 flex items-center", isCurrentUser ? "right-0" : "left-0")}
-                        initial={{ opacity: 0}}
-                        animate={{ opacity: 1}}
-                        exit={{ opacity: 0 }}
+                        className={cn("absolute z-20 flex items-center bg-background p-1 rounded-full shadow-lg",
+                         isCurrentUser ? "bottom-full right-8 mb-1" : "bottom-full left-8 mb-1")}
+                        initial={{ y: 10, opacity: 0}}
+                        animate={{ y: 0, opacity: 1}}
+                        exit={{ y: 10, opacity: 0 }}
                     >
-                        {isCurrentUser ? (
-                            <div className="flex bg-transparent p-2 rounded-lg gap-2 mr-4">
-                                {!message.isDeleted && (
-                                    <>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 bg-blue-500/80 hover:bg-blue-500 text-white" onClick={() => handleAction(onReplyRequest)}>
-                                            <Reply className="h-5 w-5" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 bg-red-500/80 hover:bg-red-500 text-white" onClick={() => handleAction(() => onDeleteRequest('me'))}>
-                                            <User className="h-5 w-5" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 bg-red-500/80 hover:bg-red-500 text-white" onClick={() => handleAction(() => onDeleteRequest('everyone'))}>
-                                            <Users className="h-5 w-5" />
-                                        </Button>
-                                    </>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-center w-20">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 bg-gray-500/80 hover:bg-gray-500 text-white" onClick={() => handleAction(onReplyRequest)}>
-                                    <CornerUpLeft className="h-5 w-5" />
-                                </Button>
-                            </div>
-                        )}
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" onClick={() => handleAction(onReplyRequest)}>
+                          <Reply className="h-5 w-5" />
+                      </Button>
+                      {isCurrentUser && (
+                        <>
+                           <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => handleAction(() => onDeleteRequest('me'))}>
+                                <User className="h-5 w-5" />
+                           </Button>
+                           <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => handleAction(() => onDeleteRequest('everyone'))}>
+                               <Users className="h-5 w-5" />
+                           </Button>
+                        </>
+                      )}
                     </motion.div>
                 )}
             </AnimatePresence>
             
-            <motion.div
-                {...dragProps}
+            <div
                 className="relative z-10 bg-transparent"
-                animate={{x: isRevealed ? getRevealPosition(): 0}}
-                transition={{type: 'spring', stiffness: 300, damping: 30}}
-                onTap={() => {
-                    if (isRevealed) {
-                        setIsRevealed(false);
-                        x.set(0);
-                    }
-                }}
+                onContextMenu={(e) => { e.preventDefault(); handleLongPress(); }}
+                onClick={() => { if(isRevealed) setIsRevealed(false); }}
             >
                 {children}
-            </motion.div>
+            </div>
         </div>
     );
 };
@@ -240,6 +220,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
   const { currentUser } = useAuth();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<{ id: string, type: 'me' | 'everyone' } | null>(null);
+  const [lightboxMessage, setLightboxMessage] = useState<Message | null>(null);
 
   useEffect(() => {
     if (viewportRef.current) {
@@ -264,6 +245,12 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     onReplyToMessage(message);
   }
 
+  const handleMediaClick = (message: Message) => {
+    if (!isEncrypted && (message.type === 'image' || message.type === 'video')) {
+      setLightboxMessage(message);
+    }
+  };
+
   if (!currentUser) {
     return null; 
   }
@@ -272,6 +259,10 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
 
   return (
     <>
+      <Lightbox 
+        message={lightboxMessage}
+        onClose={() => setLightboxMessage(null)}
+      />
       <ScrollArea className="flex-1" viewportRef={viewportRef}>
         <div className="p-4 space-y-4">
           {visibleMessages.map((message) => {
@@ -292,16 +283,16 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
                     <div className="flex flex-col gap-1">
                         <div
                             className={cn(
-                                'rounded-xl shadow-sm break-words p-3',
+                                'rounded-xl shadow-sm break-words',
                                 isCurrentUser
-                                    ? 'bg-primary text-primary-foreground rounded-br-none'
-                                    : 'bg-muted text-card-foreground rounded-bl-none',
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted text-card-foreground',
                                 message.isDeleted && 'bg-transparent shadow-none p-0',
-                                (message.type === 'image' || message.type === 'audio') && 'p-1 bg-transparent dark:bg-transparent shadow-none',
+                                (message.type === 'image' || message.type === 'video') ? 'p-1 bg-transparent dark:bg-transparent shadow-none' : 'p-3'
                             )}
                         >
                             {message.replyTo && !isEncrypted && <ReplyContent reply={message.replyTo} isCurrentUserReply={isCurrentUser} />}
-                            <MessageContent message={message} isEncrypted={isEncrypted} />
+                            <MessageContent message={message} isEncrypted={isEncrypted} onMediaClick={handleMediaClick} />
                         </div>
                         <div className={cn("flex items-center text-xs text-muted-foreground", isCurrentUser ? "justify-end" : "justify-start")}>
                             <FormattedTime timestamp={message.timestamp} />
