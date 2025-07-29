@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
-import { Check, CheckCheck, File, User, Users, Reply, PlayCircle, Trash2 } from 'lucide-react';
+import { Check, CheckCheck, File, Reply, PlayCircle, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   AlertDialog,
@@ -148,6 +148,10 @@ const MessageContent = ({ message, isEncrypted, onMediaClick }: { message: Messa
 
 const MessageBubble = ({ message, isCurrentUser, contactAvatar, isEncrypted, onReplyToMessage, handleDeleteRequest, onMediaClick, isRevealed, setRevealedMessageId }: any) => {
 
+    const dragDirection = isCurrentUser ? "right" : "left";
+    const dragConstraints = isCurrentUser ? { left: -100, right: 0 } : { left: 0, right: 100 };
+    const revealedX = isCurrentUser ? -90 : 90;
+
     return (
         <div
             className={cn(
@@ -188,7 +192,7 @@ const MessageBubble = ({ message, isCurrentUser, contactAvatar, isEncrypted, onR
 
                 <motion.div
                     drag="x"
-                    dragConstraints={{ left: isCurrentUser ? -100 : 0, right: isCurrentUser ? 0 : 100 }}
+                    dragConstraints={dragConstraints}
                     onDragEnd={(event, info) => {
                         const threshold = isCurrentUser ? -50 : 50;
                         const shouldReveal = isCurrentUser ? info.offset.x < threshold : info.offset.x > threshold;
@@ -198,7 +202,7 @@ const MessageBubble = ({ message, isCurrentUser, contactAvatar, isEncrypted, onR
                             if (isRevealed) setRevealedMessageId(null);
                         }
                     }}
-                    animate={{ x: isRevealed ? (isCurrentUser ? -90 : 90) : 0 }}
+                    animate={{ x: isRevealed ? revealedX : 0 }}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     className="flex flex-col gap-1 w-full"
                     style={{ zIndex: 10 }} // Ensure the dragged item is on top
@@ -321,5 +325,3 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     </>
   );
 }
-
-    
