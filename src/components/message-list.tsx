@@ -8,14 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
-import { Check, CheckCheck, File, User, Users, Reply, PlayCircle, MoreVertical } from 'lucide-react';
+import { Check, CheckCheck, File, User, Users, Reply, PlayCircle, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +22,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import ReplyContent from './reply-content';
 import Lightbox from './lightbox';
+import { motion, AnimatePresence } from 'framer-motion';
+
 
 interface MessageListProps {
   messages: Message[];
@@ -149,12 +145,95 @@ const MessageContent = ({ message, isEncrypted, onMediaClick }: { message: Messa
     );
 };
 
+
+const MessageBubble = ({ message, isCurrentUser, contactAvatar, isEncrypted, onReplyToMessage, handleDeleteRequest, onMediaClick, isRevealed, setRevealedMessageId }: any) => {
+
+    return (
+        <div
+            className={cn(
+                'flex items-end gap-2 w-full max-w-xl group relative',
+                isCurrentUser ? 'ml-auto flex-row-reverse' : 'mr-auto'
+            )}
+            onClick={() => isRevealed && setRevealedMessageId(null)}
+        >
+            <Avatar className="h-8 w-8 self-end flex-shrink-0">
+                <AvatarImage src={isCurrentUser ? (message.senderAvatar || '') : contactAvatar} alt="Avatar" data-ai-hint="profile picture" />
+                <AvatarFallback>{isCurrentUser ? message.senderName?.[0].toUpperCase() : 'C'}</AvatarFallback>
+            </Avatar>
+
+            <div className="relative overflow-hidden w-full">
+                <AnimatePresence>
+                    {isRevealed && !message.isDeleted && (
+                        <motion.div
+                            className={cn(
+                                "absolute inset-y-0 flex items-center gap-1",
+                                isCurrentUser ? "right-full mr-2" : "left-full ml-2"
+                            )}
+                            initial={{ width: 0, opacity: 0 }}
+                            animate={{ width: "auto", opacity: 1 }}
+                            exit={{ width: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-muted" onClick={() => onReplyToMessage(message)}>
+                                <Reply className="h-4 w-4" />
+                            </Button>
+                            {isCurrentUser && (
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-muted text-destructive" onClick={() => handleDeleteRequest(message.id, 'everyone')}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <motion.div
+                    drag="x"
+                    dragConstraints={{ left: isCurrentUser ? -100 : 0, right: isCurrentUser ? 0 : 100 }}
+                    onDragEnd={(event, info) => {
+                        const threshold = isCurrentUser ? -50 : 50;
+                        const shouldReveal = isCurrentUser ? info.offset.x < threshold : info.offset.x > threshold;
+                        if (shouldReveal) {
+                            setRevealedMessageId(message.id);
+                        } else {
+                            if (isRevealed) setRevealedMessageId(null);
+                        }
+                    }}
+                    animate={{ x: isRevealed ? (isCurrentUser ? -90 : 90) : 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    className="flex flex-col gap-1 w-full"
+                    style={{ zIndex: 10 }} // Ensure the dragged item is on top
+                >
+                    <div
+                        className={cn(
+                            'rounded-xl shadow-sm break-words w-fit',
+                            isCurrentUser
+                                ? 'bg-primary text-primary-foreground ml-auto'
+                                : 'bg-muted text-card-foreground mr-auto',
+                            message.isDeleted && 'bg-transparent shadow-none p-0',
+                            (message.type === 'image' || message.type === 'video') ? 'p-1 bg-transparent dark:bg-transparent shadow-none' : 'p-3'
+                        )}
+                    >
+                        {message.replyTo && !isEncrypted && <ReplyContent reply={message.replyTo} isCurrentUserReply={isCurrentUser} />}
+                        <MessageContent message={message} isEncrypted={isEncrypted} onMediaClick={onMediaClick} />
+                    </div>
+                     <div className={cn("flex items-center text-xs text-muted-foreground", isCurrentUser ? "justify-end w-full" : "justify-start")}>
+                        <FormattedTime timestamp={message.timestamp} />
+                        {isCurrentUser && !message.isDeleted && <ReadReceipt status={message.status} />}
+                    </div>
+                </motion.div>
+            </div>
+        </div>
+    );
+};
+
+
 export default function MessageList({ messages, contactAvatar, isEncrypted, onDeleteMessage, onReplyToMessage }: MessageListProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const { currentUser } = useAuth();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<{ id: string, type: 'me' | 'everyone' } | null>(null);
   const [lightboxMessage, setLightboxMessage] = useState<Message | null>(null);
+  const [revealedMessageId, setRevealedMessageId] = useState<string | null>(null);
 
   useEffect(() => {
     if (viewportRef.current) {
@@ -163,6 +242,7 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
   }, [messages, isEncrypted]);
 
   const handleDeleteRequest = (messageId: string, type: 'me' | 'everyone') => {
+    setRevealedMessageId(null);
     setSelectedMessage({ id: messageId, type });
     setShowDeleteDialog(true);
   };
@@ -185,7 +265,12 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     return null; 
   }
   
-  const visibleMessages = (messages || []).filter(message => !message.deletedFor?.includes(currentUser.uid));
+  const visibleMessages = (messages || []).map(m => ({
+    ...m,
+    senderName: m.senderId === currentUser.uid ? 'You' : m.senderName,
+    senderAvatar: currentUser.avatar
+  }));
+
 
   return (
     <>
@@ -193,71 +278,23 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
         message={lightboxMessage}
         onClose={() => setLightboxMessage(null)}
       />
-      <ScrollArea className="flex-1" viewportRef={viewportRef}>
+      <ScrollArea className="flex-1" viewportRef={viewportRef} onClick={() => setRevealedMessageId(null)}>
         <div className="p-4 space-y-4">
           {visibleMessages.map((message) => {
             const isCurrentUser = message.senderId === currentUser.uid;
-            
             return (
-                 <div
+                <MessageBubble
                     key={message.id}
-                    className={cn(
-                        'flex items-end gap-2 w-full max-w-xl group relative',
-                        isCurrentUser ? 'ml-auto flex-row-reverse' : 'mr-auto'
-                    )}
-                >
-                    <Avatar className="h-8 w-8 self-end">
-                      <AvatarImage src={isCurrentUser ? currentUser.avatar : contactAvatar} alt="Avatar" data-ai-hint="profile picture" />
-                      <AvatarFallback>{isCurrentUser ? currentUser.email?.[0].toUpperCase() : 'C'}</AvatarFallback>
-                    </Avatar>
-                    
-                    <div className="flex flex-col gap-1 items-start">
-                         <div
-                            className={cn(
-                                'rounded-xl shadow-sm break-words',
-                                isCurrentUser
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-muted text-card-foreground',
-                                message.isDeleted && 'bg-transparent shadow-none p-0',
-                                (message.type === 'image' || message.type === 'video') ? 'p-1 bg-transparent dark:bg-transparent shadow-none' : 'p-3'
-                            )}
-                        >
-                            {message.replyTo && !isEncrypted && <ReplyContent reply={message.replyTo} isCurrentUserReply={isCurrentUser} />}
-                            <MessageContent message={message} isEncrypted={isEncrypted} onMediaClick={handleMediaClick} />
-                        </div>
-                        <div className={cn("flex items-center text-xs text-muted-foreground", isCurrentUser ? "justify-end w-full" : "justify-start")}>
-                            <FormattedTime timestamp={message.timestamp} />
-                            {isCurrentUser && !message.isDeleted && <ReadReceipt status={message.status} />}
-                        </div>
-                    </div>
-                    {!message.isDeleted && (
-                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className={cn("h-7 w-7 absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity", isCurrentUser ? "left-0 -translate-x-full" : "right-0 translate-x-full")}>
-                                    <MoreVertical className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem onClick={() => onReplyToMessage(message)}>
-                                    <Reply className="mr-2 h-4 w-4" />
-                                    <span>Reply</span>
-                                </DropdownMenuItem>
-                                {isCurrentUser && (
-                                    <>
-                                        <DropdownMenuItem onClick={() => handleDeleteRequest(message.id, 'me')} className="text-destructive">
-                                            <User className="mr-2 h-4 w-4" />
-                                            <span>Delete for me</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleDeleteRequest(message.id, 'everyone')} className="text-destructive">
-                                            <Users className="mr-2 h-4 w-4" />
-                                            <span>Delete for everyone</span>
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
-                </div>
+                    message={message}
+                    isCurrentUser={isCurrentUser}
+                    contactAvatar={contactAvatar}
+                    isEncrypted={isEncrypted}
+                    onReplyToMessage={onReplyToMessage}
+                    handleDeleteRequest={handleDeleteRequest}
+                    onMediaClick={handleMediaClick}
+                    isRevealed={revealedMessageId === message.id}
+                    setRevealedMessageId={setRevealedMessageId}
+                />
             );
           })}
         </div>
@@ -284,3 +321,5 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
     </>
   );
 }
+
+    
