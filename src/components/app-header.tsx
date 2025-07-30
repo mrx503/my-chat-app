@@ -2,10 +2,8 @@
 "use client";
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { LogOut, Bot, Bell } from 'lucide-react';
-import Logo from '@/components/logo';
 import { Badge } from '@/components/ui/badge';
 import NotificationsPopover from './notifications-popover';
 import type { AppNotification } from '@/lib/types';
@@ -31,10 +29,9 @@ export default function AppHeader({
     return (
         <header className="flex items-center justify-between p-4 bg-background border-b shadow-sm sticky top-0 z-20">
             <div className="flex items-center gap-2">
-                <Logo className="h-8 w-8" />
-                <h1 className="text-xl font-bold text-primary">duck</h1>
+                <h1 className="text-2xl font-bold text-primary">duck</h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 md:gap-4">
                 <NotificationsPopover 
                     notifications={notifications} 
                     unreadCount={unreadNotificationsCount} 
@@ -42,7 +39,7 @@ export default function AppHeader({
                 />
 
                 <Button variant="ghost" size="icon" className="relative" onClick={onSystemChatSelect}>
-                    <Bot className="h-5 w-5" />
+                    <Bot className="h-6 w-6" />
                     {systemUnreadCount > 0 && (
                         <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 w-4 justify-center p-0 text-xs">{systemUnreadCount}</Badge>
                     )}
@@ -50,8 +47,8 @@ export default function AppHeader({
                 </Button>
 
                 <Button variant="outline" onClick={logout}>
-                    <LogOut className="mr-2 h-4 w-4"/>
-                    Logout
+                    <LogOut className="mr-0 h-5 w-5 md:mr-2"/>
+                    <span className="hidden md:inline">Logout</span>
                 </Button>
             </div>
         </header>

@@ -267,15 +267,17 @@ export default function Home() {
         />
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                <ProfileCard 
-                    currentUser={currentUser}
-                    updateCurrentUser={updateCurrentUser}
-                    logout={logout}
-                />
+                <div className="lg:col-span-1">
+                  <ProfileCard 
+                      currentUser={currentUser}
+                      updateCurrentUser={updateCurrentUser}
+                      logout={logout}
+                  />
+                </div>
 
-                <div className="p-0">
+                <div className="lg:col-span-2">
                     <NotificationPermissionHandler />
                     <Card>
                         <CardHeader>
