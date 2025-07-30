@@ -29,7 +29,7 @@ export default function AppHeader({
     return (
         <header className="flex items-center justify-between p-4 bg-background border-b shadow-sm sticky top-0 z-20">
             <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-primary">duck</h1>
+                <h1 className="text-2xl font-bold text-primary">Murrasil</h1>
             </div>
             <div className="flex items-center gap-2 md:gap-4">
                 <NotificationsPopover 
@@ -38,10 +38,10 @@ export default function AppHeader({
                     onMarkRead={onMarkNotificationsRead}
                 />
 
-                <Button variant="ghost" size="icon" className="relative" onClick={onSystemChatSelect}>
-                    <Bot className="h-6 w-6" />
+                <Button variant="ghost" size="icon" className="relative h-10 w-10" onClick={onSystemChatSelect}>
+                    <Bot className="h-7 w-7" />
                     {systemUnreadCount > 0 && (
-                        <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 w-4 justify-center p-0 text-xs">{systemUnreadCount}</Badge>
+                        <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 justify-center p-0 text-xs">{systemUnreadCount}</Badge>
                     )}
                      <span className="sr-only">System Messages</span>
                 </Button>
