@@ -23,8 +23,30 @@ In the left-hand sidebar, click on "Environment Variables".
 ![Environment Variables Menu](https://placehold.co/800x300.png?text=Vercel+Environment+Variables+Menu)
 <p align="center" style="font-size: small; color: grey;">(Select 'Environment Variables' from the side menu)</p>
 
-**Step 4: Paste Your Keys**
-You will see an input area. Paste the following block of text directly into it. Make sure to replace the placeholder for `GEMINI_API_KEY` with your actual key if you have one.
+**Step 4: Add Your Keys using the Key/Value fields**
+You will see input fields for **Key** and **Value**. Add the following keys one by one.
+
+*   **For the first variable:**
+    *   In the **Key** field, paste: `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`
+    *   In the **Value** field, paste: `dqgchsg6k`
+    *   Click **Save**.
+
+*   **For the second variable:**
+    *   In the **Key** field, paste: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+    *   In the **Value** field, paste: `BAe28C-5u_g5XF7I-IUNYRvoacPc_5sdeM2Eg7Luv9CiCC5QzaVlda78APTJj2JkDbCuh8VExmBXxqtOBL1NpW0`
+    *   Click **Save**.
+
+*   **For the third variable:**
+    *   In the **Key** field, paste: `VAPID_PRIVATE_KEY`
+    *   In the **Value** field, paste: `lshWxt50OSk1wOWG7xBGyIacskhnd7x6q4op1Y77b-8`
+    *   Click **Save**.
+
+*   **For the fourth variable (Optional - for AI features):**
+    *   In the **Key** field, paste: `GEMINI_API_KEY`
+    *   In the **Value** field, paste your actual Gemini API Key.
+    *   Click **Save**.
+
+Alternatively, if you see a large text box for bulk adding, paste the following block directly into it, making sure to replace the placeholder for `GEMINI_API_KEY` with your actual key.
 
 ```env
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=dqgchsg6k
@@ -34,7 +56,7 @@ GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
 ```
 
 **Step 5: Save and Redeploy**
-Click the "Save" button. After saving, you must **redeploy** your project for the changes to take effect. Go to the "Deployments" tab, find the latest deployment, click the menu (...) and select "Redeploy".
+After saving, you must **redeploy** your project for the changes to take effect. Go to the "Deployments" tab, find the latest deployment, click the menu (...) and select "Redeploy".
 
 
 ---
