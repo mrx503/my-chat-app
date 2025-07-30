@@ -12,15 +12,6 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, MessageCircle, Video, Loader2, Play, UserPlus, UserCheck, Camera, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog"
-import { Textarea } from '@/components/ui/textarea';
 import Lightbox from '@/components/lightbox';
 
 export default function UserProfilePage() {
@@ -38,10 +29,6 @@ export default function UserProfilePage() {
     const [isChatting, setIsChatting] = useState(false);
     const [isFollowLoading, setIsFollowLoading] = useState(false);
     
-    // State for editing profile
-    const [showEditBioDialog, setShowEditBioDialog] = useState(false);
-    const [bioText, setBioText] = useState('');
-    const [isSavingBio, setIsSavingBio] = useState(false);
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     
@@ -63,7 +50,6 @@ export default function UserProfilePage() {
                 }
                 const userData = { id: userDoc.id, ...userDoc.data() } as User;
                 setProfileUser(userData);
-                setBioText(userData.bio || '');
 
                 if (currentUser) {
                     setIsFollowing(currentUser.following?.includes(userId) ?? false);
@@ -200,27 +186,14 @@ export default function UserProfilePage() {
         }
     };
 
-    const handleSaveBio = async () => {
-        if (!currentUser || !isOwnProfile) return;
-        setIsSavingBio(true);
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        try {
-            await updateDoc(userDocRef, { bio: bioText });
-            updateCurrentUser({ bio: bioText });
-            setProfileUser(prev => prev ? { ...prev, bio: bioText } : null);
-            toast({ title: 'Success', description: 'Your bio has been updated.' });
-            setShowEditBioDialog(false);
-        } catch (error) {
-            console.error('Error saving bio:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not save your bio.' });
-        } finally {
-            setIsSavingBio(false);
-        }
-    };
-
     const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file || !currentUser) return;
+
+        if (!file.type.startsWith('image/')) {
+            toast({ variant: 'destructive', title: 'Invalid File', description: 'Please select an image file.' });
+            return;
+        }
 
         toast({ title: 'Uploading...', description: 'Your new avatar is being uploaded.' });
 
@@ -299,7 +272,7 @@ export default function UserProfilePage() {
                                 </Avatar>
                                 {isOwnProfile && (
                                     <>
-                                        <input type="file" ref={avatarInputRef} onChange={handleAvatarChange} className="hidden" accept="image/*" />
+                                        <input type="file" ref={avatarInputRef} onChange={handleAvatarChange} className="hidden" />
                                         <Button size="icon" className="absolute bottom-1 right-1 rounded-full h-9 w-9" onClick={() => avatarInputRef.current?.click()}>
                                             <Camera className="h-5 w-5"/>
                                         </Button>
@@ -314,22 +287,6 @@ export default function UserProfilePage() {
                                     <div><span className="font-bold">{userClips.length}</span> Clips</div>
                                     <div><span className="font-bold">{profileUser.followers?.length ?? 0}</span> Followers</div>
                                     <div><span className="font-bold">{profileUser.following?.length ?? 0}</span> Following</div>
-                                </div>
-
-                                {/* Bio Section */}
-                                <div className="mt-4 text-center sm:text-left">
-                                   <div className="flex justify-center sm:justify-start items-center gap-2">
-                                        {profileUser.bio ? (
-                                             <p className="text-sm text-foreground whitespace-pre-wrap flex-1">{profileUser.bio}</p>
-                                        ) : (
-                                            isOwnProfile && <p className="text-sm text-muted-foreground italic">Add a bio to tell others about yourself.</p>
-                                        )}
-                                        {isOwnProfile && (
-                                            <Button variant="ghost" size="icon" onClick={() => setShowEditBioDialog(true)} className="h-8 w-8">
-                                                <Edit className="h-4 w-4" />
-                                            </Button>
-                                        )}
-                                   </div>
                                 </div>
                             </div>
                         </div>
@@ -379,31 +336,6 @@ export default function UserProfilePage() {
                     </div>
                 </main>
             </div>
-
-            <Dialog open={showEditBioDialog} onOpenChange={setShowEditBioDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Edit your bio</DialogTitle>
-                        <DialogDescription>
-                            Tell everyone a little bit about yourself.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <Textarea 
-                        value={bioText}
-                        onChange={(e) => setBioText(e.target.value)}
-                        placeholder="Your bio..."
-                        rows={5}
-                        className="mt-4"
-                    />
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowEditBioDialog(false)}>Cancel</Button>
-                        <Button onClick={handleSaveBio} disabled={isSavingBio}>
-                            {isSavingBio && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Save
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </>
     );
 }
