@@ -47,14 +47,7 @@ export type Message = {
   senderAvatar?: string;
 };
 
-export type Contact = User & {
-  // These properties are now part of the main Chat object
-  // and will be removed from here in the refactor.
-  // Kept for transient compatibility during refactoring.
-  lastMessage?: string;
-  lastMessageTimestamp?: Timestamp;
-  unreadMessages?: number;
-};
+export type Contact = User;
 
 export type Chat = {
   id: string;
@@ -103,7 +96,8 @@ export type Clip = {
   videoUrl: string;
   caption: string;
   uploaderId: string;
-  uploaderName: string;
+  // Denormalized fields for performance
+  uploaderName: string; 
   uploaderAvatar: string;
   timestamp: Timestamp;
   likes: string[]; // Array of user IDs who liked the clip
@@ -119,3 +113,15 @@ export type Comment = {
     timestamp: Timestamp;
 };
 
+export type AppNotification = {
+    id?: string;
+    recipientId: string;
+    senderId: string;
+    senderName: string;
+    senderAvatar: string;
+    type: 'like' | 'comment' | 'follow' | 'message';
+    resourceId: string; // e.g., clipId, userId for follow, chatId for message
+    message?: string; // Optional message, e.g., for comments
+    read: boolean;
+    timestamp: Timestamp;
+};

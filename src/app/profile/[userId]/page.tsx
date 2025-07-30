@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp, setDoc, orderBy, updateDoc, arrayUnion, arrayRemove, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { User, Clip, Chat } from '@/lib/types';
+import type { User, Clip, Chat, AppNotification } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -46,7 +46,7 @@ export default function UserProfilePage() {
                 setProfileUser(userData);
 
                 if (currentUser) {
-                    setIsFollowing(userData.followers?.includes(currentUser.uid) ?? false);
+                    setIsFollowing(currentUser.following?.includes(userId) ?? false);
                 }
 
                 const clipsRef = collection(db, 'clips');
@@ -65,6 +65,23 @@ export default function UserProfilePage() {
 
         fetchUserProfile();
     }, [userId, router, toast, currentUser]);
+    
+    const createNotification = async (type: 'follow' | 'like' | 'comment' | 'message', resourceId: string) => {
+        if (!currentUser || !profileUser || currentUser.uid === profileUser.uid) return;
+
+        const notifRef = collection(db, 'notifications');
+        const newNotification: AppNotification = {
+            recipientId: profileUser.uid,
+            senderId: currentUser.uid,
+            senderName: currentUser.name || currentUser.email!,
+            senderAvatar: currentUser.avatar,
+            type: type,
+            resourceId: resourceId,
+            read: false,
+            timestamp: serverTimestamp() as any
+        };
+        await addDoc(notifRef, newNotification);
+    };
 
     const handleFollow = async () => {
         if (!currentUser || !profileUser || isFollowLoading) return;
@@ -75,18 +92,8 @@ export default function UserProfilePage() {
         
         try {
             await runTransaction(db, async (transaction) => {
-                const currentUserDoc = await transaction.get(currentUserRef);
-                const profileUserDoc = await transaction.get(profileUserRef);
-
-                if (!currentUserDoc.exists() || !profileUserDoc.exists()) {
-                    throw "Cannot find user data.";
-                }
-
-                const currentUserData = currentUserDoc.data();
-                const profileUserData = profileUserDoc.data();
-
-                const iAmFollowing = currentUserData.following?.includes(profileUser.id) ?? false;
-
+                const iAmFollowing = (await transaction.get(currentUserRef)).data()?.following?.includes(profileUser.id) ?? false;
+                
                 if (iAmFollowing) {
                     // Unfollow
                     transaction.update(currentUserRef, { following: arrayRemove(profileUser.id) });
@@ -98,7 +105,12 @@ export default function UserProfilePage() {
                 }
             });
 
-            // Optimistic UI updates
+            // After transaction succeeds, create notification
+             if (!isFollowing) {
+                await createNotification('follow', profileUser.id);
+            }
+
+            // UI updates
             setIsFollowing(!isFollowing);
             setProfileUser(prev => prev ? ({
                 ...prev,
@@ -154,8 +166,8 @@ export default function UserProfilePage() {
                     encrypted: false,
                     deletedFor: [],
                     lastMessageTimestamp: now,
-                    lastMessageText: '',
-                    unreadCount: { [currentUser.uid]: 0, [profileUser.uid]: 0 }
+                    lastMessageText: 'Say hi!',
+                    unreadCount: { [currentUser.uid]: 0, [profileUser.uid]: 1 }
                 });
                 router.push(`/chat/${newChatRef.id}`);
             }

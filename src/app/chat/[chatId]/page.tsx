@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, writeBatch, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Chat, Message, User } from '@/lib/types';
+import type { Chat, Message, User, AppNotification } from '@/lib/types';
 import ChatArea from '@/components/chat-area';
 import { Bot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -183,6 +183,22 @@ export default function ChatPage() {
         }
     }
 
+    const createMessageNotification = async (contactId: string, messageText: string) => {
+        if (!currentUser) return;
+        const notifRef = collection(db, 'notifications');
+        const newNotification: AppNotification = {
+            recipientId: contactId,
+            senderId: currentUser.uid,
+            senderName: currentUser.name || currentUser.email!,
+            senderAvatar: currentUser.avatar,
+            type: 'message',
+            resourceId: chatId,
+            message: messageText,
+            read: false,
+            timestamp: serverTimestamp() as any
+        };
+        await addDoc(notifRef, newNotification);
+    };
 
     const handleNewMessage = async (messageText: string) => {
         if (!chatId || !messageText.trim() || !currentUser || isBlocked || amIBlocked || isSystemChat) return;
@@ -206,26 +222,30 @@ export default function ChatPage() {
         // Update chat metadata
         const chatDocRef = doc(db, 'chats', chatId);
         const contactId = chat.users.find(id => id !== currentUser.uid);
-        await updateDoc(chatDocRef, {
-            lastMessageText: newMessage.text,
-            lastMessageTimestamp: newMessage.timestamp,
-            lastMessageSenderId: newMessage.senderId,
-            [`unreadCount.${contactId}`]: increment(1)
-        });
+        if (contactId) {
+            await updateDoc(chatDocRef, {
+                lastMessageText: newMessage.text,
+                lastMessageTimestamp: newMessage.timestamp,
+                lastMessageSenderId: newMessage.senderId,
+                [`unreadCount.${contactId}`]: increment(1)
+            });
 
-        if (chat.contact?.pushSubscription) {
-            try {
-                const payload = {
-                    title: currentUser.name || 'New Message',
-                    body: messageText,
-                    url: `/chat/${chatId}`,
-                };
-                await sendPushNotification({
-                    subscription: chat.contact.pushSubscription,
-                    payload: JSON.stringify(payload)
-                });
-            } catch (e) {
-                console.error("Failed to send Push notification", e);
+             // Send notifications
+            await createMessageNotification(contactId, messageText);
+            if (chat.contact?.pushSubscription) {
+                try {
+                    const payload = {
+                        title: currentUser.name || 'New Message',
+                        body: messageText,
+                        url: `/chat/${chatId}`,
+                    };
+                    await sendPushNotification({
+                        subscription: chat.contact.pushSubscription,
+                        payload: JSON.stringify(payload)
+                    });
+                } catch (e) {
+                    console.error("Failed to send Push notification", e);
+                }
             }
         }
     };
@@ -252,12 +272,14 @@ export default function ChatPage() {
         // Update chat metadata
         const chatDocRef = doc(db, 'chats', chatId);
         const contactId = chat.users.find(id => id !== currentUser.uid);
+        const lastMessageText = "🎙️ Voice Message";
         await updateDoc(chatDocRef, {
-            lastMessageText: "🎙️ Voice Message",
+            lastMessageText,
             lastMessageTimestamp: newMessage.timestamp,
             lastMessageSenderId: newMessage.senderId,
             [`unreadCount.${contactId}`]: increment(1)
         });
+        if (contactId) await createMessageNotification(contactId, lastMessageText);
     }
 
     const handleSendFile = async (fileUrl: string, file: File, caption: string) => {
@@ -295,27 +317,24 @@ export default function ChatPage() {
                 lastMessageText = caption;
             }
 
-            await updateDoc(chatDocRef, {
-                lastMessageText: lastMessageText,
-                lastMessageTimestamp: newMessage.timestamp,
-                lastMessageSenderId: newMessage.senderId,
-                [`unreadCount.${contactId}`]: increment(1)
-            });
-
-            if (chat.contact?.pushSubscription) {
-                try {
-                    const body = caption || `Sent ${type === 'image' ? 'an image' : type === 'video' ? 'a video' : 'a file'}`;
-                    const payload = {
-                        title: currentUser.name || 'New Message',
-                        body: body,
-                        url: `/chat/${chatId}`,
-                    };
-                    await sendPushNotification({
-                        subscription: chat.contact.pushSubscription,
-                        payload: JSON.stringify(payload)
-                    });
-                } catch (e) {
-                     console.error("Failed to send push notification for file", e);
+            if (contactId) {
+                await updateDoc(chatDocRef, {
+                    lastMessageText,
+                    lastMessageTimestamp: newMessage.timestamp,
+                    lastMessageSenderId: newMessage.senderId,
+                    [`unreadCount.${contactId}`]: increment(1)
+                });
+    
+                // Send notifications
+                const notificationText = caption || `Sent ${type === 'image' ? 'an image' : type === 'video' ? 'a video' : 'a file'}`;
+                await createMessageNotification(contactId, notificationText);
+                if (chat.contact?.pushSubscription) {
+                    try {
+                        const payload = { title: currentUser.name || 'New Message', body: notificationText, url: `/chat/${chatId}` };
+                        await sendPushNotification({ subscription: chat.contact.pushSubscription, payload: JSON.stringify(payload) });
+                    } catch (e) {
+                         console.error("Failed to send push notification for file", e);
+                    }
                 }
             }
         } catch (error: any) {

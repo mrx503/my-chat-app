@@ -3,19 +3,18 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, setDoc, getDocs, orderBy, updateDoc, increment } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, addDoc, serverTimestamp, setDoc, getDocs, orderBy, updateDoc, increment, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Chat, User } from '@/lib/types';
+import type { Chat, User, AppNotification } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import ChatList from "@/components/chat-list";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogOut, MessageSquarePlus } from 'lucide-react';
-import SystemChatCard from '@/components/system-chat-card';
+import { MessageSquarePlus } from 'lucide-react';
 import ProfileCard from '@/components/profile-card';
-import Logo from '@/components/logo';
+import AppHeader from '@/components/app-header';
 import NotificationPermissionHandler from '@/components/notification-permission-handler';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
@@ -25,6 +24,8 @@ export default function Home() {
   const [userChats, setUserChats] = useState<Chat[]>([]);
   const [systemChat, setSystemChat] = useState<Chat | null>(null);
   const [systemUnreadCount, setSystemUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchUserId, setSearchUserId] = useState('');
   const { toast } = useToast();
@@ -37,70 +38,61 @@ export default function Home() {
       router.push('/login');
       return;
     }
+    
+    // --- Combined Firestore Subscription ---
+    const unsubscribeChats = onSnapshot(
+        query(
+            collection(db, 'chats'), 
+            where('users', 'array-contains', currentUser.uid),
+            orderBy('lastMessageTimestamp', 'desc')
+        ), 
+        async (snapshot) => {
+          const chatsDataPromises = snapshot.docs.map(async (docSnapshot) => {
+            const chatData = { id: docSnapshot.id, ...docSnapshot.data() } as Chat;
+            if (chatData.deletedFor?.includes(currentUser.uid)) return null;
 
-    const chatsCollection = collection(db, 'chats');
-    const q = query(
-        chatsCollection, 
-        where('users', 'array-contains', currentUser.uid),
-        orderBy('lastMessageTimestamp', 'desc')
+            const isSystemChat = chatData.users.includes(SYSTEM_BOT_UID);
+            const contactId = isSystemChat ? SYSTEM_BOT_UID : chatData.users.find(uid => uid !== currentUser.uid);
+
+            if (contactId) {
+                const userDocRef = doc(db, 'users', contactId);
+                const userDoc = await getDoc(userDocRef);
+                chatData.contact = userDoc.exists() 
+                    ? { id: userDoc.id, ...userDoc.data() } as User
+                    : { id: contactId, uid: contactId, name: `User ${contactId.substring(0, 4)}`, email: 'Unknown', avatar: `https://placehold.co/100x100.png`, coins: 0 };
+            }
+            
+            const unreadCount = chatData.unreadCount?.[currentUser.uid] ?? 0;
+            chatData.unreadMessages = unreadCount;
+
+            if (isSystemChat) setSystemUnreadCount(unreadCount);
+            return chatData;
+          });
+      
+          const allChats = (await Promise.all(chatsDataPromises)).filter((c): c is Chat => c !== null);
+          setSystemChat(allChats.find(c => c.users.includes(SYSTEM_BOT_UID)) || null);
+          setUserChats(allChats.filter(c => !c.users.includes(SYSTEM_BOT_UID)));
+          if(loading) setLoading(false);
+        }, (error) => {
+            console.error("Error fetching chats:", error);
+            toast({variant: 'destructive', title: 'Error fetching chats'})
+            setLoading(false);
+        });
+
+    const unsubscribeNotifications = onSnapshot(
+        query(collection(db, 'notifications'), where('recipientId', '==', currentUser.uid), orderBy('timestamp', 'desc')),
+        (snapshot) => {
+            const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
+            setNotifications(notifs);
+            setUnreadNotificationsCount(notifs.filter(n => !n.read).length);
+        }
     );
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const chatsDataPromises = snapshot.docs.map(async (docSnapshot) => {
-        const chatData = { id: docSnapshot.id, ...docSnapshot.data() } as Chat;
-        
-        if (chatData.deletedFor?.includes(currentUser.uid)) {
-          return null;
-        }
-
-        const isSystemChat = chatData.users.includes(SYSTEM_BOT_UID);
-        const contactId = isSystemChat 
-            ? SYSTEM_BOT_UID 
-            : chatData.users.find(uid => uid !== currentUser.uid);
-
-        if (contactId) {
-            const userDocRef = doc(db, 'users', contactId);
-            const userDoc = await getDoc(userDocRef);
-            if(userDoc.exists()) {
-                 chatData.contact = { id: userDoc.id, ...userDoc.data() } as User;
-            } else {
-                 chatData.contact = {
-                    id: contactId,
-                    uid: contactId,
-                    name: `User ${contactId.substring(0, 4)}`,
-                    email: 'Unknown',
-                    avatar: `https://placehold.co/100x100.png`,
-                    coins: 0,
-                };
-            }
-        }
-        
-        // Use pre-calculated unread count from chat document
-        const unreadCount = chatData.unreadCount?.[currentUser.uid] ?? 0;
-        chatData.unreadMessages = unreadCount;
-
-        if (isSystemChat) {
-          setSystemUnreadCount(unreadCount);
-        }
-
-        return chatData;
-      });
-      
-      const allChats = (await Promise.all(chatsDataPromises)).filter((c): c is Chat => c !== null);
-      
-      const sysChat = allChats.find(c => c.users.includes(SYSTEM_BOT_UID)) || null;
-      const regularChats = allChats.filter(c => !c.users.includes(SYSTEM_BOT_UID));
-
-      setSystemChat(sysChat);
-      setUserChats(regularChats);
-      setLoading(false);
-    }, (error) => {
-        console.error("Error fetching chats:", error);
-        toast({variant: 'destructive', title: 'Error fetching chats', description: 'Please try again later.'})
-        setLoading(false);
-    });
-
-    return () => unsubscribe();
+    return () => {
+        unsubscribeChats();
+        unsubscribeNotifications();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, router, toast]);
   
   useEffect(() => {
@@ -239,6 +231,17 @@ export default function Home() {
     }
   };
 
+  const handleMarkNotificationsAsRead = async () => {
+    if (!currentUser || unreadNotificationsCount === 0) return;
+    const batch = writeBatch(db);
+    const notificationsToUpdate = notifications.filter(n => !n.read);
+    notificationsToUpdate.forEach(n => {
+        const notifRef = doc(db, 'notifications', n.id);
+        batch.update(notifRef, { read: true });
+    });
+    await batch.commit();
+  }
+
   if (!currentUser || loading) {
     return (
         <div className="flex justify-center items-center h-screen bg-background">
@@ -252,16 +255,14 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen bg-muted/30">
-        <header className="hidden lg:flex items-center justify-between p-4 bg-background border-b shadow-sm">
-            <div className="flex items-center gap-2">
-                <Logo className="h-8 w-8" />
-                <h1 className="text-xl font-bold text-primary">duck</h1>
-            </div>
-            <Button variant="outline" onClick={logout}>
-                <LogOut className="mr-2 h-4 w-4"/>
-                Logout
-            </Button>
-        </header>
+        <AppHeader 
+            logout={logout}
+            systemUnreadCount={systemUnreadCount}
+            onSystemChatSelect={handleSystemChatSelect}
+            notifications={notifications}
+            unreadNotificationsCount={unreadNotificationsCount}
+            onMarkNotificationsRead={handleMarkNotificationsAsRead}
+        />
 
         <main className="flex-1 overflow-y-auto p-0 md:p-6">
             <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -273,11 +274,6 @@ export default function Home() {
                 />
 
                 <div className="lg:col-span-2 p-4 md:p-0">
-                     <SystemChatCard 
-                        unreadCount={systemUnreadCount}
-                        onClick={handleSystemChatSelect}
-                        className="mb-6"
-                    />
                     <NotificationPermissionHandler />
                     <Card className="mt-6">
                         <CardHeader>

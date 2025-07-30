@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Comment as CommentType, User } from '@/lib/types';
+import type { Comment as CommentType, User, AppNotification } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,11 +18,12 @@ interface CommentsModalProps {
   isOpen: boolean;
   onClose: () => void;
   clipId: string;
+  clipUploaderId: string;
   currentUser: User;
   onCommentsUpdate: (clipId: string, newCount: number) => void;
 }
 
-export default function CommentsModal({ isOpen, onClose, clipId, currentUser, onCommentsUpdate }: CommentsModalProps) {
+export default function CommentsModal({ isOpen, onClose, clipId, clipUploaderId, currentUser, onCommentsUpdate }: CommentsModalProps) {
   const [comments, setComments] = useState<CommentType[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -67,19 +68,30 @@ export default function CommentsModal({ isOpen, onClose, clipId, currentUser, on
 
         await runTransaction(db, async (transaction) => {
             const clipDoc = await transaction.get(clipRef);
-            if (!clipDoc.exists()) {
-                throw "Clip does not exist.";
-            }
+            if (!clipDoc.exists()) throw "Clip does not exist.";
             
-            // Add the new comment
             transaction.set(doc(commentsRef), commentData);
 
-            // Increment the commentsCount on the clip
             const newCount = (clipDoc.data().commentsCount || 0) + 1;
             transaction.update(clipRef, { commentsCount: newCount });
         });
         
-        // Optimistically update the parent component
+        if (currentUser.uid !== clipUploaderId) {
+            const notifRef = collection(db, 'notifications');
+            const newNotification: AppNotification = {
+                recipientId: clipUploaderId,
+                senderId: currentUser.uid,
+                senderName: currentUser.name || currentUser.email!,
+                senderAvatar: currentUser.avatar,
+                type: 'comment',
+                resourceId: clipId,
+                message: newComment,
+                read: false,
+                timestamp: serverTimestamp() as any
+            };
+            await addDoc(notifRef, newNotification);
+        }
+
         onCommentsUpdate(clipId, comments.length + 1);
         setNewComment('');
 
@@ -162,4 +174,3 @@ export default function CommentsModal({ isOpen, onClose, clipId, currentUser, on
     </Dialog>
   );
 }
-

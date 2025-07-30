@@ -2,9 +2,9 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { collection, getDocs, limit, orderBy, query, startAfter, serverTimestamp, addDoc, doc, updateDoc, arrayUnion, arrayRemove, increment } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, startAfter, serverTimestamp, addDoc, doc, updateDoc, arrayUnion, arrayRemove, runTransaction, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Clip } from '@/lib/types';
+import type { Clip, AppNotification } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import CommentsModal from '@/components/comments-modal';
 
 
-const ClipPlayer = ({ clip, onLike, onComment, currentUserId }: { clip: Clip, onLike: (clipId: string, likes: string[]) => void, onComment: (clipId: string) => void, currentUserId: string | undefined }) => {
+const ClipPlayer = ({ clip, onLike, onComment, currentUserId, uploaderName, uploaderAvatar, uploaderId }: { clip: Clip, onLike: (clip: Clip) => void, onComment: (clipId: string) => void, currentUserId: string | undefined, uploaderName: string, uploaderAvatar: string, uploaderId: string }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(true); // Autoplay by default
     const { toast } = useToast();
@@ -42,7 +42,7 @@ const ClipPlayer = ({ clip, onLike, onComment, currentUserId }: { clip: Clip, on
             toast({ variant: 'destructive', title: "Login Required", description: "You need to be logged in to like a clip." });
             return;
         }
-        onLike(clip.id, clip.likes);
+        onLike(clip);
     };
     
      const handleSupportClick = (e: React.MouseEvent) => {
@@ -61,7 +61,7 @@ const ClipPlayer = ({ clip, onLike, onComment, currentUserId }: { clip: Clip, on
 
     const handleProfileClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        router.push(`/profile/${clip.uploaderId}`);
+        router.push(`/profile/${uploaderId}`);
     }
 
 
@@ -112,10 +112,10 @@ const ClipPlayer = ({ clip, onLike, onComment, currentUserId }: { clip: Clip, on
                 <div className="text-white w-[75%] space-y-2">
                     <button className="flex items-center gap-2 text-left" onClick={handleProfileClick}>
                         <Avatar className="h-10 w-10 border-2 border-white">
-                            <AvatarImage src={clip.uploaderAvatar} alt={clip.uploaderName} />
-                            <AvatarFallback>{clip.uploaderName?.[0]}</AvatarFallback>
+                            <AvatarImage src={uploaderAvatar} alt={uploaderName} />
+                            <AvatarFallback>{uploaderName?.[0]}</AvatarFallback>
                         </Avatar>
-                        <p className="font-bold text-lg">{clip.uploaderName}</p>
+                        <p className="font-bold text-lg">{uploaderName}</p>
                     </button>
                     <p className="text-sm">{clip.caption}</p>
                 </div>
@@ -183,7 +183,23 @@ export default function ClipsPage() {
                 return;
             }
 
-            const newClips = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data() } as Clip));
+            // Fetch uploader info for each clip
+            const newClipsPromises = documentSnapshots.docs.map(async (docSnapshot) => {
+                const clipData = { id: docSnapshot.id, ...docSnapshot.data() } as Clip;
+                
+                const userDoc = await getDoc(doc(db, 'users', clipData.uploaderId));
+                if (userDoc.exists()) {
+                    clipData.uploaderName = userDoc.data().name || 'Unknown';
+                    clipData.uploaderAvatar = userDoc.data().avatar || '';
+                } else {
+                    clipData.uploaderName = 'Unknown User';
+                    clipData.uploaderAvatar = '';
+                }
+                return clipData;
+            });
+
+            const newClips = await Promise.all(newClipsPromises);
+
             const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
             
             setLastVisible(lastDoc);
@@ -240,8 +256,6 @@ export default function ClipsPage() {
                 videoUrl,
                 caption,
                 uploaderId: currentUser.uid,
-                uploaderName: currentUser.name || currentUser.email,
-                uploaderAvatar: currentUser.avatar,
                 timestamp: serverTimestamp(),
                 likes: [],
                 commentsCount: 0,
@@ -252,7 +266,9 @@ export default function ClipsPage() {
             // Create a client-side version of the clip to prepend to the list
             const newClipWithId: Clip = { 
                 id: docRef.id, 
-                ...newClipData, 
+                ...newClipData,
+                uploaderName: currentUser.name || currentUser.email!,
+                uploaderAvatar: currentUser.avatar,
                 timestamp: new Date() 
             } as any; // Cast because serverTimestamp is different from Date
             
@@ -266,22 +282,23 @@ export default function ClipsPage() {
         }
     };
 
-    const handleLike = async (clipId: string, currentLikes: string[]) => {
+    const handleLike = async (clip: Clip) => {
         if (!currentUser) return;
-        const clipRef = doc(db, 'clips', clipId);
-        const isLiked = currentLikes.includes(currentUser.uid);
+
+        const clipRef = doc(db, 'clips', clip.id);
+        const isLiked = clip.likes.includes(currentUser.uid);
 
         // Optimistic update
-        setClips(prevClips => prevClips.map(clip => {
-            if (clip.id === clipId) {
+        setClips(prevClips => prevClips.map(c => {
+            if (c.id === clip.id) {
                 return {
-                    ...clip,
+                    ...c,
                     likes: isLiked 
-                        ? clip.likes.filter(id => id !== currentUser.uid)
-                        : [...clip.likes, currentUser.uid]
+                        ? c.likes.filter(id => id !== currentUser.uid)
+                        : [...c.likes, currentUser.uid]
                 };
             }
-            return clip;
+            return c;
         }));
 
         try {
@@ -289,15 +306,30 @@ export default function ClipsPage() {
                 await updateDoc(clipRef, { likes: arrayRemove(currentUser.uid) });
             } else {
                 await updateDoc(clipRef, { likes: arrayUnion(currentUser.uid) });
+                // Send notification only if it's not our own clip
+                if (currentUser.uid !== clip.uploaderId) {
+                    const notifRef = collection(db, 'notifications');
+                    const newNotification: AppNotification = {
+                        recipientId: clip.uploaderId,
+                        senderId: currentUser.uid,
+                        senderName: currentUser.name || currentUser.email!,
+                        senderAvatar: currentUser.avatar,
+                        type: 'like',
+                        resourceId: clip.id,
+                        read: false,
+                        timestamp: serverTimestamp() as any
+                    };
+                    await addDoc(notifRef, newNotification);
+                }
             }
         } catch (error) {
             console.error("Error updating like:", error);
             // Revert optimistic update on error
-             setClips(prevClips => prevClips.map(clip => {
-                if (clip.id === clipId) {
-                    return { ...clip, likes: currentLikes };
+             setClips(prevClips => prevClips.map(c => {
+                if (c.id === clip.id) {
+                    return { ...c, likes: clip.likes };
                 }
-                return clip;
+                return c;
             }));
             toast({ variant: 'destructive', title: 'Error', description: 'Could not update like.' });
         }
@@ -341,7 +373,15 @@ export default function ClipsPage() {
             <div className="h-full w-full snap-y snap-mandatory overflow-y-scroll" id="clips-container">
                 {clips.map((clip, index) => (
                     <div ref={index === clips.length - 1 ? lastClipElementRef : null} key={clip.id} className="h-full w-full snap-start relative">
-                        <ClipPlayer clip={clip} onLike={handleLike} onComment={handleOpenComments} currentUserId={currentUser?.uid} />
+                        <ClipPlayer 
+                            clip={clip} 
+                            onLike={handleLike} 
+                            onComment={handleOpenComments} 
+                            currentUserId={currentUser?.uid} 
+                            uploaderName={clip.uploaderName}
+                            uploaderAvatar={clip.uploaderAvatar}
+                            uploaderId={clip.uploaderId}
+                        />
                     </div>
                 ))}
 
@@ -381,6 +421,7 @@ export default function ClipsPage() {
                     isOpen={isCommentsModalOpen}
                     onClose={() => setIsCommentsModalOpen(false)}
                     clipId={selectedClipId}
+                    clipUploaderId={clips.find(c => c.id === selectedClipId)?.uploaderId || ''}
                     currentUser={currentUser}
                     onCommentsUpdate={handleCommentsUpdate}
                 />

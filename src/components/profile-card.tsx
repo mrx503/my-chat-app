@@ -12,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { User } from '@/lib/types';
-import Logo from './logo';
 
 interface ProfileCardProps {
     currentUser: User & { uid: string };
@@ -110,17 +109,7 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
     const shortUserId = currentUser?.uid ? `${currentUser.uid.substring(0, 6)}...` : '';
 
     return (
-        <div className="lg:col-span-1 space-y-6">
-            <header className="flex items-center justify-between p-4 bg-background border-b shadow-sm lg:hidden">
-                 <div className="flex items-center gap-2">
-                    <Logo className="h-8 w-8" />
-                    <h1 className="text-xl font-bold text-primary">duck</h1>
-                </div>
-                 <Button variant="outline" onClick={logout}>
-                     <LogOut className="mr-2 h-4 w-4"/>
-                     Logout
-                 </Button>
-            </header>
+        <div className="lg:col-span-1 space-y-6 lg:mt-0 mt-4">
             <Card>
                 <CardHeader className="flex flex-row items-center gap-4">
                     <div className="relative">
