@@ -266,8 +266,8 @@ export default function Home() {
             onMarkNotificationsRead={handleMarkNotificationsAsRead}
         />
 
-        <main className="flex-1 overflow-y-auto p-0 md:p-6">
-            <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="max-w-4xl mx-auto space-y-6">
                 
                 <ProfileCard 
                     currentUser={currentUser}
@@ -275,9 +275,9 @@ export default function Home() {
                     logout={logout}
                 />
 
-                <div className="lg:col-span-2 p-4 md:p-0">
+                <div className="p-0">
                     <NotificationPermissionHandler />
-                    <Card className="mt-6">
+                    <Card>
                         <CardHeader>
                             <CardTitle>Start or Continue a Chat</CardTitle>
                             <CardDescription>Enter a user ID or select a conversation.</CardDescription>

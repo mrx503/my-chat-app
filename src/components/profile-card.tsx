@@ -30,7 +30,7 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
     const shortUserId = currentUser?.uid ? `${currentUser.uid.substring(0, 6)}...` : '';
 
     return (
-        <div className="lg:col-span-1 space-y-6 lg:mt-0 mt-4">
+        <div className="space-y-6">
             <Card>
                 <CardHeader className="flex flex-row items-center gap-4">
                     <Avatar className="w-16 h-16">
