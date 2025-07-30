@@ -1,54 +1,67 @@
 # Firebase Studio - Duck Chat App
 
-This is a Next.js application built with Firebase Studio. This guide provides instructions on how to deploy the latest changes to Vercel from your local machine.
+This guide provides instructions on how to deploy the latest changes to Vercel from your local machine using both the Vercel CLI and the standard Git workflow.
 
-## Deploying to Vercel
+---
 
-Since you want to use the standard deployment method via the command line, you will need to have the project code on your local computer.
+## Option 1: Deploying with Vercel CLI (Recommended for Manual Deploys)
+
+This is the standard method for deploying directly from your local machine to Vercel without using a Git repository.
 
 ### Prerequisites
 
 1.  **Node.js:** Make sure you have Node.js (version 18 or later) installed.
-2.  **Vercel CLI:** You need to install the Vercel Command Line Interface. If you don't have it, open your terminal and run:
-    ```bash
-    npm i -g vercel
-    ```
-3.  **Vercel Account:** You must have a Vercel account. If you don't, sign up at [vercel.com](https://vercel.com).
+2.  **Vercel CLI:** Install the Vercel Command Line Interface by running: `npm i -g vercel`.
+3.  **Vercel Account:** You must have a Vercel account.
 
 ### Step-by-Step Deployment
 
 **Step 1: Log in to Vercel**
-
-Open your terminal and log in to your Vercel account. It might ask you to open a browser to confirm.
-
+Open your terminal and log in to your Vercel account.
 ```bash
 vercel login
 ```
 
 **Step 2: Link the Project**
-
-Navigate to your project's root directory on your local machine in the terminal. If this is your first time deploying this project from your local machine, link it to your Vercel project:
-
+Navigate to your project's root directory in the terminal. If this is your first time, link it to your Vercel project:
 ```bash
 vercel link
 ```
 
-Vercel will ask you a few questions to set up the project. Since a `vercel.json` file already exists, it should detect the settings automatically.
-
-**Step 3: Deploy the Latest Changes**
-
-Once your project is linked, you can deploy any new changes you've pulled from Firebase Studio. To deploy to a preview environment, simply run:
-
-```bash
-vercel
-```
-
-**To deploy to production (your main URL), run the following command:**
-
+**Step 3: Deploy to Production**
+To deploy all the new changes to your main URL, run:
 ```bash
 vercel --prod
 ```
+This command will start the build and deployment process. Once it's done, you will get the public URL for your application.
 
-This command will start the build process and deploy your application. Once it's done, it will provide you with the public URL for your production deployment.
+---
 
-That's it! These are the standard commands you were looking for. By following these steps, you can reliably push all the new updates we've made to your live Vercel application.
+## Option 2: Deploying with Git (Standard Git Workflow)
+
+If your project is connected to a Git repository (like GitHub, GitLab, etc.) and that repository is linked to Vercel, you can deploy simply by pushing your changes.
+
+### Git Commands
+
+After getting the latest code from Firebase Studio onto your local machine, navigate to the project directory in your terminal and use the following standard Git commands.
+
+**Step 1: Stage Your Changes**
+This command adds all new and modified files, preparing them for the next step.
+```bash
+git add .
+```
+
+**Step 2: Commit Your Changes**
+This command saves a snapshot of your staged changes to your local Git history. Replace `"Your commit message"` with a brief description of the updates.
+```bash
+git commit -m "Updated UI and added new features"
+```
+*(Example: `git commit -m "Redesigned the main page header"`)*
+
+**Step 3: Push Your Changes**
+This command uploads your committed changes from your local machine to the remote repository (e.g., GitHub). Vercel will automatically detect this push and start a new deployment.
+```bash
+git push
+```
+
+That's it! After the `git push` command completes, Vercel will handle the rest. You can monitor the deployment progress on your Vercel dashboard.
