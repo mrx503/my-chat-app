@@ -84,7 +84,7 @@ export default function Home() {
         (snapshot) => {
             const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
             // Sort manually to avoid needing a composite index
-            notifs.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+            notifs.sort((a, b) => (b.timestamp?.toMillis() ?? 0) - (a.timestamp?.toMillis() ?? 0));
             setNotifications(notifs);
             setUnreadNotificationsCount(notifs.filter(n => !n.read).length);
         }
@@ -267,7 +267,7 @@ export default function Home() {
         />
 
         <main className="flex-1 overflow-y-auto p-0 md:p-6">
-            <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 <ProfileCard 
                     currentUser={currentUser}
