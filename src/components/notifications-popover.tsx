@@ -66,8 +66,8 @@ export default function NotificationsPopover({ notifications, unreadCount, onMar
     return (
         <Popover onOpenChange={(open) => { if (open && unreadCount > 0) onMarkRead() }}>
             <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
-                    <Bell className="h-6 w-6" />
+                <Button variant="ghost" size="icon" className="relative h-11 w-11">
+                    <Bell className="h-7 w-7" />
                     {unreadCount > 0 && (
                         <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 w-4 justify-center p-0 text-xs">{unreadCount}</Badge>
                     )}

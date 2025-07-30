@@ -267,7 +267,7 @@ export default function Home() {
         />
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
-            <div className="max-w-xl mx-auto grid grid-cols-1 gap-6">
+            <div className="max-w-2xl mx-auto grid grid-cols-1 gap-8">
                 
                 <div>
                   <ProfileCard 
