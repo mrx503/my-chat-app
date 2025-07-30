@@ -4,65 +4,73 @@ This guide provides instructions on how to deploy the latest changes to Vercel f
 
 ---
 
-## Option 1: Deploying with Vercel CLI (Recommended for Manual Deploys)
+## Setting Up Environment Variables on Vercel
 
-This is the standard method for deploying directly from your local machine to Vercel without using a Git repository. It's often more reliable if you encounter Git authentication errors.
+Before deploying, you **MUST** add your secret keys (API keys) to your Vercel project settings. This is a one-time setup for your project.
 
-### Prerequisites
+**Step 1: Go to your Vercel Dashboard**
+Navigate to `https://vercel.com/dashboard` and click on your project.
 
-1.  **Node.js:** Make sure you have Node.js (version 18 or later) installed.
-2.  **Vercel CLI:** Install the Vercel Command Line Interface by running: `npm i -g vercel`.
-3.  **Vercel Account:** You must have a Vercel account.
+**Step 2: Go to Project Settings**
+Click on the "Settings" tab in the main navigation menu of your project.
 
-### Step-by-Step Deployment
+![Project Settings Tab](https://placehold.co/800x150.png?text=Vercel+Project+Settings+Tab)
+<p align="center" style="font-size: small; color: grey;">(Find the 'Settings' tab at the top of your project page)</p>
 
-**Step 1: Log in to Vercel**
-Open your terminal and log in to your Vercel account.
-```bash
-vercel login
+**Step 3: Find Environment Variables**
+In the left-hand sidebar, click on "Environment Variables".
+
+![Environment Variables Menu](https://placehold.co/800x300.png?text=Vercel+Environment+Variables+Menu)
+<p align="center" style="font-size: small; color: grey;">(Select 'Environment Variables' from the side menu)</p>
+
+**Step 4: Paste Your Keys**
+You will see an input area. Paste the following block of text directly into it. Make sure to replace the placeholder for `GEMINI_API_KEY` with your actual key if you have one.
+
+```env
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=dqgchsg6k
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=BAe28C-5u_g5XF7I-IUNYRvoacPc_5sdeM2Eg7Luv9CiCC5QzaVlda78APTJj2JkDbCuh8VExmBXxqtOBL1NpW0
+VAPID_PRIVATE_KEY=lshWxt50OSk1wOWG7xBGyIacskhnd7x6q4op1Y77b-8
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
 ```
 
-**Step 2: Link the Project**
-Navigate to your project's root directory in the terminal. If this is your first time, link it to your Vercel project:
-```bash
-vercel link
-```
-The CLI will guide you through connecting this local directory to a project on Vercel.
+**Step 5: Save and Redeploy**
+Click the "Save" button. After saving, you must **redeploy** your project for the changes to take effect. Go to the "Deployments" tab, find the latest deployment, click the menu (...) and select "Redeploy".
 
-**Step 3: Deploy to Production**
-To deploy all the new changes to your main URL, run:
-```bash
-vercel --prod
-```
-This command will start the build and deployment process. Once it's done, you will get the public URL for your application.
 
 ---
 
-## Option 2: Deploying with Git (Standard Git Workflow)
+## Option 1: Deploying with Vercel CLI (Recommended)
 
-If your project is connected to a Git repository (like GitHub, GitLab, etc.) and that repository is linked to Vercel, you can deploy simply by pushing your changes.
+This is the standard method for deploying directly from your local machine to Vercel.
+
+### Prerequisites
+1.  **Node.js:** Make sure you have Node.js (version 18 or later) installed.
+2.  **Vercel CLI:** Install by running: `npm i -g vercel`.
+3.  **Vercel Account:** You must have a Vercel account.
+
+### Step-by-Step Deployment
+1.  **Log in to Vercel:** `vercel login`
+2.  **Link the Project:** `vercel link`
+3.  **Deploy to Production:** `vercel --prod`
+
+---
+
+## Option 2: Deploying with Git (Standard Workflow)
+
+If your project is connected to a Git repository, you can deploy by pushing your changes.
 
 ### Git Commands
+1.  **Stage Your Changes:**
+    ```bash
+    git add .
+    ```
+2.  **Commit Your Changes:**
+    ```bash
+    git commit -m "Describe your changes here"
+    ```
+3.  **Push Your Changes:**
+    ```bash
+    git push
+    ```
 
-After getting the latest code from Firebase Studio onto your local machine, navigate to the project directory in your terminal and use the following standard Git commands.
-
-**Step 1: Stage Your Changes**
-This command adds all new and modified files, preparing them for the next step.
-```bash
-git add .
-```
-
-**Step 2: Commit Your Changes**
-This command saves a snapshot of your staged changes to your local Git history. Replace `"Your commit message"` with a brief description of the updates.
-```bash
-git commit -m "Updated UI and added new features"
-```
-*(Example: `git commit -m "Redesigned the main page header"`)*
-
-**Step 3: Push Your Changes**
-This command uploads your committed changes from your local machine to the remote repository (e.g., GitHub). Vercel will automatically detect this push and start a new deployment.
-```bash
-git push
-```
-
-That's it! After the `git push` command completes, Vercel will handle the rest. You can monitor the deployment progress on your Vercel dashboard.
+Vercel will automatically detect this push and start a new deployment.
