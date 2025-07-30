@@ -6,7 +6,7 @@ This guide provides instructions on how to deploy the latest changes to Vercel f
 
 ## Option 1: Deploying with Vercel CLI (Recommended for Manual Deploys)
 
-This is the standard method for deploying directly from your local machine to Vercel without using a Git repository.
+This is the standard method for deploying directly from your local machine to Vercel without using a Git repository. It's often more reliable if you encounter Git authentication errors.
 
 ### Prerequisites
 
@@ -27,6 +27,7 @@ Navigate to your project's root directory in the terminal. If this is your first
 ```bash
 vercel link
 ```
+The CLI will guide you through connecting this local directory to a project on Vercel.
 
 **Step 3: Deploy to Production**
 To deploy all the new changes to your main URL, run:
