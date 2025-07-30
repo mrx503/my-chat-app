@@ -64,7 +64,7 @@ export default function UserProfilePage() {
         };
 
         fetchUserProfile();
-    }, [userId, router, toast, currentUser]);
+    }, [userId, router, toast, currentUser?.uid]);
     
     const createNotification = async (type: 'follow' | 'like' | 'comment' | 'message', resourceId: string) => {
         if (!currentUser || !profileUser || currentUser.uid === profileUser.uid) return;
@@ -89,48 +89,47 @@ export default function UserProfilePage() {
         setIsFollowLoading(true);
         const currentUserRef = doc(db, 'users', currentUser.uid);
         const profileUserRef = doc(db, 'users', profileUser.id);
+        const currentlyFollowing = isFollowing;
         
+        // Optimistic UI updates
+        setIsFollowing(!currentlyFollowing);
+        setProfileUser(prev => prev ? ({
+            ...prev,
+            followers: currentlyFollowing 
+                ? prev.followers?.filter(id => id !== currentUser.uid)
+                : [...(prev.followers || []), currentUser.uid]
+        }) : null);
+
         try {
             await runTransaction(db, async (transaction) => {
-                const iAmFollowing = (await transaction.get(currentUserRef)).data()?.following?.includes(profileUser.id) ?? false;
-                
-                if (iAmFollowing) {
-                    // Unfollow
-                    transaction.update(currentUserRef, { following: arrayRemove(profileUser.id) });
-                    transaction.update(profileUserRef, { followers: arrayRemove(currentUser.uid) });
-                } else {
-                    // Follow
-                    transaction.update(currentUserRef, { following: arrayUnion(profileUser.id) });
-                    transaction.update(profileUserRef, { followers: arrayUnion(currentUser.uid) });
-                }
+                transaction.update(currentUserRef, { following: currentlyFollowing ? arrayRemove(profileUser.id) : arrayUnion(profileUser.id) });
+                transaction.update(profileUserRef, { followers: currentlyFollowing ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid) });
             });
 
-            // After transaction succeeds, create notification
-             if (!isFollowing) {
-                await createNotification('follow', profileUser.id);
-            }
-
-            // UI updates
-            setIsFollowing(!isFollowing);
-            setProfileUser(prev => prev ? ({
-                ...prev,
-                followers: isFollowing 
-                    ? prev.followers?.filter(id => id !== currentUser.uid)
-                    : [...(prev.followers || []), currentUser.uid]
-            }) : null);
-
+             // After transaction succeeds, update context and create notification
             updateCurrentUser({
-                following: isFollowing
+                following: currentlyFollowing
                     ? currentUser.following?.filter(id => id !== profileUser.id)
                     : [...(currentUser.following || []), profileUser.id]
             });
+             if (!currentlyFollowing) {
+                await createNotification('follow', profileUser.id);
+            }
 
             toast({
-                title: isFollowing ? 'Unfollowed' : 'Followed!',
-                description: `You are now ${isFollowing ? 'unfollowing' : 'following'} ${profileUser?.name}.`,
+                title: currentlyFollowing ? 'Unfollowed' : 'Followed!',
+                description: `You are now ${currentlyFollowing ? 'unfollowing' : 'following'} ${profileUser?.name}.`,
             });
         } catch (error) {
             console.error("Follow/unfollow error:", error);
+            // Revert optimistic updates on error
+            setIsFollowing(currentlyFollowing);
+            setProfileUser(prev => prev ? ({
+                ...prev,
+                followers: currentlyFollowing 
+                    ? [...(prev.followers || []), currentUser.uid]
+                    : prev.followers?.filter(id => id !== currentUser.uid)
+            }) : null);
             toast({ variant: 'destructive', title: 'Error', description: 'An error occurred. Please try again.' });
         } finally {
             setIsFollowLoading(false);
@@ -211,7 +210,7 @@ export default function UserProfilePage() {
             <main className="p-4 md:p-6">
                 <div className="max-w-4xl mx-auto">
                     {/* Profile Header */}
-                    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 mb-8">
+                    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 mb-6">
                         <Avatar className="w-24 h-24 sm:w-32 sm:h-32 text-4xl border-4 border-primary/20">
                             <AvatarImage src={profileUser.avatar} alt={profileUser.name} />
                             <AvatarFallback>{profileUser.name?.[0].toUpperCase()}</AvatarFallback>
@@ -227,6 +226,14 @@ export default function UserProfilePage() {
                             </div>
                         </div>
                     </div>
+
+                     {/* Bio Section */}
+                    {profileUser.bio && (
+                        <div className="mb-8 text-center sm:text-left border-t pt-4">
+                           <p className="text-sm text-foreground whitespace-pre-wrap">{profileUser.bio}</p>
+                        </div>
+                    )}
+
 
                     {/* Action Buttons */}
                      {currentUser && currentUser.uid !== profileUser.uid && (

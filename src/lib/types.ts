@@ -17,6 +17,7 @@ export type User = {
   name: string;
   email: string;
   avatar: string;
+  bio?: string; // User's biography
   online?: boolean;
   lastSeen?: Timestamp;
   privacySettings?: {

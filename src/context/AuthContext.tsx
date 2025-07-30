@@ -72,6 +72,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               email: user.email!, 
               name: '', 
               avatar: '', 
+              bio: '',
               coins: 0,
               systemMessagesQueue: []
             });
@@ -106,6 +107,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         email: user.email,
         name: user.email?.split('@')[0] || `User-${user.uid.substring(0,5)}`,
         avatar: `https://placehold.co/100x100.png`,
+        bio: '',
         online: true,
         lastSeen: serverTimestamp(),
         privacySettings: {

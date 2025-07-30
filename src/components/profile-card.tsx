@@ -1,17 +1,19 @@
 
 "use client";
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Copy, Camera, Wallet, LogOut, Clapperboard, User as UserIcon } from 'lucide-react';
+import { Copy, Camera, Wallet, Clapperboard, User as UserIcon, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { User } from '@/lib/types';
+import { Textarea } from './ui/textarea';
+import { Label } from './ui/label';
 
 interface ProfileCardProps {
     currentUser: User & { uid: string };
@@ -23,6 +25,14 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
     const router = useRouter();
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [bio, setBio] = useState('');
+    const [isSavingBio, setIsSavingBio] = useState(false);
+
+    useEffect(() => {
+        if(currentUser?.bio) {
+            setBio(currentUser.bio);
+        }
+    }, [currentUser?.bio]);
 
     const copyUserId = () => {
         if (currentUser?.uid) {
@@ -105,6 +115,22 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
             event.target.value = '';
         }
     };
+
+    const handleSaveBio = async () => {
+        if (!currentUser) return;
+        setIsSavingBio(true);
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        try {
+            await updateDoc(userDocRef, { bio });
+            updateCurrentUser({ bio });
+            toast({ title: 'Success', description: 'Your bio has been updated.' });
+        } catch (error) {
+            console.error('Error saving bio:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not save your bio.' });
+        } finally {
+            setIsSavingBio(false);
+        }
+    };
     
     const shortUserId = currentUser?.uid ? `${currentUser.uid.substring(0, 6)}...` : '';
 
@@ -129,16 +155,34 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                     </div>
                 </CardHeader>
                 <CardContent>
-                        <div className="flex items-center justify-between p-3 bg-muted rounded-md mb-4">
-                        <span className="text-sm font-mono text-muted-foreground" title={currentUser.uid}>
-                            ID: {shortUserId}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+                            <span className="text-sm font-mono text-muted-foreground" title={currentUser.uid}>
+                                ID: {shortUserId}
                             </span>
-                        <Button variant="ghost" size="icon" onClick={copyUserId} className="h-8 w-8">
-                            <Copy className="h-4 w-4"/>
-                            <span className="sr-only">Copy User ID</span>
-                        </Button>
+                            <Button variant="ghost" size="icon" onClick={copyUserId} className="h-8 w-8">
+                                <Copy className="h-4 w-4"/>
+                                <span className="sr-only">Copy User ID</span>
+                            </Button>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="bio">Your Bio</Label>
+                            <Textarea 
+                                id="bio"
+                                placeholder="Tell us a little about yourself..."
+                                value={bio}
+                                onChange={(e) => setBio(e.target.value)}
+                                rows={3}
+                            />
+                             <Button size="sm" onClick={handleSaveBio} disabled={isSavingBio || bio === (currentUser.bio || '')}>
+                                <Save className="mr-2 h-4 w-4" />
+                                {isSavingBio ? 'Saving...' : 'Save Bio'}
+                            </Button>
+                        </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                </CardContent>
+                 <CardFooter>
+                     <div className="grid grid-cols-2 gap-2 w-full">
                          <Button className="w-full" onClick={() => router.push('/wallet')}>
                             <Wallet className="mr-2 h-4 w-4"/>
                             Wallet
@@ -152,7 +196,7 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                             View Clips
                         </Button>
                     </div>
-                </CardContent>
+                </CardFooter>
             </Card>
         </div>
     );
