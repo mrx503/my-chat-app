@@ -80,9 +80,11 @@ export default function Home() {
         });
 
     const unsubscribeNotifications = onSnapshot(
-        query(collection(db, 'notifications'), where('recipientId', '==', currentUser.uid), orderBy('timestamp', 'desc')),
+        query(collection(db, 'notifications'), where('recipientId', '==', currentUser.uid)),
         (snapshot) => {
             const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
+            // Sort manually to avoid needing a composite index
+            notifs.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
             setNotifications(notifs);
             setUnreadNotificationsCount(notifs.filter(n => !n.read).length);
         }
