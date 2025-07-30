@@ -5,25 +5,17 @@ import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Button } from './ui/button';
-import { Message } from '@/lib/types';
-import { cn } from '@/lib/utils';
 
 interface LightboxProps {
-  message: Message | null;
+  imageUrl: string | null;
   onClose: () => void;
 }
 
-export default function Lightbox({ message, onClose }: LightboxProps) {
-  if (!message || !message.fileURL) {
-    return null;
-  }
-  
-  const isImage = message.type === 'image';
-  const isVideo = message.type === 'video';
+export default function Lightbox({ imageUrl, onClose }: LightboxProps) {
 
   return (
     <AnimatePresence>
-      {message && (
+      {imageUrl && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -32,15 +24,7 @@ export default function Lightbox({ message, onClose }: LightboxProps) {
           onClick={onClose}
         >
           <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-            {isImage && (
-              <img src={message.fileURL} alt={message.fileName || "Full-screen view"} className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" onContextMenu={(e) => e.preventDefault()} />
-            )}
-            {isVideo && (
-              <video src={message.fileURL} controls autoPlay className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" onContextMenu={(e) => e.preventDefault()} />
-            )}
-             <div className={cn("absolute bottom-4 left-4 right-4 bg-black/50 text-white p-3 rounded-lg text-center", !message.text && "hidden")}>
-                {message.text}
-            </div>
+              <img src={imageUrl} alt={"Full-screen view"} className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" onContextMenu={(e) => e.preventDefault()} />
           </div>
           <Button
             variant="ghost"

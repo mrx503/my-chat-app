@@ -85,7 +85,7 @@ export default function UserProfilePage() {
 
         fetchUserProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userId, router, toast, currentUser?.uid]);
+    }, [userId, router, toast, currentUser?.following]);
     
     const createNotification = async (type: 'follow' | 'like' | 'comment' | 'message', resourceId: string) => {
         if (!currentUser || !profileUser || currentUser.uid === profileUser.uid) return;
@@ -273,19 +273,10 @@ export default function UserProfilePage() {
     
     return (
         <>
-            {lightboxImage && (
-                 <div
-                    className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center"
-                    onClick={() => setLightboxImage(null)}
-                >
-                    <img 
-                        src={lightboxImage} 
-                        alt="Profile avatar" 
-                        className="max-h-[90%] max-w-[90%] object-contain rounded-lg"
-                        onContextMenu={(e) => e.preventDefault()}
-                    />
-                </div>
-            )}
+            <Lightbox
+                imageUrl={lightboxImage}
+                onClose={() => setLightboxImage(null)}
+            />
             <div className="bg-background min-h-screen">
                 <header className="flex items-center p-4 border-b sticky top-0 bg-background/80 backdrop-blur-sm z-10">
                     <Button variant="ghost" size="icon" onClick={() => router.back()}>
@@ -301,7 +292,7 @@ export default function UserProfilePage() {
                             <div className="relative">
                                 <Avatar 
                                     className="w-24 h-24 sm:w-32 sm:h-32 text-4xl border-4 border-primary/20 cursor-pointer"
-                                    onClick={() => setLightboxImage(profileUser.avatar)}
+                                    onClick={() => profileUser.avatar && setLightboxImage(profileUser.avatar)}
                                 >
                                     <AvatarImage src={profileUser.avatar} alt={profileUser.name} />
                                     <AvatarFallback>{profileUser.name?.[0].toUpperCase()}</AvatarFallback>
@@ -324,21 +315,23 @@ export default function UserProfilePage() {
                                     <div><span className="font-bold">{profileUser.followers?.length ?? 0}</span> Followers</div>
                                     <div><span className="font-bold">{profileUser.following?.length ?? 0}</span> Following</div>
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* Bio Section */}
-                        <div className="mb-8 border-t pt-4">
-                           <div className="flex justify-between items-start">
-                                <p className="text-sm text-foreground whitespace-pre-wrap flex-1">
-                                    {profileUser.bio || (isOwnProfile && <span className="text-muted-foreground italic">Click the edit button to add a bio.</span>)}
-                                </p>
-                                {isOwnProfile && (
-                                    <Button variant="ghost" size="icon" onClick={() => setShowEditBioDialog(true)}>
-                                        <Edit className="h-4 w-4" />
-                                    </Button>
-                                )}
-                           </div>
+                                {/* Bio Section */}
+                                <div className="mt-4 text-center sm:text-left">
+                                   <div className="flex justify-center sm:justify-start items-center gap-2">
+                                        {profileUser.bio ? (
+                                             <p className="text-sm text-foreground whitespace-pre-wrap flex-1">{profileUser.bio}</p>
+                                        ) : (
+                                            isOwnProfile && <p className="text-sm text-muted-foreground italic">Add a bio to tell others about yourself.</p>
+                                        )}
+                                        {isOwnProfile && (
+                                            <Button variant="ghost" size="icon" onClick={() => setShowEditBioDialog(true)} className="h-8 w-8">
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                   </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Action Buttons */}
@@ -362,7 +355,7 @@ export default function UserProfilePage() {
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                                     {userClips.map(clip => (
                                         <Link href="/clips" key={clip.id}>
-                                            <div className="aspect-square bg-muted rounded-md overflow-hidden relative group cursor-pointer">
+                                            <div className="aspect-video bg-muted rounded-md overflow-hidden relative group cursor-pointer">
                                                 <video 
                                                     src={clip.videoUrl} 
                                                     className="w-full h-full object-cover" 
