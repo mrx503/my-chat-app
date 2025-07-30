@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp, setDoc, orderBy, updateDoc, arrayUnion, arrayRemove, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -9,9 +9,19 @@ import type { User, Clip, Chat, AppNotification } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MessageCircle, Video, Loader2, Play, UserPlus, UserCheck } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Video, Loader2, Play, UserPlus, UserCheck, Camera, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { Textarea } from '@/components/ui/textarea';
+import Lightbox from '@/components/lightbox';
 
 export default function UserProfilePage() {
     const params = useParams();
@@ -28,6 +38,15 @@ export default function UserProfilePage() {
     const [isChatting, setIsChatting] = useState(false);
     const [isFollowLoading, setIsFollowLoading] = useState(false);
     
+    // State for editing profile
+    const [showEditBioDialog, setShowEditBioDialog] = useState(false);
+    const [bioText, setBioText] = useState('');
+    const [isSavingBio, setIsSavingBio] = useState(false);
+    const avatarInputRef = useRef<HTMLInputElement>(null);
+    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+    
+    const isOwnProfile = currentUser?.uid === userId;
+
     useEffect(() => {
         if (!userId) return;
 
@@ -44,6 +63,7 @@ export default function UserProfilePage() {
                 }
                 const userData = { id: userDoc.id, ...userDoc.data() } as User;
                 setProfileUser(userData);
+                setBioText(userData.bio || '');
 
                 if (currentUser) {
                     setIsFollowing(currentUser.following?.includes(userId) ?? false);
@@ -64,6 +84,7 @@ export default function UserProfilePage() {
         };
 
         fetchUserProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userId, router, toast, currentUser?.uid]);
     
     const createNotification = async (type: 'follow' | 'like' | 'comment' | 'message', resourceId: string) => {
@@ -179,6 +200,58 @@ export default function UserProfilePage() {
         }
     };
 
+    const handleSaveBio = async () => {
+        if (!currentUser || !isOwnProfile) return;
+        setIsSavingBio(true);
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        try {
+            await updateDoc(userDocRef, { bio: bioText });
+            updateCurrentUser({ bio: bioText });
+            setProfileUser(prev => prev ? { ...prev, bio: bioText } : null);
+            toast({ title: 'Success', description: 'Your bio has been updated.' });
+            setShowEditBioDialog(false);
+        } catch (error) {
+            console.error('Error saving bio:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not save your bio.' });
+        } finally {
+            setIsSavingBio(false);
+        }
+    };
+
+    const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !currentUser) return;
+
+        toast({ title: 'Uploading...', description: 'Your new avatar is being uploaded.' });
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', 'duck-chat');
+
+        try {
+            const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+
+            const avatarUrl = data.secure_url;
+            const userDocRef = doc(db, 'users', currentUser.uid);
+            await updateDoc(userDocRef, { avatar: avatarUrl });
+            
+            updateCurrentUser({ avatar: avatarUrl });
+            setProfileUser(prev => prev ? { ...prev, avatar: avatarUrl } : null);
+
+            toast({ title: 'Success!', description: 'Your profile picture has been updated.' });
+        } catch (error: any) {
+            console.error("Error uploading avatar:", error);
+            toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
+        } finally {
+             if (event.target) event.target.value = '';
+        }
+    };
+
 
     if (loading) {
         return (
@@ -199,86 +272,145 @@ export default function UserProfilePage() {
     }
     
     return (
-        <div className="bg-background min-h-screen">
-            <header className="flex items-center p-4 border-b sticky top-0 bg-background/80 backdrop-blur-sm z-10">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                    <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <h1 className="text-xl font-bold ml-4">{profileUser.name}</h1>
-            </header>
+        <>
+            {lightboxImage && (
+                 <div
+                    className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center"
+                    onClick={() => setLightboxImage(null)}
+                >
+                    <img 
+                        src={lightboxImage} 
+                        alt="Profile avatar" 
+                        className="max-h-[90%] max-w-[90%] object-contain rounded-lg"
+                        onContextMenu={(e) => e.preventDefault()}
+                    />
+                </div>
+            )}
+            <div className="bg-background min-h-screen">
+                <header className="flex items-center p-4 border-b sticky top-0 bg-background/80 backdrop-blur-sm z-10">
+                    <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <h1 className="text-xl font-bold ml-4">{profileUser.name}</h1>
+                </header>
 
-            <main className="p-4 md:p-6">
-                <div className="max-w-4xl mx-auto">
-                    {/* Profile Header */}
-                    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 mb-6">
-                        <Avatar className="w-24 h-24 sm:w-32 sm:h-32 text-4xl border-4 border-primary/20">
-                            <AvatarImage src={profileUser.avatar} alt={profileUser.name} />
-                            <AvatarFallback>{profileUser.name?.[0].toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 text-center sm:text-left">
-                            <h2 className="text-2xl sm:text-3xl font-bold">{profileUser.name}</h2>
-                            <p className="text-muted-foreground">@{profileUser.email?.split('@')[0]}</p>
-                            
-                            <div className="flex gap-4 justify-center sm:justify-start mt-2">
-                                <div><span className="font-bold">{userClips.length}</span> Clips</div>
-                                <div><span className="font-bold">{profileUser.followers?.length ?? 0}</span> Followers</div>
-                                <div><span className="font-bold">{profileUser.following?.length ?? 0}</span> Following</div>
+                <main className="p-4 md:p-6">
+                    <div className="max-w-4xl mx-auto">
+                        {/* Profile Header */}
+                        <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 mb-6">
+                            <div className="relative">
+                                <Avatar 
+                                    className="w-24 h-24 sm:w-32 sm:h-32 text-4xl border-4 border-primary/20 cursor-pointer"
+                                    onClick={() => setLightboxImage(profileUser.avatar)}
+                                >
+                                    <AvatarImage src={profileUser.avatar} alt={profileUser.name} />
+                                    <AvatarFallback>{profileUser.name?.[0].toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                {isOwnProfile && (
+                                    <>
+                                        <input type="file" ref={avatarInputRef} onChange={handleAvatarChange} className="hidden" accept="image/*" />
+                                        <Button size="icon" className="absolute bottom-1 right-1 rounded-full h-9 w-9" onClick={() => avatarInputRef.current?.click()}>
+                                            <Camera className="h-5 w-5"/>
+                                        </Button>
+                                    </>
+                                )}
+                            </div>
+                            <div className="flex-1 text-center sm:text-left">
+                                <h2 className="text-2xl sm:text-3xl font-bold">{profileUser.name}</h2>
+                                <p className="text-muted-foreground">@{profileUser.email?.split('@')[0]}</p>
+                                
+                                <div className="flex gap-4 justify-center sm:justify-start mt-2">
+                                    <div><span className="font-bold">{userClips.length}</span> Clips</div>
+                                    <div><span className="font-bold">{profileUser.followers?.length ?? 0}</span> Followers</div>
+                                    <div><span className="font-bold">{profileUser.following?.length ?? 0}</span> Following</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                     {/* Bio Section */}
-                    {profileUser.bio && (
-                        <div className="mb-8 text-center sm:text-left border-t pt-4">
-                           <p className="text-sm text-foreground whitespace-pre-wrap">{profileUser.bio}</p>
+                        {/* Bio Section */}
+                        <div className="mb-8 border-t pt-4">
+                           <div className="flex justify-between items-start">
+                                <p className="text-sm text-foreground whitespace-pre-wrap flex-1">
+                                    {profileUser.bio || (isOwnProfile && <span className="text-muted-foreground italic">Click the edit button to add a bio.</span>)}
+                                </p>
+                                {isOwnProfile && (
+                                    <Button variant="ghost" size="icon" onClick={() => setShowEditBioDialog(true)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                )}
+                           </div>
                         </div>
-                    )}
 
-
-                    {/* Action Buttons */}
-                     {currentUser && currentUser.uid !== profileUser.uid && (
-                        <div className="flex gap-2 mb-8">
-                            <Button className="flex-1" onClick={handleFollow} variant={isFollowing ? 'secondary' : 'default'} disabled={isFollowLoading}>
-                                {isFollowLoading ? <Loader2 className="animate-spin" /> : isFollowing ? <UserCheck /> : <UserPlus />}
-                                <span className="ml-2">{isFollowing ? 'Following' : 'Follow'}</span>
-                            </Button>
-                            <Button className="flex-1" variant="outline" onClick={handleStartChat} disabled={isChatting}>
-                                {isChatting ? <Loader2 className="animate-spin" /> : <MessageCircle />}
-                                <span className="ml-2">Chat</span>
-                            </Button>
-                        </div>
-                    )}
-
-                    {/* Clips Grid */}
-                    <div>
-                        <h3 className="text-xl font-bold mb-4 border-b pb-2">Clips</h3>
-                        {userClips.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                {userClips.map(clip => (
-                                    <Link href="/clips" key={clip.id}>
-                                        <div className="aspect-square bg-muted rounded-md overflow-hidden relative group cursor-pointer">
-                                            <video 
-                                                src={clip.videoUrl} 
-                                                className="w-full h-full object-cover" 
-                                                preload="metadata"
-                                            />
-                                            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                                                <Play className="h-8 w-8 text-white/80 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            </div>
-                                        </div>
-                                    </Link>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-16 text-muted-foreground flex flex-col items-center">
-                                <Video className="h-16 w-16 mb-4" />
-                                <p className="font-semibold">No clips yet</p>
-                                <p className="text-sm">{profileUser.name} hasn't posted any clips.</p>
+                        {/* Action Buttons */}
+                        {currentUser && !isOwnProfile && (
+                            <div className="flex gap-2 mb-8">
+                                <Button className="flex-1" onClick={handleFollow} variant={isFollowing ? 'secondary' : 'default'} disabled={isFollowLoading}>
+                                    {isFollowLoading ? <Loader2 className="animate-spin" /> : isFollowing ? <UserCheck /> : <UserPlus />}
+                                    <span className="ml-2">{isFollowing ? 'Following' : 'Follow'}</span>
+                                </Button>
+                                <Button className="flex-1" variant="outline" onClick={handleStartChat} disabled={isChatting}>
+                                    {isChatting ? <Loader2 className="animate-spin" /> : <MessageCircle />}
+                                    <span className="ml-2">Chat</span>
+                                </Button>
                             </div>
                         )}
+
+                        {/* Clips Grid */}
+                        <div>
+                            <h3 className="text-xl font-bold mb-4 border-b pb-2">Clips</h3>
+                            {userClips.length > 0 ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                    {userClips.map(clip => (
+                                        <Link href="/clips" key={clip.id}>
+                                            <div className="aspect-square bg-muted rounded-md overflow-hidden relative group cursor-pointer">
+                                                <video 
+                                                    src={clip.videoUrl} 
+                                                    className="w-full h-full object-cover" 
+                                                    preload="metadata"
+                                                />
+                                                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                                                    <Play className="h-8 w-8 text-white/80 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-16 text-muted-foreground flex flex-col items-center">
+                                    <Video className="h-16 w-16 mb-4" />
+                                    <p className="font-semibold">No clips yet</p>
+                                    <p className="text-sm">{profileUser.name} hasn't posted any clips.</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            </main>
-        </div>
+                </main>
+            </div>
+
+            <Dialog open={showEditBioDialog} onOpenChange={setShowEditBioDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit your bio</DialogTitle>
+                        <DialogDescription>
+                            Tell everyone a little bit about yourself.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Textarea 
+                        value={bioText}
+                        onChange={(e) => setBioText(e.target.value)}
+                        placeholder="Your bio..."
+                        rows={5}
+                        className="mt-4"
+                    />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowEditBioDialog(false)}>Cancel</Button>
+                        <Button onClick={handleSaveBio} disabled={isSavingBio}>
+                            {isSavingBio && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Save
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }

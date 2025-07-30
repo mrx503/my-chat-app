@@ -33,10 +33,10 @@ export default function Lightbox({ message, onClose }: LightboxProps) {
         >
           <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
             {isImage && (
-              <img src={message.fileURL} alt={message.fileName || "Full-screen view"} className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" />
+              <img src={message.fileURL} alt={message.fileName || "Full-screen view"} className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" onContextMenu={(e) => e.preventDefault()} />
             )}
             {isVideo && (
-              <video src={message.fileURL} controls autoPlay className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" />
+              <video src={message.fileURL} controls autoPlay className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" onContextMenu={(e) => e.preventDefault()} />
             )}
              <div className={cn("absolute bottom-4 left-4 right-4 bg-black/50 text-white p-3 rounded-lg text-center", !message.text && "hidden")}>
                 {message.text}
