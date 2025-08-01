@@ -3,11 +3,14 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { VAPID_PUBLIC_KEY } from '@/lib/env';
 import { urlBase64ToUint8Array } from '@/lib/utils';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+
+// Hardcoded VAPID public key
+const VAPID_PUBLIC_KEY = 'BAe28C-5u_g5XF7I-IUNYRvoacPc_5sdeM2Eg7Luv9CiCC5QzaVlda78APTJj2JkDbCuh8VExmBXxqtOBL1NpW0';
+
 
 export const subscribeToPush = async (userId: string): Promise<boolean> => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {

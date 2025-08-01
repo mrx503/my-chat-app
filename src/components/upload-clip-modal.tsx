@@ -15,6 +15,8 @@ interface UploadClipModalProps {
   onUpload: (videoUrl: string, caption: string) => void;
 }
 
+const CLOUDINARY_CLOUD_NAME = 'dqgchsg6k';
+
 export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadClipModalProps) {
   const [caption, setCaption] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -64,7 +66,7 @@ export default function UploadClipModal({ isOpen, onClose, onUpload }: UploadCli
     formData.append('upload_preset', 'duck-chat');
 
     try {
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/video/upload`, {
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`, {
             method: 'POST',
             body: formData,
         });

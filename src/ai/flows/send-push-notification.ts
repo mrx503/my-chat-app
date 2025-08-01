@@ -11,6 +11,10 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import webpush from 'web-push';
 
+// Hardcoded VAPID keys
+const VAPID_PUBLIC_KEY = 'BAe28C-5u_g5XF7I-IUNYRvoacPc_5sdeM2Eg7Luv9CiCC5QzaVlda78APTJj2JkDbCuh8VExmBXxqtOBL1NpW0';
+const VAPID_PRIVATE_KEY = 'lshWxt50OSk1wOWG7xBGyIacskhnd7x6q4op1Y77b-8';
+
 // Define the input schema for Zod
 const PushSubscriptionSchema = z.object({
   endpoint: z.string(),
@@ -39,11 +43,8 @@ const sendPushNotificationFlow = ai.defineFlow(
     outputSchema: z.void(),
   },
   async ({ subscription, payload }) => {
-    const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-      console.error('Cannot send notification: VAPID keys are not configured in .env file.');
+      console.error('Cannot send notification: VAPID keys are not configured.');
       return;
     }
     

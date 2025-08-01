@@ -14,6 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import Lightbox from '@/components/lightbox';
 
+const CLOUDINARY_CLOUD_NAME = 'dqgchsg6k';
+
 export default function UserProfilePage() {
     const params = useParams();
     const router = useRouter();
@@ -202,7 +204,7 @@ export default function UserProfilePage() {
         formData.append('upload_preset', 'duck-chat');
 
         try {
-            const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+            const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
                 method: 'POST',
                 body: formData,
             });

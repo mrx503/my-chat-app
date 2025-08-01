@@ -19,6 +19,8 @@ interface MessageInputProps {
   onToggleAutoReply: () => void;
 }
 
+const CLOUDINARY_CLOUD_NAME = 'dqgchsg6k';
+
 export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMessage, isAutoReplyActive, onToggleAutoReply }: MessageInputProps) {
   const [message, setMessage] = useState('');
   const { toast } = useToast();
@@ -123,7 +125,7 @@ export default function MessageInput({ onSendMessage, onSendFile, onSendVoiceMes
     formData.append('upload_preset', 'duck-chat'); // Use the correct unsigned upload preset
 
     try {
-      const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/auto/upload`, {
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, {
         method: 'POST',
         body: formData,
       });
