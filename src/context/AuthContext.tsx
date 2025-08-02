@@ -122,9 +122,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             showOnlineStatus: true,
         },
         coins: 0,
-        followers: [],
-        following: [],
-        systemMessagesQueue: [],
         pushSubscription: null,
     };
     await setDoc(doc(db, "users", user.uid), userDocData);
