@@ -46,10 +46,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const handleBeforeUnload = async () => {
         if (auth.currentUser) {
             const userDocRef = doc(db, 'users', auth.currentUser.uid);
-            await updateDoc(userDocRef, {
-                online: false,
-                lastSeen: serverTimestamp()
-            });
+            // Check if document exists before updating
+            const userDoc = await getDoc(userDocRef);
+            if (userDoc.exists()) {
+                 await updateDoc(userDocRef, {
+                    online: false,
+                    lastSeen: serverTimestamp()
+                });
+            }
         }
     };
 
@@ -57,7 +61,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (user) {
         const userDocRef = doc(db, 'users', user.uid);
         
-        updateDoc(userDocRef, { online: true });
+        // Use setDoc with merge to safely create or update the user's online status
+        setDoc(userDocRef, { online: true }, { merge: true });
 
         const unsubscribeSnapshot = onSnapshot(userDocRef, (userDoc) => {
           if (userDoc.exists()) {
@@ -67,12 +72,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
             setCurrentUser({ uid: user.uid, ...userData } as User & { uid: string });
           } else {
+            // This case handles a user who is authenticated but doesn't have a doc yet.
+            // The signup function should handle doc creation, but this is a fallback.
             setCurrentUser({ 
               uid: user.uid, 
               email: user.email!, 
-              name: '', 
+              name: user.email?.split('@')[0] || '', 
               avatar: '', 
               coins: 0,
+              followers: [],
+              following: [],
               systemMessagesQueue: []
             });
           }
@@ -101,7 +110,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signup = async (email: string, password: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const { user } = userCredential;
-    const userDoc = {
+    const userDocData = {
         uid: user.uid,
         email: user.email,
         name: user.email?.split('@')[0] || `User-${user.uid.substring(0,5)}`,
@@ -118,7 +127,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         systemMessagesQueue: [],
         pushSubscription: null,
     };
-    await setDoc(doc(db, "users", user.uid), userDoc);
+    await setDoc(doc(db, "users", user.uid), userDocData);
     return userCredential;
   };
 
@@ -129,11 +138,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     if (auth.currentUser) {
         const userDocRef = doc(db, 'users', auth.currentUser.uid);
-        await updateDoc(userDocRef, {
-            online: false,
-            lastSeen: serverTimestamp(),
-            pushSubscription: null
-        });
+        const userDoc = await getDoc(userDocRef);
+        if(userDoc.exists()){
+            await updateDoc(userDocRef, {
+                online: false,
+                lastSeen: serverTimestamp(),
+                pushSubscription: null
+            });
+        }
     }
     return signOut(auth);
   };
