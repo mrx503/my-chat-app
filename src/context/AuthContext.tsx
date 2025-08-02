@@ -67,23 +67,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const unsubscribeSnapshot = onSnapshot(userDocRef, (userDoc) => {
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            if (!userData.systemMessagesQueue) {
-              userData.systemMessagesQueue = [];
-            }
+            
+            // --- Fallback for legacy accounts ---
+            if (userData.followers === undefined) userData.followers = [];
+            if (userData.following === undefined) userData.following = [];
+            if (userData.coins === undefined) userData.coins = 0;
+            if (userData.systemMessagesQueue === undefined) userData.systemMessagesQueue = [];
+
             setCurrentUser({ uid: user.uid, ...userData } as User & { uid: string });
           } else {
             // This case handles a user who is authenticated but doesn't have a doc yet.
             // The signup function should handle doc creation, but this is a fallback.
-            setCurrentUser({ 
-              uid: user.uid, 
-              email: user.email!, 
-              name: user.email?.split('@')[0] || '', 
-              avatar: '', 
-              coins: 0,
-              followers: [],
-              following: [],
-              systemMessagesQueue: []
-            });
+             const newUser: User & { uid: string } = {
+                uid: user.uid,
+                email: user.email!,
+                name: user.email?.split('@')[0] || '',
+                avatar: '',
+                coins: 0,
+                followers: [],
+                following: [],
+                systemMessagesQueue: [],
+                id: user.uid
+             };
+            setCurrentUser(newUser);
           }
           setLoading(false);
         });
@@ -122,6 +128,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             showOnlineStatus: true,
         },
         coins: 0,
+        followers: [],
+        following: [],
+        systemMessagesQueue: [],
         pushSubscription: null,
     };
     await setDoc(doc(db, "users", user.uid), userDocData);
@@ -163,7 +172,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loading,
     login,
     signup,
-    logout,
+logout,
     updateCurrentUser
   };
 
