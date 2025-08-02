@@ -2,9 +2,9 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { collection, getDocs, limit, orderBy, query, startAfter, serverTimestamp, addDoc, doc, updateDoc, arrayUnion, arrayRemove, runTransaction, getDoc } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, startAfter, serverTimestamp, addDoc, doc, updateDoc, arrayUnion, arrayRemove, runTransaction, getDoc, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Clip, AppNotification } from '@/lib/types';
+import type { Clip, AppNotification, User } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,15 +14,17 @@ import { useToast } from '@/hooks/use-toast';
 import UploadClipModal from '@/components/upload-clip-modal';
 import { cn } from '@/lib/utils';
 import CommentsModal from '@/components/comments-modal';
+import SupportModal from '@/components/support-modal';
 
 
-const ClipPlayer = ({ clip, onLike, onComment, currentUserId, uploaderName, uploaderAvatar, uploaderId }: { clip: Clip, onLike: (clip: Clip) => void, onComment: (clipId: string) => void, currentUserId: string | undefined, uploaderName: string, uploaderAvatar: string, uploaderId: string }) => {
+const ClipPlayer = ({ clip, onLike, onComment, onSupport, currentUser, uploaderName, uploaderAvatar, uploaderId }: { clip: Clip, onLike: (clip: Clip) => void, onComment: (clipId: string) => void, onSupport: (clip: Clip) => void, currentUser: (User & {uid: string}) | null, uploaderName: string, uploaderAvatar: string, uploaderId: string }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(true); // Autoplay by default
     const { toast } = useToast();
     const router = useRouter();
 
-    const isLiked = currentUserId ? clip.likes.includes(currentUserId) : false;
+    const isLiked = currentUser ? clip.likes.includes(currentUser.uid) : false;
+    const isOwnClip = currentUser?.uid === uploaderId;
 
     const togglePlay = () => {
         if (videoRef.current) {
@@ -38,7 +40,7 @@ const ClipPlayer = ({ clip, onLike, onComment, currentUserId, uploaderName, uplo
     
     const handleLikeClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!currentUserId) {
+        if (!currentUser) {
             toast({ variant: 'destructive', title: "Login Required", description: "You need to be logged in to like a clip." });
             return;
         }
@@ -47,12 +49,20 @@ const ClipPlayer = ({ clip, onLike, onComment, currentUserId, uploaderName, uplo
     
      const handleSupportClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        toast({ title: "Coming Soon!", description: "The ability to support creators is coming soon." });
+        if (isOwnClip) {
+             toast({ variant: 'destructive', title: "Action not allowed", description: "You cannot support your own clip." });
+             return;
+        }
+         if (!currentUser) {
+            toast({ variant: 'destructive', title: "Login Required", description: "You need to be logged in to support a creator." });
+            return;
+        }
+        onSupport(clip);
     };
 
     const handleCommentClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!currentUserId) {
+        if (!currentUser) {
             toast({ variant: 'destructive', title: "Login Required", description: "You need to be logged in to comment." });
             return;
         }
@@ -108,7 +118,7 @@ const ClipPlayer = ({ clip, onLike, onComment, currentUserId, uploaderName, uplo
                 </div>
             )}
             
-            <div className="absolute bottom-0 left-0 right-0 p-4 flex justify-between items-end">
+            <div className="absolute bottom-16 sm:bottom-4 left-0 right-0 p-4 flex justify-between items-end">
                 <div className="text-white w-[75%] space-y-2">
                     <button className="flex items-center gap-2 text-left" onClick={handleProfileClick}>
                         <Avatar className="h-10 w-10 border-2 border-white">
@@ -121,10 +131,12 @@ const ClipPlayer = ({ clip, onLike, onComment, currentUserId, uploaderName, uplo
                 </div>
 
                 <div className="flex flex-col-reverse items-center gap-5 text-white">
-                    <button className="flex flex-col items-center gap-1" onClick={handleSupportClick}>
-                        <Gift className="h-8 w-8" />
-                        <span className="text-xs font-semibold">Support</span>
-                    </button>
+                    {!isOwnClip &&
+                        <button className="flex flex-col items-center gap-1" onClick={handleSupportClick}>
+                            <Gift className="h-8 w-8" />
+                            <span className="text-xs font-semibold">Support</span>
+                        </button>
+                    }
                     <button className="flex flex-col items-center gap-1" onClick={handleCommentClick}>
                         <MessageCircle className="h-8 w-8" />
                         <span className="text-xs font-semibold">{clip.commentsCount || 0}</span>
@@ -142,7 +154,7 @@ const ClipPlayer = ({ clip, onLike, onComment, currentUserId, uploaderName, uplo
 
 
 export default function ClipsPage() {
-    const { currentUser } = useAuth();
+    const { currentUser, updateCurrentUser } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
     const [clips, setClips] = useState<Clip[]>([]);
@@ -152,7 +164,8 @@ export default function ClipsPage() {
     const [hasMore, setHasMore] = useState(true);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
-    const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+    const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+    const [selectedClip, setSelectedClip] = useState<Clip | null>(null);
 
     const observer = useRef<IntersectionObserver>();
     const lastClipElementRef = useRef(null);
@@ -336,8 +349,13 @@ export default function ClipsPage() {
     };
 
     const handleOpenComments = (clipId: string) => {
-        setSelectedClipId(clipId);
+        setSelectedClip(clips.find(c => c.id === clipId) || null);
         setIsCommentsModalOpen(true);
+    };
+    
+    const handleOpenSupport = (clip: Clip) => {
+        setSelectedClip(clip);
+        setIsSupportModalOpen(true);
     };
 
     const handleCommentsUpdate = (clipId: string, newCount: number) => {
@@ -376,8 +394,9 @@ export default function ClipsPage() {
                         <ClipPlayer 
                             clip={clip} 
                             onLike={handleLike} 
-                            onComment={handleOpenComments} 
-                            currentUserId={currentUser?.uid} 
+                            onComment={handleOpenComments}
+                            onSupport={handleOpenSupport}
+                            currentUser={currentUser}
                             uploaderName={clip.uploaderName}
                             uploaderAvatar={clip.uploaderAvatar}
                             uploaderId={clip.uploaderId}
@@ -416,16 +435,28 @@ export default function ClipsPage() {
                 onUpload={handleUploadComplete}
             />
 
-            {selectedClipId && currentUser && (
+            {selectedClip && currentUser && (
                 <CommentsModal 
                     isOpen={isCommentsModalOpen}
                     onClose={() => setIsCommentsModalOpen(false)}
-                    clipId={selectedClipId}
-                    clipUploaderId={clips.find(c => c.id === selectedClipId)?.uploaderId || ''}
+                    clipId={selectedClip.id}
+                    clipUploaderId={selectedClip.uploaderId}
                     currentUser={currentUser}
                     onCommentsUpdate={handleCommentsUpdate}
+                />
+            )}
+
+            {selectedClip && currentUser && (
+                 <SupportModal
+                    isOpen={isSupportModalOpen}
+                    onClose={() => setIsSupportModalOpen(false)}
+                    recipient={selectedClip}
+                    sender={currentUser}
+                    onTransactionComplete={(newBalance) => updateCurrentUser({ coins: newBalance })}
                 />
             )}
         </div>
     );
 }
+
+    
