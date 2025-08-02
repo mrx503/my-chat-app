@@ -1,15 +1,12 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { ArrowLeft, Coins, Smartphone, CreditCard, Landmark, Clapperboard } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc, increment } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { ArrowLeft, Coins, Landmark, DollarSign, CreditCard } from 'lucide-react';
 
 const ServiceCard = ({ icon, title, description, action, disabled }: { icon: React.ReactNode, title: string, description: string, action?: () => void, disabled?: boolean }) => (
     <Card>
@@ -24,42 +21,15 @@ const ServiceCard = ({ icon, title, description, action, disabled }: { icon: Rea
         </CardHeader>
         <CardFooter>
             <Button className="w-full" variant="secondary" onClick={action} disabled={disabled || !action}>
-                {action && !disabled ? 'Redeem' : 'Coming Soon'}
+                {action && !disabled ? 'Go' : 'Coming Soon'}
             </Button>
         </CardFooter>
     </Card>
 );
 
 export default function WalletPage() {
-    const { currentUser, updateCurrentUser } = useAuth();
+    const { currentUser } = useAuth();
     const router = useRouter();
-    const { toast } = useToast();
-    const [isWatchingAd, setIsWatchingAd] = useState(false);
-
-    const handleWatchAd = async () => {
-        if (!currentUser) return;
-        setIsWatchingAd(true);
-        toast({ title: 'Watching Ad...', description: 'Please wait while the ad plays.' });
-
-        // Simulate ad delay
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
-        const coinsEarned = Math.floor(Math.random() * 10) + 1;
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        
-        try {
-          await updateDoc(userDocRef, {
-            coins: increment(coinsEarned)
-          });
-          updateCurrentUser({ coins: (currentUser.coins || 0) + coinsEarned });
-          toast({ title: 'Congratulations!', description: `You earned ${coinsEarned} coins!` });
-        } catch (error) {
-          console.error("Error updating coins:", error);
-          toast({ variant: 'destructive', title: 'Error', description: 'Could not update your coin balance.' });
-        } finally {
-          setIsWatchingAd(false);
-        }
-    };
 
     if (!currentUser) {
         return (
@@ -89,30 +59,24 @@ export default function WalletPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p>Use your coins to redeem exciting rewards and services below.</p>
+                            <p>Use your coins to redeem exciting rewards or deposit more.</p>
                         </CardContent>
-                        <CardFooter>
-                            <Button variant="secondary" className="w-full" onClick={handleWatchAd} disabled={isWatchingAd}>
-                                <Clapperboard className="mr-2 h-4 w-4"/>
-                                {isWatchingAd ? 'Watching Ad...' : 'Watch an Ad & Earn Coins'}
-                            </Button>
-                        </CardFooter>
                     </Card>
 
                     <div className="space-y-4">
-                        <h2 className="text-2xl font-bold tracking-tight">Redeem Your Coins</h2>
+                        <h2 className="text-2xl font-bold tracking-tight">Services</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                           <ServiceCard 
+                                icon={<DollarSign className="h-6 w-6 text-primary"/>}
+                                title="Deposit"
+                                description="Add more coins to your wallet."
+                                action={() => router.push('/wallet/deposit')}
+                           />
                            <ServiceCard 
                                 icon={<Landmark className="h-6 w-6 text-primary"/>}
                                 title="Vodafone Cash"
                                 description="Transfer coins to your Vodafone Cash wallet."
                                 action={() => router.push('/wallet/vodafone-cash')}
-                           />
-                           <ServiceCard 
-                                icon={<CreditCard className="h-6 w-6 text-primary"/>}
-                                title="Fakka Cards"
-                                description="Get small denomination scratch cards."
-                                action={() => router.push('/wallet/fakka-cards')}
                            />
                             <ServiceCard 
                                 icon={<CreditCard className="h-6 w-6 text-primary"/>}

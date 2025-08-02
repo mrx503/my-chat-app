@@ -82,6 +82,17 @@ export type WithdrawalRequest = {
     // --- Fakka Card Specific ---
     operator?: 'Vodafone' | 'Etisalat' | 'Orange';
 };
+
+export type DepositRequest = {
+    id?: string;
+    userId: string;
+    email: string;
+    senderVodafoneNumber: string;
+    amount: number; // Amount in EGP sent by the user
+    status: 'pending' | 'approved' | 'rejected';
+    createdAt: Timestamp;
+    updatedAt?: Timestamp;
+};
  
 export type NotificationPayload = {
   title: string;
@@ -119,9 +130,9 @@ export type AppNotification = {
     senderId: string;
     senderName: string;
     senderAvatar: string;
-    type: 'like' | 'comment' | 'follow' | 'message';
+    type: 'like' | 'comment' | 'follow' | 'message' | 'gift';
     resourceId: string; // e.g., clipId, userId for follow, chatId for message
-    message?: string; // Optional message, e.g., for comments
+    message?: string; // Optional message, e.g., for comments or gift amount
     read: boolean;
     timestamp: Timestamp;
 };
