@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Copy, Wallet, Clapperboard, User as UserIcon } from 'lucide-react';
+import { Copy, Wallet, Clapperboard, User as UserIcon, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@/lib/types';
+import { getAdminUids } from '@/lib/admin';
 
 interface ProfileCardProps {
     currentUser: User & { uid: string };
@@ -19,6 +20,9 @@ interface ProfileCardProps {
 export default function ProfileCard({ currentUser, updateCurrentUser, logout }: ProfileCardProps) {
     const router = useRouter();
     const { toast } = useToast();
+
+    const adminUids = getAdminUids();
+    const isAdmin = adminUids.includes(currentUser?.uid);
 
     const copyUserId = () => {
         if (currentUser?.uid) {
@@ -67,6 +71,12 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
                             <Clapperboard className="mr-2 h-4 w-4"/>
                             View Clips
                         </Button>
+                        {isAdmin && (
+                             <Button className="w-full col-span-2" variant="default" onClick={() => router.push('/admin')}>
+                                <Shield className="mr-2 h-4 w-4"/>
+                                Admin Dashboard
+                            </Button>
+                        )}
                     </div>
                 </CardFooter>
             </Card>
