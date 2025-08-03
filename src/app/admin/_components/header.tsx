@@ -1,4 +1,4 @@
-// This file is new
+
 "use client";
 
 import React from 'react';
@@ -23,8 +23,12 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
+  SheetTitle,
+  SheetDescription,
+  SheetHeader
 } from '@/components/ui/sheet';
 import { usePathname } from 'next/navigation';
+import Logo from '@/components/logo';
 
 const breadcrumbNameMap: { [key: string]: string } = {
   '/admin': 'Dashboard',
@@ -47,12 +51,16 @@ export default function AdminHeader() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="sm:max-w-xs">
+          <SheetHeader className="sr-only">
+             <SheetTitle>Admin Menu</SheetTitle>
+             <SheetDescription>Navigation links for the admin dashboard.</SheetDescription>
+          </SheetHeader>
           <nav className="grid gap-6 text-lg font-medium">
             <Link
-              href="/admin"
+              href="/"
               className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
             >
-              D
+              <Logo className="h-6 w-6 transition-all group-hover:scale-110" />
             </Link>
             <Link
               href="/admin"

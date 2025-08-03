@@ -29,6 +29,8 @@ export type User = {
   coins: number;
   systemMessagesQueue?: string[]; // Array of messages to be delivered by the system bot
   pushSubscription?: PushSubscription | null;
+  isBanned?: boolean;
+  bannedUntil?: Timestamp | null;
 };
 
 export type Message = {

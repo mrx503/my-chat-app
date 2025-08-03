@@ -23,6 +23,7 @@ async function getUsers(): Promise<User[]> {
             id: doc.id,
             ...data,
             lastSeen: data.lastSeen ? data.lastSeen.toDate().toISOString() : null,
+            bannedUntil: data.bannedUntil ? data.bannedUntil.toDate().toISOString() : null,
         }
     }) as unknown as User[];
 }
@@ -35,7 +36,7 @@ export default async function AdminUsersPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Users</CardTitle>
-                    <CardDescription>A list of all registered users in the application.</CardDescription>
+                    <CardDescription>A list of all registered users in the application. Manage their status and balances.</CardDescription>
                 </CardHeader>
                 <CardContent>
                      <DataTable columns={columns} data={data} filterColumnId="name" />

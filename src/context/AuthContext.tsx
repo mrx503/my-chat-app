@@ -2,10 +2,11 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, AuthErrorCodes } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, getDoc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
+import { format } from 'date-fns';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -66,13 +67,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         const unsubscribeSnapshot = onSnapshot(userDocRef, (userDoc) => {
           if (userDoc.exists()) {
-            const userData = userDoc.data();
+            const userData = userDoc.data() as User;
             
-            // --- Fallback for legacy accounts ---
+            // --- Fallback for legacy accounts & data normalization ---
             if (userData.followers === undefined) userData.followers = [];
             if (userData.following === undefined) userData.following = [];
             if (userData.coins === undefined) userData.coins = 0;
             if (userData.systemMessagesQueue === undefined) userData.systemMessagesQueue = [];
+            if (userData.isBanned === undefined) userData.isBanned = false;
+            if (userData.bannedUntil === undefined) userData.bannedUntil = null;
+
 
             setCurrentUser({ uid: user.uid, ...userData } as User & { uid: string });
           } else {
@@ -87,6 +91,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 followers: [],
                 following: [],
                 systemMessagesQueue: [],
+                isBanned: false,
+                bannedUntil: null,
                 id: user.uid
              };
             setCurrentUser(newUser);
@@ -132,13 +138,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         following: [],
         systemMessagesQueue: [],
         pushSubscription: null,
+        isBanned: false,
+        bannedUntil: null,
     };
     await setDoc(doc(db, "users", user.uid), userDocData);
     return userCredential;
   };
 
-  const login = (email: string, password: string) => {
-    return signInWithEmailAndPassword(auth, email, password);
+  const login = async (email: string, password: string) => {
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const userDocRef = doc(db, 'users', userCredential.user.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists()) {
+            const userData = userDoc.data() as User;
+            if (userData.isBanned) {
+                await signOut(auth);
+                throw new Error("Your account has been permanently banned.");
+            }
+            if (userData.bannedUntil && userData.bannedUntil.toDate() > new Date()) {
+                 await signOut(auth);
+                 throw new Error(`Your account is restricted until ${format(userData.bannedUntil.toDate(), 'PPP p')}.`);
+            }
+        }
+        return userCredential;
+    } catch(error: any) {
+        if(error.code && error.message) {
+             throw new Error(error.message);
+        }
+        throw error;
+    }
   };
 
   const logout = async () => {

@@ -5,10 +5,11 @@ import { ColumnDef } from "@tanstack/react-table"
 import type { User } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import { formatDistanceToNow } from 'date-fns'
-import { ArrowUpDown, Copy } from "lucide-react"
+import { ArrowUpDown, Copy, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { DataTableRowActions } from "./data-table-row-actions"
 
 
 const IdCell = ({ id }: { id: string }) => {
@@ -53,6 +54,24 @@ export const columns: ColumnDef<User>[] = [
     cell: ({ row }) => <IdCell id={row.original.uid} />,
   },
   {
+    accessorKey: "isBanned",
+    header: "Account Status",
+    cell: ({ row }) => {
+        const isBanned = row.original.isBanned
+        const bannedUntilString = row.original.bannedUntil as unknown as string;
+        if (isBanned) {
+          return <Badge variant="destructive">Banned</Badge>;
+        }
+        if (bannedUntilString) {
+             const bannedUntilDate = new Date(bannedUntilString);
+             if (bannedUntilDate > new Date()) {
+                return <Badge variant="destructive">Restricted</Badge>
+             }
+        }
+        return <Badge variant="success">Active</Badge>
+    }
+  },
+  {
     accessorKey: "coins",
     header: ({ column }) => {
       return (
@@ -72,7 +91,7 @@ export const columns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "online",
-    header: "Status",
+    header: "Online Status",
     cell: ({ row }) => {
       const isOnline = row.original.online;
       const lastSeenString = row.original.lastSeen as unknown as string;
@@ -88,17 +107,9 @@ export const columns: ColumnDef<User>[] = [
     },
   },
   {
-    accessorKey: "followers",
-    header: "Followers",
+    id: "actions",
     cell: ({ row }) => {
-        return <div className="text-center">{row.original.followers?.length ?? 0}</div>
-    }
-  },
-  {
-    accessorKey: "following",
-    header: "Following",
-     cell: ({ row }) => {
-        return <div className="text-center">{row.original.following?.length ?? 0}</div>
-    }
+      return <DataTableRowActions row={row} />
+    },
   },
 ]
