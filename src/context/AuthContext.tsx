@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             // --- Fallback for legacy accounts & data normalization ---
             if (userData.followers === undefined) userData.followers = [];
             if (userData.following === undefined) userData.following = [];
-            if (userData.coins === undefined) userData.coins = 0;
+            if (userData.coins === undefined || userData.coins === null || isNaN(userData.coins)) userData.coins = 0; // SOURCE OF FIX
             if (userData.systemMessagesQueue === undefined) userData.systemMessagesQueue = [];
             if (userData.isBanned === undefined) userData.isBanned = false;
             
