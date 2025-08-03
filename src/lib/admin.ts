@@ -6,7 +6,8 @@
 // Add the Firebase UIDs of users who should have admin access.
 const ADMIN_USER_IDS = [
     '2P304aYdM8bY25tL8tXyWp6qZ8j1', // Replace with your actual admin user UID
-    // Add more admin UIDs here if needed
+    // Add more admin UIDs here if needed. For example:
+    // 'ANOTHER_ADMIN_UID_HERE',
 ];
 
 export function getAdminUids() {
