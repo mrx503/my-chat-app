@@ -86,7 +86,7 @@ export const columns: ColumnDef<User>[] = [
       )
     },
     cell: ({ row }) => {
-        const amount = row.getValue("coins");
+        const amount = row.original.coins;
         const displayAmount = typeof amount === 'number' ? amount : 0;
         return <div className="font-medium text-center">{displayAmount}</div>
     }
