@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { format } from 'date-fns'
 import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { DataTableRowActions } from "./data-table-row-actions"
 
 export const columns: ColumnDef<WithdrawalRequest>[] = [
   {
@@ -85,10 +86,15 @@ export const columns: ColumnDef<WithdrawalRequest>[] = [
       )
     },
     cell: ({ row }) => {
-      // The `createdAt` is now a string, so we convert it back to a Date object
       const dateString = row.original.createdAt as unknown as string;
       const date = new Date(dateString);
       return date ? format(date, 'PPP p') : "N/A"
+    },
+  },
+   {
+    id: "actions",
+    cell: ({ row }) => {
+      return <DataTableRowActions row={row} />
     },
   },
 ]

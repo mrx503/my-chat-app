@@ -9,6 +9,7 @@ import {
   DollarSign,
   Landmark,
   PanelLeft,
+  MessageSquare,
 } from 'lucide-react';
 import {
   Breadcrumb,
@@ -35,6 +36,7 @@ const breadcrumbNameMap: { [key: string]: string } = {
   '/admin/users': 'Users',
   '/admin/deposits': 'Deposits',
   '/admin/withdrawals': 'Withdrawals',
+  '/admin/messaging': 'Messaging',
 };
 
 export default function AdminHeader() {
@@ -51,7 +53,7 @@ export default function AdminHeader() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="sm:max-w-xs">
-          <SheetHeader className="sr-only">
+           <SheetHeader className="sr-only">
              <SheetTitle>Admin Menu</SheetTitle>
              <SheetDescription>Navigation links for the admin dashboard.</SheetDescription>
           </SheetHeader>
@@ -89,6 +91,13 @@ export default function AdminHeader() {
             >
               <Landmark className="h-5 w-5" />
               Withdrawals
+            </Link>
+            <Link
+              href="/admin/messaging"
+              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+            >
+              <MessageSquare className="h-5 w-5" />
+              Messaging
             </Link>
           </nav>
         </SheetContent>

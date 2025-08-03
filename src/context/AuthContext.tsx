@@ -75,7 +75,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (userData.coins === undefined) userData.coins = 0;
             if (userData.systemMessagesQueue === undefined) userData.systemMessagesQueue = [];
             if (userData.isBanned === undefined) userData.isBanned = false;
-            if (userData.bannedUntil === undefined) userData.bannedUntil = null;
+            
+            // Convert Firestore Timestamp to Date object for client-side use
+            if (userData.bannedUntil && typeof (userData.bannedUntil as any).toDate === 'function') {
+              userData.bannedUntil = (userData.bannedUntil as any).toDate();
+            } else {
+              userData.bannedUntil = null;
+            }
 
 
             setCurrentUser({ uid: user.uid, ...userData } as User & { uid: string });
@@ -152,7 +158,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const userDoc = await getDoc(userDocRef);
 
         if (userDoc.exists()) {
-            const userData = userDoc.data() as User;
+            const userData = userDoc.data() as any; // Use any to access toDate
             if (userData.isBanned) {
                 await signOut(auth);
                 throw new Error("Your account has been permanently banned.");
@@ -202,7 +208,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loading,
     login,
     signup,
-logout,
+    logout,
     updateCurrentUser
   };
 

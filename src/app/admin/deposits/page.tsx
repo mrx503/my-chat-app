@@ -22,6 +22,7 @@ async function getDepositRequests(): Promise<DepositRequest[]> {
             id: doc.id,
             ...data,
             createdAt: data.createdAt.toDate().toISOString(),
+            updatedAt: data.updatedAt ? data.updatedAt.toDate().toISOString() : null,
         }
     }) as unknown as DepositRequest[];
 }

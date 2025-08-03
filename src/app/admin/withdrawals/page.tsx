@@ -22,6 +22,7 @@ async function getWithdrawalRequests(): Promise<WithdrawalRequest[]> {
             id: doc.id,
             ...data,
             createdAt: data.createdAt.toDate().toISOString(),
+             updatedAt: data.updatedAt ? data.updatedAt.toDate().toISOString() : null,
         }
     }) as unknown as WithdrawalRequest[];
 }
@@ -35,7 +36,7 @@ export default async function AdminWithdrawalPage() {
                 <CardHeader>
                     <CardTitle>Withdrawal Requests</CardTitle>
                     <CardDescription>
-                        Review all withdrawal requests. Note: This panel is for review only. Processing must be done manually (e.g., sending the Vodafone Cash transfer).
+                       Review and manage all withdrawal requests. Approving a request marks it as complete. Rejecting a request refunds the coins to the user.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

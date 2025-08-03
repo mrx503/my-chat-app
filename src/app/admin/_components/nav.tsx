@@ -7,8 +7,7 @@ import { usePathname } from 'next/navigation';
 import {
   Home,
   Users,
-  Package,
-  Settings,
+  MessageSquare,
   DollarSign,
   Landmark,
   ArrowLeft
@@ -27,6 +26,7 @@ const navItems = [
   { href: '/admin/users', icon: Users, label: 'Users' },
   { href: '/admin/deposits', icon: DollarSign, label: 'Deposits' },
   { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals' },
+  { href: '/admin/messaging', icon: MessageSquare, label: 'Messaging' },
 ];
 
 export default function AdminNav() {

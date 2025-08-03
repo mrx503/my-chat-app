@@ -4,7 +4,7 @@
 import { ColumnDef } from "@tanstack/react-table"
 import type { User } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow, format } from 'date-fns'
 import { ArrowUpDown, Copy, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
@@ -65,7 +65,8 @@ export const columns: ColumnDef<User>[] = [
         if (bannedUntilString) {
              const bannedUntilDate = new Date(bannedUntilString);
              if (bannedUntilDate > new Date()) {
-                return <Badge variant="destructive">Restricted</Badge>
+                const formattedDate = format(bannedUntilDate, 'PPP');
+                return <Badge variant="destructive" title={`Restricted until ${formattedDate}`}>Restricted</Badge>
              }
         }
         return <Badge variant="success">Active</Badge>
@@ -85,8 +86,8 @@ export const columns: ColumnDef<User>[] = [
       )
     },
     cell: ({ row }) => {
-        const amount = parseFloat(row.getValue("coins"))
-        return <div className="font-medium text-center">{amount}</div>
+        const amount = row.getValue("coins") ?? 0;
+        return <div className="font-medium text-center">{amount as number}</div>
     }
   },
   {
