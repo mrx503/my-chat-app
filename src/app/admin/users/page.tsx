@@ -1,4 +1,4 @@
-// This file is new
+
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { User } from "@/lib/types";
@@ -16,10 +16,15 @@ async function getUsers(): Promise<User[]> {
         return [];
     }
     
-    return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    })) as User[];
+    // Serialize Firestore Timestamps to plain strings
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            lastSeen: data.lastSeen ? data.lastSeen.toDate().toISOString() : null,
+        }
+    }) as unknown as User[];
 }
 
 export default async function AdminUsersPage() {

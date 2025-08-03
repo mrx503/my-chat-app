@@ -18,7 +18,7 @@ export type User = {
   email: string;
   avatar: string;
   online?: boolean;
-  lastSeen?: Timestamp;
+  lastSeen?: Timestamp | string; // Can be Timestamp from server or string on client
   privacySettings?: {
     showOnlineStatus?: boolean;
     showLastSeen?: boolean;
@@ -53,7 +53,7 @@ export type Chat = {
   id: string;
   users: string[]; // array of user UIDs
   contact: Contact; // The other user in the chat, enriched at runtime
-  createdAt: Timestamp;
+  createdAt: Timestamp | string;
   encrypted?: boolean;
   chatPassword?: string;
   deletedFor?: string[];
@@ -74,8 +74,8 @@ export type WithdrawalRequest = {
     email: string;
     amount: number;
     status: 'pending' | 'approved' | 'rejected';
-    createdAt: Timestamp;
-    updatedAt?: Timestamp;
+    createdAt: Timestamp | string;
+    updatedAt?: Timestamp | string;
     // --- Vodafone Cash Specific ---
     type: 'vodafone-cash' | 'fakka-card' | 'mobile-topup';
     vodafoneNumber?: string;
@@ -90,8 +90,8 @@ export type DepositRequest = {
     senderVodafoneNumber: string;
     amount: number; // Amount in EGP sent by the user
     status: 'pending' | 'approved' | 'rejected';
-    createdAt: Timestamp;
-    updatedAt?: Timestamp;
+    createdAt: Timestamp | string;
+    updatedAt?: Timestamp | string;
 };
  
 export type NotificationPayload = {
@@ -136,5 +136,3 @@ export type AppNotification = {
     read: boolean;
     timestamp: Timestamp;
 };
-
-    

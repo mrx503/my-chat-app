@@ -1,4 +1,4 @@
-// This file is new
+
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { DepositRequest } from "@/lib/types";
@@ -15,10 +15,15 @@ async function getDepositRequests(): Promise<DepositRequest[]> {
         return [];
     }
     
-    return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    })) as DepositRequest[];
+    // Serialize Firestore Timestamps to plain strings before passing to the client
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt.toDate().toISOString(),
+        }
+    }) as unknown as DepositRequest[];
 }
 
 export default async function AdminDepositPage() {

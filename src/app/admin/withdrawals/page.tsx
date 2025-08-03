@@ -1,4 +1,4 @@
-// This file is new
+
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { WithdrawalRequest } from "@/lib/types";
@@ -15,10 +15,15 @@ async function getWithdrawalRequests(): Promise<WithdrawalRequest[]> {
         return [];
     }
     
-    return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    })) as WithdrawalRequest[];
+    // Serialize Firestore Timestamps to plain strings
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt.toDate().toISOString(),
+        }
+    }) as unknown as WithdrawalRequest[];
 }
 
 export default async function AdminWithdrawalPage() {

@@ -1,4 +1,4 @@
-// This file is new
+
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
@@ -75,12 +75,14 @@ export const columns: ColumnDef<User>[] = [
     header: "Status",
     cell: ({ row }) => {
       const isOnline = row.original.online;
-      const lastSeen = row.original.lastSeen;
+      const lastSeenString = row.original.lastSeen as unknown as string;
       if (isOnline) {
         return <Badge variant="success">Online</Badge>;
       }
-      if (lastSeen) {
-         return <span className="text-xs text-muted-foreground">{formatDistanceToNow(lastSeen.toDate(), { addSuffix: true })}</span>
+      if (lastSeenString) {
+        // Convert the ISO string back to a Date object
+        const lastSeenDate = new Date(lastSeenString);
+        return <span className="text-xs text-muted-foreground">{formatDistanceToNow(lastSeenDate, { addSuffix: true })}</span>
       }
       return <Badge variant="secondary">Offline</Badge>;
     },

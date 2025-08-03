@@ -1,4 +1,4 @@
-// This file is new
+
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
@@ -85,8 +85,10 @@ export const columns: ColumnDef<WithdrawalRequest>[] = [
       )
     },
     cell: ({ row }) => {
-      const date = row.original.createdAt as any;
-      return date?.toDate ? format(date.toDate(), 'PPP p') : "N/A"
+      // The `createdAt` is now a string, so we convert it back to a Date object
+      const dateString = row.original.createdAt as unknown as string;
+      const date = new Date(dateString);
+      return date ? format(date, 'PPP p') : "N/A"
     },
   },
 ]

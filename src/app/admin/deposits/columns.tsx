@@ -1,4 +1,4 @@
-// This file is new
+
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
@@ -84,7 +84,9 @@ export const columns: ColumnDef<DepositRequest>[] = [
       )
     },
     cell: ({ row }) => {
-      const date = row.original.createdAt?.toDate()
+      // The `createdAt` is now a string, so we convert it back to a Date object
+      const dateString = row.original.createdAt as unknown as string;
+      const date = new Date(dateString);
       return date ? format(date, 'PPP p') : "N/A"
     },
   },
