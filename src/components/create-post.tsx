@@ -6,7 +6,7 @@ import type { User } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
-import { Image as ImageIcon, Video, Send } from 'lucide-react';
+import { Image as ImageIcon, Video, Send, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
 
