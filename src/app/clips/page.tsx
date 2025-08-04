@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { collection, getDocs, limit, orderBy, query, startAfter, serverTimestamp, addDoc, doc, updateDoc, arrayUnion, arrayRemove, runTransaction, getDoc, increment, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, startAfter, serverTimestamp, addDoc, doc, updateDoc, arrayUnion, arrayRemove, runTransaction, getDoc, increment, writeBatch, deleteDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Clip, AppNotification, User } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
@@ -604,3 +604,5 @@ export default function ClipsPage() {
         </AlertDialog>
     );
 }
+
+    
