@@ -50,7 +50,7 @@ export default function ChatPage() {
                     toast({ variant: 'destructive', title: "Access Denied", description: "You are not a member of this chat." });
                     setChat(null);
                     setLoading(false);
-                    router.push('/');
+                    router.push('/chats');
                     return;
                 }
                 
@@ -107,7 +107,7 @@ export default function ChatPage() {
             } else {
                 setLoading(false);
                 toast({ variant: 'destructive', title: 'Chat not found' });
-                router.push('/');
+                router.push('/chats');
             }
         });
 
@@ -351,7 +351,7 @@ export default function ChatPage() {
         try {
             await deleteDoc(doc(db, 'chats', chatId));
             toast({ title: 'Chat Deleted', description: 'The conversation has been removed.' });
-            router.push('/');
+            router.push('/chats');
         } catch (error) {
             console.error("Error deleting chat:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the chat.' });

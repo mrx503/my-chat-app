@@ -150,7 +150,7 @@ export default function ChatHeader({
       <AlertDialog>
         <header className="flex items-center p-4 border-b bg-background shadow-sm">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.push('/')}>
+            <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.push('/chats')}>
                 <ArrowLeft className="h-5 w-5" />
                 <span className="sr-only">Back</span>
             </Button>

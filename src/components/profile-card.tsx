@@ -54,7 +54,7 @@ export default function ProfileCard({ currentUser }: ProfileCardProps) {
                     </Button>
                 </div>
                 <div className="grid grid-cols-1 gap-2 mt-4">
-                     <Button className="w-full justify-start" variant="ghost" onClick={() => router.push('/')}>
+                     <Button className="w-full justify-start" variant="ghost" onClick={() => router.push('/chats')}>
                         <MessageSquare className="mr-2 h-4 w-4"/>
                         Chats
                     </Button>
