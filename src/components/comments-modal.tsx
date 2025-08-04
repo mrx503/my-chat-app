@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Comment as CommentType, User, AppNotification } from '@/lib/types';
@@ -17,24 +17,27 @@ import { useToast } from '@/hooks/use-toast';
 interface CommentsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  clipId: string;
-  clipUploaderId: string;
+  clipId: string; // Can be clipId or postId
+  clipUploaderId: string; // Can be clipUploaderId or postUploaderId
   currentUser: User;
-  onCommentsUpdate: (clipId: string, newCount: number) => void;
+  onCommentsUpdate: (id: string, newCount: number) => void;
+  isPost?: boolean;
 }
 
-export default function CommentsModal({ isOpen, onClose, clipId, clipUploaderId, currentUser, onCommentsUpdate }: CommentsModalProps) {
+export default function CommentsModal({ isOpen, onClose, clipId, clipUploaderId, currentUser, onCommentsUpdate, isPost = false }: CommentsModalProps) {
   const [comments, setComments] = useState<CommentType[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isPosting, setIsPosting] = useState(false);
   const { toast } = useToast();
 
+  const collectionName = isPost ? 'posts' : 'clips';
+
   useEffect(() => {
     if (!isOpen || !clipId) return;
 
     setIsLoading(true);
-    const commentsRef = collection(db, 'clips', clipId, 'comments');
+    const commentsRef = collection(db, collectionName, clipId, 'comments');
     const q = query(commentsRef, orderBy('timestamp', 'asc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -48,7 +51,7 @@ export default function CommentsModal({ isOpen, onClose, clipId, clipUploaderId,
     });
 
     return () => unsubscribe();
-  }, [isOpen, clipId, toast]);
+  }, [isOpen, clipId, toast, collectionName]);
 
   const handlePostComment = async () => {
     if (!newComment.trim() || isPosting) return;
@@ -63,17 +66,17 @@ export default function CommentsModal({ isOpen, onClose, clipId, clipUploaderId,
     };
 
     try {
-        const clipRef = doc(db, 'clips', clipId);
-        const commentsRef = collection(db, 'clips', clipId, 'comments');
+        const docRef = doc(db, collectionName, clipId);
+        const commentsRef = collection(db, collectionName, clipId, 'comments');
 
         await runTransaction(db, async (transaction) => {
-            const clipDoc = await transaction.get(clipRef);
-            if (!clipDoc.exists()) throw "Clip does not exist.";
+            const clipDoc = await transaction.get(docRef);
+            if (!clipDoc.exists()) throw `Document does not exist in ${collectionName}.`;
             
             transaction.set(doc(commentsRef), commentData);
 
             const newCount = (clipDoc.data().commentsCount || 0) + 1;
-            transaction.update(clipRef, { commentsCount: newCount });
+            transaction.update(docRef, { commentsCount: newCount });
         });
         
         if (currentUser.uid !== clipUploaderId) {

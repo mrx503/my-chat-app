@@ -132,7 +132,7 @@ export type AppNotification = {
     senderId: string;
     senderName: string;
     senderAvatar: string;
-    type: 'like' | 'comment' | 'follow' | 'message' | 'gift';
+    type: 'like' | 'comment' | 'follow' | 'message' | 'gift' | 'post_like';
     resourceId: string; // e.g., clipId, userId for follow, chatId for message
     message?: string; // Optional message, e.g., for comments or gift amount
     read: boolean;
@@ -155,3 +155,26 @@ export type Report = {
   resolutionNotes?: string;
   resolvedAt?: Timestamp;
 };
+
+export type Post = {
+  id: string;
+  uploaderId: string;
+  content: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video';
+  timestamp: Timestamp;
+  likes: string[];
+  commentsCount: number;
+  // Denormalized fields
+  uploaderName: string;
+  uploaderAvatar: string;
+}
+
+export type PostComment = {
+    id: string;
+    text: string;
+    userId: string;
+    userName: string;
+    userAvatar: string;
+    timestamp: Timestamp;
+}
