@@ -2,7 +2,7 @@
 "use server";
 
 import { db } from "@/lib/firebase";
-import { writeBatch, doc, getDocs, collection, query, where, serverTimestamp, arrayUnion } from "firebase/firestore";
+import { writeBatch, doc, getDocs, collection, query, where, serverTimestamp, arrayUnion, getDoc } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
 
 // Action to dismiss a report
@@ -51,20 +51,32 @@ export async function resolveReportAndDeleteClip(reportId: string, clipId: strin
         // 3. Delete the clip document
         const clipRef = doc(db, 'clips', clipId);
         batch.delete(clipRef);
-
-        // 4. Send system message to the reported user
+        
+        // --- SAFE USER NOTIFICATION BLOCK ---
+        // 4. Check if reported user exists, then send system message
         const reportedUserRef = doc(db, 'users', reportedUserId);
-        const penaltyMessage = `Your clip was removed for violating our community guidelines regarding: "${reason}". Repeated violations may lead to account suspension.`;
-        batch.update(reportedUserRef, {
-            systemMessagesQueue: arrayUnion(penaltyMessage)
-        });
+        const reportedUserDoc = await getDoc(reportedUserRef);
+        if (reportedUserDoc.exists()) {
+            const penaltyMessage = `Your clip was removed for violating our community guidelines regarding: "${reason}". Repeated violations may lead to account suspension.`;
+            batch.update(reportedUserRef, {
+                systemMessagesQueue: arrayUnion(penaltyMessage)
+            });
+        } else {
+            console.log(`Reported user ${reportedUserId} not found. Skipping notification.`);
+        }
 
-        // 5. Send system message to the original reporter
+        // 5. Check if reporter user exists, then send system message
         const reporterUserRef = doc(db, 'users', reporterId);
-        const thankYouMessage = `Thank you for your report. We have reviewed the content and taken appropriate action.`;
-        batch.update(reporterUserRef, {
-            systemMessagesQueue: arrayUnion(thankYouMessage)
-        });
+        const reporterUserDoc = await getDoc(reporterUserRef);
+        if (reporterUserDoc.exists()) {
+            const thankYouMessage = `Thank you for your report. We have reviewed the content and taken appropriate action.`;
+            batch.update(reporterUserRef, {
+                systemMessagesQueue: arrayUnion(thankYouMessage)
+            });
+        } else {
+            console.log(`Reporter user ${reporterId} not found. Skipping notification.`);
+        }
+        // --- END SAFE USER NOTIFICATION BLOCK ---
 
         // Commit all batched writes
         await batch.commit();
