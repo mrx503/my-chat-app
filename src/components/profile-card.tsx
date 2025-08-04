@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Copy, Wallet, Clapperboard, User as UserIcon, Shield } from 'lucide-react';
+import { Copy, Wallet, Clapperboard, User as UserIcon, Shield, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@/lib/types';
 import { getAdminUids } from '@/lib/admin';
@@ -54,6 +54,10 @@ export default function ProfileCard({ currentUser }: ProfileCardProps) {
                     </Button>
                 </div>
                 <div className="grid grid-cols-1 gap-2 mt-4">
+                     <Button className="w-full justify-start" variant="ghost" onClick={() => router.push('/')}>
+                        <MessageSquare className="mr-2 h-4 w-4"/>
+                        Chats
+                    </Button>
                     <Button className="w-full justify-start" variant="ghost" onClick={() => router.push(`/profile/${currentUser.uid}`)}>
                         <UserIcon className="mr-2 h-4 w-4"/>
                         My Profile
