@@ -130,21 +130,21 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
         )}
       </CardContent>
 
-      <CardFooter className="flex justify-between p-2 border-t">
-        <Button variant="ghost" className="flex-1" onClick={() => onLike(post.id)}>
-          <Heart className={cn("mr-2 h-5 w-5", isLiked && "fill-red-500 text-red-500")} />
-          <span>{post.likes.length} Like</span>
-        </Button>
-        <Button variant="ghost" className="flex-1" onClick={() => onComment(post)}>
-          <MessageCircle className="mr-2 h-5 w-5" />
-          <span>{post.commentsCount} Comment</span>
-        </Button>
-         {!isOwnPost && (
-             <Button variant="ghost" className="flex-1" onClick={() => onSupport(post)}>
-                <Gift className="mr-2 h-5 w-5" />
-                <span>Support</span>
-            </Button>
-         )}
+      <CardFooter className="flex justify-between items-center p-1 border-t">
+          <Button variant="ghost" className="flex-1 text-sm" onClick={() => onLike(post.id)}>
+              <Heart className={cn("mr-2 h-4 w-4", isLiked && "fill-red-500 text-red-500")} />
+              <span className="text-xs sm:text-sm">{post.likes.length} Like</span>
+          </Button>
+          <Button variant="ghost" className="flex-1 text-sm" onClick={() => onComment(post)}>
+              <MessageCircle className="mr-2 h-4 w-4" />
+              <span className="text-xs sm:text-sm">{post.commentsCount} Comment</span>
+          </Button>
+          {!isOwnPost && (
+              <Button variant="ghost" className="flex-1 text-sm" onClick={() => onSupport(post)}>
+                  <Gift className="mr-2 h-4 w-4" />
+                  <span className="text-xs sm:text-sm">Support</span>
+              </Button>
+          )}
       </CardFooter>
     </Card>
 
