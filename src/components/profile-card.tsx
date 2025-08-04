@@ -4,7 +4,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Copy, Wallet, Clapperboard, User as UserIcon, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -13,11 +13,9 @@ import { getAdminUids } from '@/lib/admin';
 
 interface ProfileCardProps {
     currentUser: User & { uid: string };
-    updateCurrentUser: (data: Partial<User>) => void;
-    logout: () => Promise<void>;
 }
 
-export default function ProfileCard({ currentUser, updateCurrentUser, logout }: ProfileCardProps) {
+export default function ProfileCard({ currentUser }: ProfileCardProps) {
     const router = useRouter();
     const { toast } = useToast();
 
@@ -34,52 +32,48 @@ export default function ProfileCard({ currentUser, updateCurrentUser, logout }: 
     const shortUserId = currentUser?.uid ? `${currentUser.uid.substring(0, 6)}...` : '';
 
     return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader className="flex flex-row items-center gap-4">
-                    <Avatar className="w-16 h-16">
-                        <AvatarImage src={currentUser.avatar} alt={currentUser.name || currentUser.email || ''} data-ai-hint="profile picture"/>
-                        <AvatarFallback>{currentUser.email?.[0].toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                        <CardTitle>{currentUser.name || currentUser.email}</CardTitle>
-                        <CardDescription>Welcome back!</CardDescription>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center justify-between p-3 bg-muted rounded-md">
-                        <span className="text-sm font-mono text-muted-foreground" title={currentUser.uid}>
-                            ID: {shortUserId}
-                        </span>
-                        <Button variant="ghost" size="icon" onClick={copyUserId} className="h-8 w-8">
-                            <Copy className="h-4 w-4"/>
-                            <span className="sr-only">Copy User ID</span>
+        <Card className="border-0 shadow-none">
+            <CardHeader className="flex flex-row items-center gap-4 p-4">
+                <Avatar className="w-12 h-12">
+                    <AvatarImage src={currentUser.avatar} alt={currentUser.name || currentUser.email || ''} data-ai-hint="profile picture"/>
+                    <AvatarFallback>{currentUser.email?.[0].toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                    <CardTitle className="text-base">{currentUser.name || currentUser.email}</CardTitle>
+                    <CardDescription className="text-xs">Welcome back!</CardDescription>
+                </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+                <div className="flex items-center justify-between p-2 bg-muted rounded-md">
+                    <span className="text-xs font-mono text-muted-foreground" title={currentUser.uid}>
+                        ID: {shortUserId}
+                    </span>
+                    <Button variant="ghost" size="icon" onClick={copyUserId} className="h-7 w-7">
+                        <Copy className="h-3 w-3"/>
+                        <span className="sr-only">Copy User ID</span>
+                    </Button>
+                </div>
+                <div className="grid grid-cols-1 gap-2 mt-4">
+                    <Button className="w-full justify-start" variant="ghost" onClick={() => router.push(`/profile/${currentUser.uid}`)}>
+                        <UserIcon className="mr-2 h-4 w-4"/>
+                        My Profile
+                    </Button>
+                     <Button className="w-full justify-start" variant="ghost" onClick={() => router.push('/clips')}>
+                        <Clapperboard className="mr-2 h-4 w-4"/>
+                        View Clips
+                    </Button>
+                    <Button className="w-full justify-start" variant="ghost" onClick={() => router.push('/wallet')}>
+                        <Wallet className="mr-2 h-4 w-4"/>
+                        Wallet
+                    </Button>
+                    {isAdmin && (
+                        <Button className="w-full justify-start" variant="ghost" onClick={() => router.push('/admin')}>
+                            <Shield className="mr-2 h-4 w-4"/>
+                            Admin Dashboard
                         </Button>
-                    </div>
-                </CardContent>
-                 <CardFooter>
-                     <div className="grid grid-cols-2 gap-2 w-full">
-                         <Button className="w-full" onClick={() => router.push('/wallet')}>
-                            <Wallet className="mr-2 h-4 w-4"/>
-                            Wallet
-                        </Button>
-                        <Button className="w-full" variant="outline" onClick={() => router.push(`/profile/${currentUser.uid}`)}>
-                            <UserIcon className="mr-2 h-4 w-4"/>
-                            My Profile
-                        </Button>
-                         <Button className="w-full col-span-2" variant="secondary" onClick={() => router.push('/clips')}>
-                            <Clapperboard className="mr-2 h-4 w-4"/>
-                            View Clips
-                        </Button>
-                        {isAdmin && (
-                             <Button className="w-full col-span-2" variant="default" onClick={() => router.push('/admin')}>
-                                <Shield className="mr-2 h-4 w-4"/>
-                                Admin Dashboard
-                            </Button>
-                        )}
-                    </div>
-                </CardFooter>
-            </Card>
-        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
     );
 }

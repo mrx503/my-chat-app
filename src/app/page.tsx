@@ -12,10 +12,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageSquarePlus } from 'lucide-react';
-import ProfileCard from '@/components/profile-card';
+import { Loader2, MessageSquarePlus } from 'lucide-react';
 import AppHeader from '@/components/app-header';
 import NotificationPermissionHandler from '@/components/notification-permission-handler';
+import Sidebar from '@/components/sidebar';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -244,70 +244,67 @@ export default function Home() {
     await batch.commit();
   }
 
-  if (!currentUser || loading) {
+  if (loading || !currentUser) {
     return (
         <div className="flex justify-center items-center h-screen bg-background">
              <div className="flex flex-col items-center gap-2">
-                <MessageSquarePlus className="w-12 h-12 text-primary animate-pulse" />
-                <p className="text-muted-foreground">Loading your chats...</p>
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                <p className="text-muted-foreground">Loading your session...</p>
             </div>
         </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-screen bg-muted/30">
-        <AppHeader 
+    <div className="flex h-screen bg-muted/40">
+        <Sidebar 
+            currentUser={currentUser}
+            updateCurrentUser={updateCurrentUser}
             logout={logout}
-            systemUnreadCount={systemUnreadCount}
-            onSystemChatSelect={handleSystemChatSelect}
-            notifications={notifications}
-            unreadNotificationsCount={unreadNotificationsCount}
-            onMarkNotificationsRead={handleMarkNotificationsAsRead}
         />
+        <div className="flex flex-col flex-1">
+            <AppHeader 
+                systemUnreadCount={systemUnreadCount}
+                onSystemChatSelect={handleSystemChatSelect}
+                notifications={notifications}
+                unreadNotificationsCount={unreadNotificationsCount}
+                onMarkNotificationsRead={handleMarkNotificationsAsRead}
+            />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
-            <div className="max-w-2xl mx-auto grid grid-cols-1 gap-8">
-                
-                <div>
-                  <ProfileCard 
-                      currentUser={currentUser}
-                      updateCurrentUser={updateCurrentUser}
-                      logout={logout}
-                  />
-                </div>
-
-                <div>
-                    <NotificationPermissionHandler />
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Start or Continue a Chat</CardTitle>
-                            <CardDescription>Enter a user ID or select a conversation.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                             <div className="flex gap-2">
-                                <Input 
-                                    placeholder="Enter user ID..."
-                                    value={searchUserId}
-                                    onChange={(e) => setSearchUserId(e.target.value)}
-                                />
-                                <Button onClick={handleSearchAndCreateChat} aria-label="Start Chat">
-                                   <MessageSquarePlus className="h-4 w-4"/>
-                                </Button>
-                            </div>
-                            {userChats.length > 0 ? (
-                                <ChatList chats={userChats} onChatSelect={handleChatSelect} />
-                            ) : (
-                                <div className="text-center py-10">
-                                    <p className="text-muted-foreground">You have no active chats with users.</p>
-                                    <p className="text-sm text-muted-foreground">Start one by entering a user ID.</p>
+            <main className="flex-1 overflow-y-auto p-4 md:p-6">
+                <div className="max-w-2xl mx-auto grid grid-cols-1 gap-8">
+                    <div>
+                        <NotificationPermissionHandler />
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Start or Continue a Chat</CardTitle>
+                                <CardDescription>Enter a user ID or select a conversation.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex gap-2">
+                                    <Input 
+                                        placeholder="Enter user ID..."
+                                        value={searchUserId}
+                                        onChange={(e) => setSearchUserId(e.target.value)}
+                                    />
+                                    <Button onClick={handleSearchAndCreateChat} aria-label="Start Chat">
+                                    <MessageSquarePlus className="h-4 w-4"/>
+                                    </Button>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                {userChats.length > 0 ? (
+                                    <ChatList chats={userChats} onChatSelect={handleChatSelect} />
+                                ) : (
+                                    <div className="text-center py-10">
+                                        <p className="text-muted-foreground">You have no active chats with users.</p>
+                                        <p className="text-sm text-muted-foreground">Start one by entering a user ID.</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
-            </div>
-        </main>
+            </main>
+        </div>
     </div>
   );
 }
