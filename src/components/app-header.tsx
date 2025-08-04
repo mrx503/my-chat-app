@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Bot, Bell } from 'lucide-react';
+import { Bot, Bell, Menu } from 'lucide-react';
 import NotificationsPopover from './notifications-popover';
 import type { AppNotification } from '@/lib/types';
 import Logo from './logo';
@@ -15,6 +15,7 @@ interface AppHeaderProps {
     notifications: AppNotification[];
     unreadNotificationsCount: number;
     onMarkNotificationsRead: () => void;
+    onToggleSidebar: () => void;
 }
 
 export default function AppHeader({ 
@@ -22,14 +23,21 @@ export default function AppHeader({
     onSystemChatSelect,
     notifications,
     unreadNotificationsCount,
-    onMarkNotificationsRead
+    onMarkNotificationsRead,
+    onToggleSidebar
  }: AppHeaderProps) {
 
     return (
         <header className="flex items-center justify-between p-4 bg-background border-b shadow-sm sticky top-0 z-20">
             <div className="flex items-center gap-2">
-                <Logo />
-                <h1 className="text-2xl font-bold text-primary">duck</h1>
+                <Button variant="ghost" size="icon" onClick={onToggleSidebar}>
+                    <Menu className="h-6 w-6" />
+                    <span className="sr-only">Toggle Sidebar</span>
+                </Button>
+                <div className="flex items-center gap-2">
+                    <Logo />
+                    <h1 className="text-2xl font-bold text-primary">duck</h1>
+                </div>
             </div>
             <div className="flex items-center gap-2 md:gap-4">
                 <NotificationsPopover 

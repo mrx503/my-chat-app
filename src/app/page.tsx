@@ -16,6 +16,7 @@ import { Loader2, MessageSquarePlus } from 'lucide-react';
 import AppHeader from '@/components/app-header';
 import NotificationPermissionHandler from '@/components/notification-permission-handler';
 import Sidebar from '@/components/sidebar';
+import { cn } from '@/lib/utils';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -31,6 +32,7 @@ export default function Home() {
   const { toast } = useToast();
   const router = useRouter();
   const processedMessagesRef = useRef<string[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
 
   useEffect(() => {
@@ -256,19 +258,22 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen bg-muted/40">
+    <div className="flex h-screen bg-muted/40 overflow-hidden">
         <Sidebar 
             currentUser={currentUser}
             updateCurrentUser={updateCurrentUser}
             logout={logout}
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(false)}
         />
-        <div className="flex flex-col flex-1">
+        <div className={cn("flex flex-col flex-1 transition-all duration-300", isSidebarOpen ? "md:ml-72" : "ml-0")}>
             <AppHeader 
                 systemUnreadCount={systemUnreadCount}
                 onSystemChatSelect={handleSystemChatSelect}
                 notifications={notifications}
                 unreadNotificationsCount={unreadNotificationsCount}
                 onMarkNotificationsRead={handleMarkNotificationsAsRead}
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             />
 
             <main className="flex-1 overflow-y-auto p-4 md:p-6">
