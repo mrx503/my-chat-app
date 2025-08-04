@@ -2,22 +2,47 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { collection, getDocs, limit, orderBy, query, startAfter, serverTimestamp, addDoc, doc, updateDoc, arrayUnion, arrayRemove, runTransaction, getDoc, increment } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, startAfter, serverTimestamp, addDoc, doc, updateDoc, arrayUnion, arrayRemove, runTransaction, getDoc, increment, writeBatch, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Clip, AppNotification, User } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, ArrowLeft, Video, Plus, Loader2, Play, Gift } from 'lucide-react';
+import { Heart, MessageCircle, ArrowLeft, Video, Plus, Loader2, Play, Gift, Flag, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import UploadClipModal from '@/components/upload-clip-modal';
 import { cn } from '@/lib/utils';
 import CommentsModal from '@/components/comments-modal';
 import SupportModal from '@/components/support-modal';
+import ReportClipModal from '@/components/report-clip-modal';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
-
-const ClipPlayer = ({ clip, onLike, onComment, onSupport, currentUser, uploaderName, uploaderAvatar, uploaderId }: { clip: Clip, onLike: (clip: Clip) => void, onComment: (clipId: string) => void, onSupport: (clip: Clip) => void, currentUser: (User & {uid: string}) | null, uploaderName: string, uploaderAvatar: string, uploaderId: string }) => {
+const ClipPlayer = ({ 
+    clip, onLike, onComment, onSupport, onReport, onDelete, 
+    currentUser, uploaderName, uploaderAvatar, uploaderId 
+}: { 
+    clip: Clip, 
+    onLike: (clip: Clip) => void, 
+    onComment: (clipId: string) => void, 
+    onSupport: (clip: Clip) => void, 
+    onReport: (clip: Clip) => void,
+    onDelete: (clipId: string) => void,
+    currentUser: (User & {uid: string}) | null, 
+    uploaderName: string, 
+    uploaderAvatar: string, 
+    uploaderId: string 
+}) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(true); // Autoplay by default
     const { toast } = useToast();
@@ -67,6 +92,22 @@ const ClipPlayer = ({ clip, onLike, onComment, onSupport, currentUser, uploaderN
             return;
         }
         onComment(clip.id);
+    }
+    
+    const handleReportClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isOwnClip) return;
+        if (!currentUser) {
+            toast({ variant: 'destructive', title: "Login Required", description: "You need to be logged in to report content." });
+            return;
+        }
+        onReport(clip);
+    }
+
+    const handleDeleteClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!isOwnClip) return;
+        onDelete(clip.id);
     }
 
     const handleProfileClick = (e: React.MouseEvent) => {
@@ -131,6 +172,20 @@ const ClipPlayer = ({ clip, onLike, onComment, onSupport, currentUser, uploaderN
                 </div>
 
                 <div className="flex flex-col-reverse items-center gap-5 text-white">
+                    {isOwnClip ? (
+                         <AlertDialogTrigger asChild>
+                            <button className="flex flex-col items-center gap-1" onClick={handleDeleteClick}>
+                                <Trash2 className="h-8 w-8 text-red-500" />
+                                <span className="text-xs font-semibold">Delete</span>
+                            </button>
+                         </AlertDialogTrigger>
+                    ) : (
+                        <button className="flex flex-col items-center gap-1" onClick={handleReportClick}>
+                            <Flag className="h-8 w-8" />
+                            <span className="text-xs font-semibold">Report</span>
+                        </button>
+                    )}
+
                     {!isOwnClip &&
                         <button className="flex flex-col items-center gap-1" onClick={handleSupportClick}>
                             <Gift className="h-8 w-8" />
@@ -165,7 +220,9 @@ export default function ClipsPage() {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
     const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [selectedClip, setSelectedClip] = useState<Clip | null>(null);
+    const [clipToDelete, setClipToDelete] = useState<string | null>(null);
 
     const observer = useRef<IntersectionObserver>();
     const lastClipElementRef = useRef(null);
@@ -358,6 +415,42 @@ export default function ClipsPage() {
         setIsSupportModalOpen(true);
     };
 
+    const handleOpenReport = (clip: Clip) => {
+        setSelectedClip(clip);
+        setIsReportModalOpen(true);
+    }
+    
+    const handleDeleteClipRequest = (clipId: string) => {
+        setClipToDelete(clipId);
+    }
+    
+    const confirmDeleteClip = async () => {
+        if (!clipToDelete) return;
+        try {
+            // Delete associated reports first
+            const reportsQuery = query(collection(db, 'reports'), where('clipId', '==', clipToDelete));
+            const reportsSnapshot = await getDocs(reportsQuery);
+            const batch = writeBatch(db);
+            reportsSnapshot.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+
+            // Delete the clip
+            await deleteDoc(doc(db, 'clips', clipToDelete));
+
+            setClips(prev => prev.filter(c => c.id !== clipToDelete));
+            toast({title: "Clip Deleted", description: "The clip has been permanently removed."});
+
+        } catch(error) {
+            console.error("Error deleting clip:", error);
+            toast({variant: 'destructive', title: 'Error', description: 'Could not delete the clip.'});
+        } finally {
+            setClipToDelete(null);
+        }
+    }
+
+
     const handleCommentsUpdate = (clipId: string, newCount: number) => {
         setClips(prevClips => prevClips.map(clip => {
             if (clip.id === clipId) {
@@ -366,6 +459,34 @@ export default function ClipsPage() {
             return clip;
         }));
     };
+    
+    const handleReportSubmit = async (reason: string, customReason?: string) => {
+        if (!selectedClip || !currentUser) return;
+
+        try {
+            const reportData = {
+                clipId: selectedClip.id,
+                videoUrl: selectedClip.videoUrl,
+                reporterId: currentUser.uid,
+                reporterEmail: currentUser.email,
+                reportedUserId: selectedClip.uploaderId,
+                reportedUserEmail: selectedClip.uploaderName, // We are storing email in the name field for now
+                reason,
+                customReason: customReason || '',
+                status: 'pending',
+                timestamp: serverTimestamp(),
+            };
+            await addDoc(collection(db, 'reports'), reportData);
+            toast({ title: 'Report Submitted', description: 'Thank you. We will review the content shortly.' });
+            setIsReportModalOpen(false);
+            setSelectedClip(null);
+
+        } catch (error) {
+             console.error("Error submitting report:", error);
+             toast({ variant: 'destructive', title: 'Error', description: 'Could not submit your report.' });
+        }
+    };
+
 
     if (loading && clips.length === 0) {
         return (
@@ -377,86 +498,109 @@ export default function ClipsPage() {
     }
     
     return (
-        <div className="h-screen w-screen bg-black overflow-hidden relative">
-            <header className="absolute top-0 left-0 z-10 p-4 flex justify-between w-full items-center bg-gradient-to-b from-black/50 to-transparent">
-                <Button variant="ghost" size="icon" className="text-white hover:bg-white/20" onClick={() => router.back()}>
-                    <ArrowLeft className="h-6 w-6" />
-                </Button>
-                <Button variant="ghost" className="text-white hover:bg-white/20" onClick={() => setIsUploadModalOpen(true)}>
-                    <Plus className="mr-2 h-5 w-5" />
-                    Upload
-                </Button>
-            </header>
+        <AlertDialog onOpenChange={(open) => !open && setClipToDelete(null)}>
+            <div className="h-screen w-screen bg-black overflow-hidden relative">
+                <header className="absolute top-0 left-0 z-10 p-4 flex justify-between w-full items-center bg-gradient-to-b from-black/50 to-transparent">
+                    <Button variant="ghost" size="icon" className="text-white hover:bg-white/20" onClick={() => router.back()}>
+                        <ArrowLeft className="h-6 w-6" />
+                    </Button>
+                    <Button variant="ghost" className="text-white hover:bg-white/20" onClick={() => setIsUploadModalOpen(true)}>
+                        <Plus className="mr-2 h-5 w-5" />
+                        Upload
+                    </Button>
+                </header>
 
-            <div className="h-full w-full snap-y snap-mandatory overflow-y-scroll" id="clips-container">
-                {clips.map((clip, index) => (
-                    <div ref={index === clips.length - 1 ? lastClipElementRef : null} key={clip.id} className="h-full w-full snap-start relative">
-                        <ClipPlayer 
-                            clip={clip} 
-                            onLike={handleLike} 
-                            onComment={handleOpenComments}
-                            onSupport={handleOpenSupport}
-                            currentUser={currentUser}
-                            uploaderName={clip.uploaderName}
-                            uploaderAvatar={clip.uploaderAvatar}
-                            uploaderId={clip.uploaderId}
-                        />
-                    </div>
-                ))}
-
-                {loadingMore && (
-                    <div className="h-full w-full snap-start flex items-center justify-center">
-                        <Loader2 className="h-10 w-10 animate-spin text-white" />
-                    </div>
-                )}
-                 {!loading && !hasMore && clips.length > 0 && (
-                     <div className="h-full w-full snap-start flex items-center justify-center text-white text-center">
-                        <div>
-                            <p className="text-lg font-semibold">You've reached the end</p>
-                            <p className="text-sm text-muted-foreground">Check back later for more clips!</p>
+                <div className="h-full w-full snap-y snap-mandatory overflow-y-scroll" id="clips-container">
+                    {clips.map((clip, index) => (
+                        <div ref={index === clips.length - 1 ? lastClipElementRef : null} key={clip.id} className="h-full w-full snap-start relative">
+                            <ClipPlayer 
+                                clip={clip} 
+                                onLike={handleLike} 
+                                onComment={handleOpenComments}
+                                onSupport={handleOpenSupport}
+                                onReport={handleOpenReport}
+                                onDelete={handleDeleteClipRequest}
+                                currentUser={currentUser}
+                                uploaderName={clip.uploaderName}
+                                uploaderAvatar={clip.uploaderAvatar}
+                                uploaderId={clip.uploaderId}
+                            />
                         </div>
-                    </div>
+                    ))}
+
+                    {loadingMore && (
+                        <div className="h-full w-full snap-start flex items-center justify-center">
+                            <Loader2 className="h-10 w-10 animate-spin text-white" />
+                        </div>
+                    )}
+                    {!loading && !hasMore && clips.length > 0 && (
+                        <div className="h-full w-full snap-start flex items-center justify-center text-white text-center">
+                            <div>
+                                <p className="text-lg font-semibold">You've reached the end</p>
+                                <p className="text-sm text-muted-foreground">Check back later for more clips!</p>
+                            </div>
+                        </div>
+                    )}
+                    {!loading && clips.length === 0 && (
+                        <div className="h-full w-full flex flex-col items-center justify-center text-white text-center p-4">
+                            <Video className="h-20 w-20 text-muted-foreground mb-4" />
+                            <h2 className="text-xl font-bold">No Clips Yet</h2>
+                            <p className="text-muted-foreground mb-4">Be the first to upload a video!</p>
+                            <Button variant="secondary" onClick={() => setIsUploadModalOpen(true)}>
+                            <Plus className="mr-2 h-4 w-4"/> Upload First Clip
+                            </Button>
+                        </div>
+                    )}
+                </div>
+                
+                <UploadClipModal
+                    isOpen={isUploadModalOpen}
+                    onClose={() => setIsUploadModalOpen(false)}
+                    onUpload={handleUploadComplete}
+                />
+
+                {selectedClip && currentUser && (
+                    <CommentsModal 
+                        isOpen={isCommentsModalOpen}
+                        onClose={() => setIsCommentsModalOpen(false)}
+                        clipId={selectedClip.id}
+                        clipUploaderId={selectedClip.uploaderId}
+                        currentUser={currentUser}
+                        onCommentsUpdate={handleCommentsUpdate}
+                    />
+                )}
+
+                {selectedClip && currentUser && (
+                    <SupportModal
+                        isOpen={isSupportModalOpen}
+                        onClose={() => setIsSupportModalOpen(false)}
+                        recipient={selectedClip}
+                        sender={currentUser}
+                        onTransactionComplete={(newBalance) => updateCurrentUser({ coins: newBalance })}
+                    />
+                )}
+
+                 {selectedClip && currentUser && (
+                    <ReportClipModal
+                        isOpen={isReportModalOpen}
+                        onClose={() => setIsReportModalOpen(false)}
+                        onSubmit={handleReportSubmit}
+                    />
                  )}
-                 {!loading && clips.length === 0 && (
-                     <div className="h-full w-full flex flex-col items-center justify-center text-white text-center p-4">
-                        <Video className="h-20 w-20 text-muted-foreground mb-4" />
-                        <h2 className="text-xl font-bold">No Clips Yet</h2>
-                        <p className="text-muted-foreground mb-4">Be the first to upload a video!</p>
-                        <Button variant="secondary" onClick={() => setIsUploadModalOpen(true)}>
-                           <Plus className="mr-2 h-4 w-4"/> Upload First Clip
-                        </Button>
-                    </div>
-                 )}
+                 
+                 <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete this clip from our servers.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteClip} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
             </div>
-            
-            <UploadClipModal
-                isOpen={isUploadModalOpen}
-                onClose={() => setIsUploadModalOpen(false)}
-                onUpload={handleUploadComplete}
-            />
-
-            {selectedClip && currentUser && (
-                <CommentsModal 
-                    isOpen={isCommentsModalOpen}
-                    onClose={() => setIsCommentsModalOpen(false)}
-                    clipId={selectedClip.id}
-                    clipUploaderId={selectedClip.uploaderId}
-                    currentUser={currentUser}
-                    onCommentsUpdate={handleCommentsUpdate}
-                />
-            )}
-
-            {selectedClip && currentUser && (
-                 <SupportModal
-                    isOpen={isSupportModalOpen}
-                    onClose={() => setIsSupportModalOpen(false)}
-                    recipient={selectedClip}
-                    sender={currentUser}
-                    onTransactionComplete={(newBalance) => updateCurrentUser({ coins: newBalance })}
-                />
-            )}
-        </div>
+        </AlertDialog>
     );
 }
-
-    

@@ -138,3 +138,20 @@ export type AppNotification = {
     read: boolean;
     timestamp: Timestamp;
 };
+
+export type Report = {
+  id: string;
+  clipId: string;
+  videoUrl: string;
+  reporterId: string;
+  reporterEmail: string;
+  reportedUserId: string;
+  reportedUserEmail: string;
+  reason: string;
+  customReason?: string;
+  status: 'pending' | 'resolved' | 'dismissed';
+  timestamp: Timestamp;
+  // Optional fields for resolution
+  resolutionNotes?: string;
+  resolvedAt?: Timestamp;
+};

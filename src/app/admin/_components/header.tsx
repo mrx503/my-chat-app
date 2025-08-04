@@ -10,6 +10,7 @@ import {
   Landmark,
   PanelLeft,
   MessageSquare,
+  Flag,
 } from 'lucide-react';
 import {
   Breadcrumb,
@@ -37,6 +38,7 @@ const breadcrumbNameMap: { [key: string]: string } = {
   '/admin/deposits': 'Deposits',
   '/admin/withdrawals': 'Withdrawals',
   '/admin/messaging': 'Messaging',
+  '/admin/reports': 'Reports',
 };
 
 export default function AdminHeader() {
@@ -98,6 +100,13 @@ export default function AdminHeader() {
             >
               <MessageSquare className="h-5 w-5" />
               Messaging
+            </Link>
+            <Link
+              href="/admin/reports"
+              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+            >
+              <Flag className="h-5 w-5" />
+              Reports
             </Link>
           </nav>
         </SheetContent>
