@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Report } from "@/lib/types";
-import { dismissReport, resolveReportAndDeleteClip } from "./actions";
+import { dismissReport, resolveReportAndDeleteResource } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import {
@@ -46,7 +46,7 @@ export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TDa
         if (action === 'dismiss') {
             result = await dismissReport(report.id);
         } else { // resolve
-            result = await resolveReportAndDeleteClip(report.id, report.clipId, report.reportedUserId, report.reporterId, report.reason);
+            result = await resolveReportAndDeleteResource(report.id, report.resourceId, report.resourceType, report.reportedUserId, report.reporterId, report.reason);
         }
 
       if (result.success) {
@@ -89,7 +89,7 @@ export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TDa
            <AlertDialogTrigger asChild onClick={() => setAction("resolve")}>
             <DropdownMenuItem className="text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete Clip & Notify
+                Delete Content & Notify
             </DropdownMenuItem>
           </AlertDialogTrigger>
         </DropdownMenuContent>
@@ -102,14 +102,14 @@ export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TDa
             {action === 'dismiss' ? 
                 'This will mark the report as "dismissed" and no action will be taken. Are you sure?'
                 : 
-                'This will permanently delete the clip and send notifications to the involved users. This action cannot be undone.'
+                `This will permanently delete the ${report.resourceType} and send notifications to the involved users. This action cannot be undone.`
             }
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={() => setAction(null)}>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={onAction} disabled={isLoading} className={action === 'resolve' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}>
-            {isLoading ? <Loader2 className="animate-spin" /> : (action === 'resolve' ? "Yes, Delete Clip" : "Yes, Dismiss")}
+            {isLoading ? <Loader2 className="animate-spin" /> : (action === 'resolve' ? `Yes, Delete ${report.resourceType}` : "Yes, Dismiss")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -141,8 +141,9 @@ export type AppNotification = {
 
 export type Report = {
   id: string;
-  clipId: string;
-  videoUrl: string;
+  resourceId: string;
+  resourceType: 'clip' | 'post';
+  resourceUrl?: string;
   reporterId: string;
   reporterEmail: string;
   reportedUserId: string;
@@ -151,7 +152,6 @@ export type Report = {
   customReason?: string;
   status: 'pending' | 'resolved' | 'dismissed';
   timestamp: Timestamp;
-  // Optional fields for resolution
   resolutionNotes?: string;
   resolvedAt?: Timestamp;
 };

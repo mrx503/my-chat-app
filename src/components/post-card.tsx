@@ -2,11 +2,12 @@
 "use client";
 
 import type { Post, User } from '@/lib/types';
+import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from './ui/card';
 import { Button } from './ui/button';
-import { Heart, MessageCircle, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Flag, Gift, Trash2, Edit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import {
@@ -19,7 +20,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
+import CreatePostModal from './create-post-modal';
+import { isAdmin } from '@/lib/admin';
 
 interface PostCardProps {
   post: Post;
@@ -27,13 +37,19 @@ interface PostCardProps {
   onLike: (postId: string) => void;
   onDelete: (postId: string) => void;
   onComment: (post: Post) => void;
+  onSupport: (post: Post) => void;
+  onReport: (post: Post) => void;
+  onEdit: (postId: string, newContent: string) => void;
 }
 
-export default function PostCard({ post, currentUser, onLike, onDelete, onComment }: PostCardProps) {
+export default function PostCard({ post, currentUser, onLike, onDelete, onComment, onSupport, onReport, onEdit }: PostCardProps) {
   const isOwnPost = post.uploaderId === currentUser.uid;
+  const isUserAdmin = isAdmin(currentUser.uid);
   const isLiked = post.likes.includes(currentUser.uid);
+  const [isEditing, setIsEditing] = useState(false);
 
   return (
+    <>
     <Card>
       <CardHeader className="flex flex-row items-center gap-3 p-4">
         <Avatar>
@@ -46,27 +62,52 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
             {post.timestamp && formatDistanceToNow(post.timestamp.toDate(), { addSuffix: true })}
           </p>
         </div>
-        {isOwnPost && (
-           <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your post.
-                    </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => onDelete(post.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        )}
+        
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                {(isOwnPost || isUserAdmin) && (
+                    <>
+                        {isOwnPost && (
+                            <DropdownMenuItem onSelect={() => setIsEditing(true)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                <span>Edit Post</span>
+                            </DropdownMenuItem>
+                        )}
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Delete Post</span>
+                                </DropdownMenuItem>
+                             </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>This action cannot be undone. This will permanently delete this post.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => onDelete(post.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                        <DropdownMenuSeparator />
+                    </>
+                )}
+                {!isOwnPost && (
+                    <DropdownMenuItem onSelect={() => onReport(post)}>
+                        <Flag className="mr-2 h-4 w-4" />
+                        <span>Report Post</span>
+                    </DropdownMenuItem>
+                )}
+            </DropdownMenuContent>
+        </DropdownMenu>
+
       </CardHeader>
 
       <CardContent className="p-4 pt-0">
@@ -98,7 +139,27 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
           <MessageCircle className="mr-2 h-5 w-5" />
           <span>{post.commentsCount} Comment</span>
         </Button>
+         {!isOwnPost && (
+             <Button variant="ghost" className="flex-1" onClick={() => onSupport(post)}>
+                <Gift className="mr-2 h-5 w-5" />
+                <span>Support</span>
+            </Button>
+         )}
       </CardFooter>
     </Card>
+
+    {isEditing && (
+        <CreatePostModal 
+            isOpen={isEditing}
+            onClose={() => setIsEditing(false)}
+            user={currentUser}
+            postToEdit={post}
+            onSubmit={async (content) => {
+                await onEdit(post.id, content);
+                setIsEditing(false);
+            }}
+        />
+    )}
+    </>
   );
 }

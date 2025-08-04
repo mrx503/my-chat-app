@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2 } from 'lucide-react';
@@ -9,19 +9,25 @@ import AppHeader from '@/components/app-header';
 import Sidebar from '@/components/sidebar';
 import { cn } from '@/lib/utils';
 import CreatePost from '@/components/create-post';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Post } from '@/lib/types';
+import type { Post, Report } from '@/lib/types';
 import PostCard from '@/components/post-card';
 import CommentsModal from '@/components/comments-modal';
+import SupportModal from '@/components/support-modal';
+import ReportClipModal from '@/components/report-clip-modal';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
   const { currentUser, logout, updateCurrentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { toast } = useToast();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
   useEffect(() => {
@@ -92,11 +98,61 @@ export default function Home() {
         console.error("Error deleting post:", error);
     }
   };
+  
+   const handleEditPost = async (postId: string, newContent: string) => {
+    try {
+        const postRef = doc(db, 'posts', postId);
+        await updateDoc(postRef, { content: newContent });
+        toast({ title: 'Post Updated', description: 'Your post has been successfully updated.'});
+    } catch (error) {
+        console.error("Error updating post:", error);
+        toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update your post.' });
+    }
+  };
+
 
   const handleOpenComments = (post: Post) => {
     setSelectedPost(post);
     setIsCommentsModalOpen(true);
   };
+  
+  const handleOpenSupport = (post: Post) => {
+    setSelectedPost(post);
+    setIsSupportModalOpen(true);
+  };
+  
+  const handleOpenReport = (post: Post) => {
+    setSelectedPost(post);
+    setIsReportModalOpen(true);
+  }
+
+  const handleReportSubmit = async (reason: string, customReason?: string) => {
+        if (!selectedPost || !currentUser) return;
+
+        try {
+            const reportData: Partial<Report> = {
+                resourceId: selectedPost.id,
+                resourceType: 'post',
+                resourceUrl: selectedPost.mediaUrl || '',
+                reporterId: currentUser.uid,
+                reporterEmail: currentUser.email,
+                reportedUserId: selectedPost.uploaderId,
+                reportedUserEmail: selectedPost.uploaderName, // We are storing email in the name field for now
+                reason,
+                customReason: customReason || '',
+                status: 'pending',
+                timestamp: serverTimestamp() as any,
+            };
+            await addDoc(collection(db, 'reports'), reportData);
+            toast({ title: 'Report Submitted', description: 'Thank you. We will review the content shortly.' });
+            setIsReportModalOpen(false);
+            setSelectedPost(null);
+
+        } catch (error) {
+             console.error("Error submitting report:", error);
+             toast({ variant: 'destructive', title: 'Error', description: 'Could not submit your report.' });
+        }
+    };
   
   const handleCommentsUpdate = (postId: string, newCount: number) => {
     setPosts(prevPosts => prevPosts.map(post => {
@@ -151,6 +207,9 @@ export default function Home() {
                           onLike={handleLikePost}
                           onDelete={handleDeletePost}
                           onComment={handleOpenComments}
+                          onSupport={handleOpenSupport}
+                          onReport={handleOpenReport}
+                          onEdit={handleEditPost}
                         />
                       ))
                     ) : (
@@ -174,6 +233,25 @@ export default function Home() {
               onCommentsUpdate={handleCommentsUpdate}
               isPost={true}
           />
+      )}
+
+      {selectedPost && currentUser && (
+        <SupportModal
+            isOpen={isSupportModalOpen}
+            onClose={() => setIsSupportModalOpen(false)}
+            recipient={selectedPost}
+            sender={currentUser}
+            onTransactionComplete={(newBalance) => updateCurrentUser({ coins: newBalance })}
+            isPost={true}
+        />
+      )}
+
+      {selectedPost && currentUser && (
+        <ReportClipModal
+            isOpen={isReportModalOpen}
+            onClose={() => setIsReportModalOpen(false)}
+            onSubmit={handleReportSubmit}
+        />
       )}
     </>
   );

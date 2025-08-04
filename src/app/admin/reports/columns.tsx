@@ -4,10 +4,11 @@
 import { ColumnDef } from "@tanstack/react-table"
 import type { Report } from "@/lib/types"
 import { format } from 'date-fns'
-import { ArrowUpDown } from "lucide-react"
+import { ArrowUpDown, Link as LinkIcon, Clapperboard, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DataTableRowActions } from "./data-table-row-actions"
 import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
 
 export const columns: ColumnDef<Report>[] = [
   {
@@ -48,14 +49,21 @@ export const columns: ColumnDef<Report>[] = [
     }
   },
   {
-    accessorKey: "videoUrl",
-    header: "Clip",
+    accessorKey: "resourceUrl",
+    header: "Content",
     cell: ({ row }) => {
-        const videoUrl = row.original.videoUrl;
+        const report = row.original;
+        const Icon = report.resourceType === 'clip' ? Clapperboard : FileText;
         return (
-            <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                View Clip
-            </a>
+            <div className="flex items-center gap-2">
+                 <Badge variant="outline" className="capitalize">
+                    <Icon className="h-3 w-3 mr-1"/>
+                    {report.resourceType}
+                </Badge>
+                <a href={report.resourceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                    <LinkIcon className="h-4 w-4"/>
+                </a>
+            </div>
         )
     }
   },

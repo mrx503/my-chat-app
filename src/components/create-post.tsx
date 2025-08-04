@@ -8,16 +8,20 @@ import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
 import CreatePostModal from './create-post-modal';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 interface CreatePostProps {
   user: User & { uid: string };
-  onPostCreated: (post: Post) => void;
+  onPostCreated: () => void; // Simplified to just trigger a re-fetch or rely on snapshot
+  postToEdit?: Post | null;
+  onEditComplete?: () => void;
 }
 
-export default function CreatePost({ user, onPostCreated }: CreatePostProps) {
+const CLOUDINARY_CLOUD_NAME = 'dqgchsg6k';
+
+export default function CreatePost({ user, onPostCreated, postToEdit, onEditComplete }: CreatePostProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
 
@@ -29,10 +33,20 @@ export default function CreatePost({ user, onPostCreated }: CreatePostProps) {
 
     if (mediaFile) {
         try {
-            const storage = getStorage();
-            const mediaRef = ref(storage, `posts/${user.uid}/${Date.now()}_${mediaFile.name}`);
-            const snapshot = await uploadBytes(mediaRef, mediaFile);
-            mediaUrl = await getDownloadURL(snapshot.ref);
+            const formData = new FormData();
+            formData.append('file', mediaFile);
+            formData.append('upload_preset', 'duck-chat');
+
+            const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await response.json();
+            if (!response.ok || data.error) {
+                throw new Error(data.error?.message || 'Upload failed');
+            }
+            mediaUrl = data.secure_url;
             mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
         } catch (error) {
             console.error("Error uploading media:", error);
@@ -51,17 +65,9 @@ export default function CreatePost({ user, onPostCreated }: CreatePostProps) {
             ...(mediaUrl && { mediaUrl, mediaType }),
         };
 
-        const docRef = await addDoc(collection(db, "posts"), postData);
+        await addDoc(collection(db, "posts"), postData);
         
-        const newPostForUI: Post = {
-            id: docRef.id,
-            ...postData,
-            timestamp: new Date() as any, // Temporary timestamp for UI
-            uploaderName: user.name,
-            uploaderAvatar: user.avatar,
-        };
-
-        onPostCreated(newPostForUI);
+        onPostCreated();
         toast({ title: 'Post created successfully!' });
         setIsModalOpen(false);
 

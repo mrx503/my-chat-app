@@ -6,19 +6,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '@/components/ui/button';
 import { Loader2, Heart, Star, Gem, Crown, Coins } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, runTransaction, collection, addDoc, serverTimestamp, increment } from 'firebase/firestore';
-import type { User, Clip, AppNotification } from '@/lib/types';
+import type { User, Clip, Post, AppNotification } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Badge } from './ui/badge';
 
 interface SupportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  recipient: Clip;
+  recipient: Clip | Post; // Can be a Clip or a Post
   sender: User & { uid: string };
   onTransactionComplete: (newBalance: number) => void;
+  isPost?: boolean;
 }
 
 const gifts = [
@@ -28,13 +27,14 @@ const gifts = [
   { id: 'crown', name: 'Crown', cost: 500, icon: <Crown className="h-8 w-8 text-amber-500" /> },
 ];
 
-export default function SupportModal({ isOpen, onClose, recipient, sender, onTransactionComplete }: SupportModalProps) {
+export default function SupportModal({ isOpen, onClose, recipient, sender, onTransactionComplete, isPost = false }: SupportModalProps) {
   const [selectedGift, setSelectedGift] = useState<(typeof gifts)[0] | null>(gifts[0]);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   
   const senderBalance = sender.coins ?? 0;
   const canAfford = selectedGift ? senderBalance >= selectedGift.cost : false;
+  const resourceType = isPost ? 'post' : 'clip';
 
   const handleSendGift = async () => {
     if (!selectedGift || !canAfford) {
@@ -63,7 +63,7 @@ export default function SupportModal({ isOpen, onClose, recipient, sender, onTra
 
         // Create notification
         const notifRef = doc(collection(db, 'notifications'));
-        const newNotification: AppNotification = {
+        const newNotification: Partial<AppNotification> = {
             recipientId: recipient.uploaderId,
             senderId: sender.uid,
             senderName: sender.name || sender.email!,
@@ -106,7 +106,7 @@ export default function SupportModal({ isOpen, onClose, recipient, sender, onTra
         <DialogHeader>
           <DialogTitle>Send a Gift to {recipient.uploaderName}</DialogTitle>
           <DialogDescription>
-            Show your support! Your current balance is {senderBalance} coins.
+            Show your support for this {resourceType}! Your current balance is {senderBalance} coins.
           </DialogDescription>
         </DialogHeader>
         
@@ -143,5 +143,3 @@ export default function SupportModal({ isOpen, onClose, recipient, sender, onTra
     </Dialog>
   );
 }
-
-    

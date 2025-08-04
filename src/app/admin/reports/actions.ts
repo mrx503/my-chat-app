@@ -24,7 +24,14 @@ export async function dismissReport(reportId: string): Promise<{ success: boolea
 }
 
 // Action to handle a report by deleting the clip and notifying users
-export async function resolveReportAndDeleteClip(reportId: string, clipId: string, reportedUserId: string, reporterId: string, reason: string): Promise<{ success: boolean; message: string }> {
+export async function resolveReportAndDeleteResource(
+    reportId: string, 
+    resourceId: string,
+    resourceType: 'clip' | 'post',
+    reportedUserId: string, 
+    reporterId: string, 
+    reason: string
+): Promise<{ success: boolean; message: string }> {
     const batch = writeBatch(db);
 
     try {
@@ -35,8 +42,8 @@ export async function resolveReportAndDeleteClip(reportId: string, clipId: strin
             resolvedAt: serverTimestamp()
         });
 
-        // 2. Mark all other pending reports for the same clip as resolved
-        const otherReportsQuery = query(collection(db, 'reports'), where('clipId', '==', clipId), where('status', '==', 'pending'));
+        // 2. Mark all other pending reports for the same resource as resolved
+        const otherReportsQuery = query(collection(db, 'reports'), where('resourceId', '==', resourceId), where('status', '==', 'pending'));
         const otherReportsSnapshot = await getDocs(otherReportsQuery);
         otherReportsSnapshot.forEach(reportDoc => {
             if(reportDoc.id !== reportId) {
@@ -48,16 +55,18 @@ export async function resolveReportAndDeleteClip(reportId: string, clipId: strin
             }
         });
 
-        // 3. Delete the clip document
-        const clipRef = doc(db, 'clips', clipId);
-        batch.delete(clipRef);
+        // 3. Delete the resource document (clip or post)
+        const resourceRef = doc(db, resourceType === 'clip' ? 'clips' : 'posts', resourceId);
+        batch.delete(resourceRef);
         
         // --- SAFE USER NOTIFICATION BLOCK ---
+        const penaltyMessage = `Your ${resourceType} was removed for violating our community guidelines regarding: "${reason}". Repeated violations may lead to account suspension.`;
+        const thankYouMessage = `Thank you for your report. We have reviewed the content and taken appropriate action.`;
+
         // 4. Check if reported user exists, then send system message
         const reportedUserRef = doc(db, 'users', reportedUserId);
         const reportedUserDoc = await getDoc(reportedUserRef);
         if (reportedUserDoc.exists()) {
-            const penaltyMessage = `Your clip was removed for violating our community guidelines regarding: "${reason}". Repeated violations may lead to account suspension.`;
             batch.update(reportedUserRef, {
                 systemMessagesQueue: arrayUnion(penaltyMessage)
             });
@@ -69,7 +78,6 @@ export async function resolveReportAndDeleteClip(reportId: string, clipId: strin
         const reporterUserRef = doc(db, 'users', reporterId);
         const reporterUserDoc = await getDoc(reporterUserRef);
         if (reporterUserDoc.exists()) {
-            const thankYouMessage = `Thank you for your report. We have reviewed the content and taken appropriate action.`;
             batch.update(reporterUserRef, {
                 systemMessagesQueue: arrayUnion(thankYouMessage)
             });
@@ -82,9 +90,9 @@ export async function resolveReportAndDeleteClip(reportId: string, clipId: strin
         await batch.commit();
         
         revalidatePath('/admin/reports');
-        return { success: true, message: "Report resolved, clip deleted, and users notified." };
+        return { success: true, message: `Report resolved, ${resourceType} deleted, and users notified.` };
     } catch(error: any) {
-         console.error("Error resolving report and deleting clip:", error);
+         console.error(`Error resolving report and deleting ${resourceType}:`, error);
          return { success: false, message: error.message || "An unexpected error occurred." };
     }
 }
