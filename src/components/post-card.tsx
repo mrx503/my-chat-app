@@ -19,6 +19,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
@@ -162,5 +163,3 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
     </>
   );
 }
-
-    
