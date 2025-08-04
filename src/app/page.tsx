@@ -17,6 +17,7 @@ import CommentsModal from '@/components/comments-modal';
 import SupportModal from '@/components/support-modal';
 import ReportClipModal from '@/components/report-clip-modal';
 import { useToast } from '@/hooks/use-toast';
+import { isAdmin } from '@/lib/admin';
 
 export default function Home() {
   const { currentUser, logout, updateCurrentUser } = useAuth();
@@ -94,8 +95,10 @@ export default function Home() {
   const handleDeletePost = async (postId: string) => {
     try {
         await deleteDoc(doc(db, "posts", postId));
+        toast({ title: "Post Deleted", description: "The post has been permanently removed."});
     } catch (error) {
         console.error("Error deleting post:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the post.'});
     }
   };
   
@@ -117,11 +120,16 @@ export default function Home() {
   };
   
   const handleOpenSupport = (post: Post) => {
+    if (!currentUser || post.uploaderId === currentUser.uid) {
+        toast({ variant: "destructive", title: "Action not allowed", description: "You cannot support your own post." });
+        return;
+    }
     setSelectedPost(post);
     setIsSupportModalOpen(true);
   };
   
   const handleOpenReport = (post: Post) => {
+    if (!currentUser || post.uploaderId === currentUser.uid) return;
     setSelectedPost(post);
     setIsReportModalOpen(true);
   }
@@ -133,11 +141,11 @@ export default function Home() {
             const reportData: Partial<Report> = {
                 resourceId: selectedPost.id,
                 resourceType: 'post',
-                resourceUrl: selectedPost.mediaUrl || '',
+                resourceUrl: selectedPost.mediaUrl || `post/${selectedPost.id}`, // Link to post in future
                 reporterId: currentUser.uid,
                 reporterEmail: currentUser.email,
                 reportedUserId: selectedPost.uploaderId,
-                reportedUserEmail: selectedPost.uploaderName, // We are storing email in the name field for now
+                reportedUserEmail: selectedPost.uploaderName, 
                 reason,
                 customReason: customReason || '',
                 status: 'pending',
@@ -256,3 +264,5 @@ export default function Home() {
     </>
   );
 }
+
+    

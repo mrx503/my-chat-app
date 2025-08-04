@@ -29,12 +29,16 @@ export default function CreatePostModal({ isOpen, onClose, user, onSubmit, postT
   const isEditMode = !!postToEdit;
 
   useEffect(() => {
-    if (isEditMode) {
+    if (isOpen && isEditMode) {
       setContent(postToEdit.content);
       // Editing doesn't allow changing the media for simplicity
       setMediaPreview(postToEdit.mediaUrl || null);
+    } else if (!isOpen) {
+        // Reset state when modal is closed
+        resetState();
     }
-  }, [postToEdit, isEditMode]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, postToEdit, isEditMode]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -59,8 +63,9 @@ export default function CreatePostModal({ isOpen, onClose, user, onSubmit, postT
     }
     
     setIsSubmitting(true);
-    // In edit mode, we only pass content. The parent's `onEdit` only accepts content.
     await onSubmit(content, isEditMode ? null : mediaFile);
+    // The parent component should close the modal on success.
+    // If it fails, the modal remains open for the user to try again.
     setIsSubmitting(false);
   };
   
@@ -72,8 +77,10 @@ export default function CreatePostModal({ isOpen, onClose, user, onSubmit, postT
   };
 
   const handleClose = () => {
-    resetState();
-    onClose();
+    if (!isSubmitting) {
+        resetState();
+        onClose();
+    }
   };
 
   return (
@@ -113,7 +120,9 @@ export default function CreatePostModal({ isOpen, onClose, user, onSubmit, postT
                     onClick={() => {
                       setMediaFile(null);
                       setMediaPreview(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
                     }}
+                    disabled={isSubmitting}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -121,21 +130,23 @@ export default function CreatePostModal({ isOpen, onClose, user, onSubmit, postT
             </div>
           )}
           
-          {!isEditMode && !mediaFile && (
-            <div className="flex justify-between items-center p-2 border rounded-lg">
-                <span className="text-sm font-medium">Add to your post</span>
-                <div className="flex gap-1">
-                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*,video/*" className="hidden" />
-                <Button variant="ghost" size="icon" onClick={triggerFileSelect} disabled={isSubmitting}>
-                    <ImageIcon className="text-green-500" />
-                </Button>
-                </div>
-            </div>
-          )}
+          <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*,video/*" className="hidden" />
+
+          <div className="flex justify-between items-center p-2 border rounded-lg">
+              <span className="text-sm font-medium">Add to your post</span>
+              <div className="flex gap-1">
+              <Button variant="ghost" size="icon" onClick={triggerFileSelect} disabled={isSubmitting || !!mediaFile || isEditMode}>
+                  <ImageIcon className="text-green-500" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={triggerFileSelect} disabled={isSubmitting || !!mediaFile || isEditMode}>
+                  <Video className="text-blue-500" />
+              </Button>
+              </div>
+          </div>
         </div>
         
         <DialogFooter>
-            <Button onClick={handlePostSubmit} disabled={isSubmitting} className="w-full">
+            <Button onClick={handlePostSubmit} disabled={isSubmitting || (!content.trim() && !mediaFile && !isEditMode)} className="w-full">
                 {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
                 {isSubmitting ? (isEditMode ? 'Saving...' : 'Posting...') : (isEditMode ? 'Save Changes' : 'Post')}
             </Button>
@@ -144,3 +155,5 @@ export default function CreatePostModal({ isOpen, onClose, user, onSubmit, postT
     </Dialog>
   );
 }
+
+    

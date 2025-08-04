@@ -11,17 +11,17 @@ import CreatePostModal from './create-post-modal';
 import { addDoc, collection, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Loader2, Send } from 'lucide-react';
 
-interface CreatePostProps {
-  user: User & { uid: string };
-  onPostCreated: () => void; // Simplified to just trigger a re-fetch or rely on snapshot
-  postToEdit?: Post | null;
-  onEditComplete?: () => void;
-}
 
 const CLOUDINARY_CLOUD_NAME = 'dqgchsg6k';
 
-export default function CreatePost({ user, onPostCreated, postToEdit, onEditComplete }: CreatePostProps) {
+interface CreatePostProps {
+  user: User & { uid: string };
+  onPostCreated: () => void;
+}
+
+export default function CreatePost({ user, onPostCreated }: CreatePostProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
 
@@ -35,7 +35,7 @@ export default function CreatePost({ user, onPostCreated, postToEdit, onEditComp
         try {
             const formData = new FormData();
             formData.append('file', mediaFile);
-            formData.append('upload_preset', 'duck-chat');
+            formData.append('upload_preset', 'duck-chat'); // Use an unsigned preset for client-side uploads
 
             const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, {
                 method: 'POST',
@@ -105,3 +105,5 @@ export default function CreatePost({ user, onPostCreated, postToEdit, onEditComp
     </>
   );
 }
+
+    
