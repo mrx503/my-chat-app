@@ -7,6 +7,7 @@ import { Bot, Bell } from 'lucide-react';
 import NotificationsPopover from './notifications-popover';
 import type { AppNotification } from '@/lib/types';
 import Logo from './logo';
+import { Badge } from './ui/badge';
 
 interface AppHeaderProps {
     systemUnreadCount: number;
