@@ -1,4 +1,4 @@
-// This file is new
+
 "use client";
 
 import React, { useState } from 'react';
@@ -33,9 +33,10 @@ export default function VerifyPage() {
     const canAfford = userCoins >= VERIFICATION_COST;
 
     const handleVerification = async () => {
+        if (!currentUser) return;
         setIsLoading(true);
         try {
-            const result = await verifyAccount();
+            const result = await verifyAccount(currentUser.uid);
             if (result.success) {
                 toast({
                     title: 'Congratulations!',

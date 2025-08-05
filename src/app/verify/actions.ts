@@ -1,20 +1,18 @@
-// This file is new
+
 "use server";
 
-import { db, auth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { doc, runTransaction } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
 
 const VERIFICATION_COST = 500;
 
-export async function verifyAccount(): Promise<{ success: boolean; message: string }> {
-    const user = auth.currentUser;
-
-    if (!user) {
+export async function verifyAccount(userId: string): Promise<{ success: boolean; message: string }> {
+    if (!userId) {
         return { success: false, message: "You must be logged in to verify your account." };
     }
 
-    const userRef = doc(db, 'users', user.uid);
+    const userRef = doc(db, 'users', userId);
 
     try {
         await runTransaction(db, async (transaction) => {
