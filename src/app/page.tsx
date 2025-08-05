@@ -18,6 +18,7 @@ import SupportModal from '@/components/support-modal';
 import ReportClipModal from '@/components/report-clip-modal';
 import { useToast } from '@/hooks/use-toast';
 import { isAdmin } from '@/lib/admin';
+import Link from 'next/link';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -391,6 +392,13 @@ export default function Home() {
                     )}
                   </div>
               </main>
+               <footer className="p-4 bg-background border-t text-center text-xs text-muted-foreground">
+                    <div className="space-x-4">
+                        <Link href="/privacy-policy" className="hover:underline">Privacy Policy</Link>
+                        <Link href="/terms-of-use" className="hover:underline">Terms of Use</Link>
+                        <Link href="/contact-us" className="hover:underline">Contact Us</Link>
+                    </div>
+                </footer>
           </div>
       </div>
       

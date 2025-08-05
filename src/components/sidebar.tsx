@@ -65,21 +65,6 @@ export default function Sidebar({ currentUser, updateCurrentUser, logout, isOpen
                                 <LogOut className="mr-2 h-4 w-4"/>
                                 <span>Logout</span>
                             </Button>
-                             <div className="text-center mt-4 space-y-2">
-                                <div className="space-x-4">
-                                    <Link href="/privacy-policy" className="text-xs text-muted-foreground hover:underline">
-                                        Privacy Policy
-                                    </Link>
-                                    <Link href="/terms-of-use" className="text-xs text-muted-foreground hover:underline">
-                                        Terms of Use
-                                    </Link>
-                                </div>
-                                <div>
-                                     <Link href="/contact-us" className="text-xs text-muted-foreground hover:underline">
-                                        Contact Us
-                                    </Link>
-                                </div>
-                            </div>
                         </div>
                     </motion.aside>
                 </>
