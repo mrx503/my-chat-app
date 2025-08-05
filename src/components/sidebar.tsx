@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -10,6 +9,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
 import { AnimatePresence, motion } from 'framer-motion';
+import Link from 'next/link';
 
 interface SidebarProps {
     currentUser: User & { uid: string };
@@ -65,6 +65,11 @@ export default function Sidebar({ currentUser, updateCurrentUser, logout, isOpen
                                 <LogOut className="mr-2 h-4 w-4"/>
                                 <span>Logout</span>
                             </Button>
+                             <div className="text-center mt-4">
+                                <Link href="/privacy-policy" className="text-xs text-muted-foreground hover:underline">
+                                    سياسة الخصوصية
+                                </Link>
+                            </div>
                         </div>
                     </motion.aside>
                 </>
