@@ -30,7 +30,7 @@ interface AuthContextType {
   currentUser: (User & { uid: string }) | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<any>;
-  signup: (email: string, password: string) => Promise<any>;
+  signup: (email: string, password: string, name: string) => Promise<any>;
   logout: () => Promise<void>;
   updateCurrentUser: (data: Partial<User>) => void;
 }
@@ -127,13 +127,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  const signup = async (email: string, password: string) => {
+  const signup = async (email: string, password: string, name: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const { user } = userCredential;
     const userDocData = {
         uid: user.uid,
         email: user.email,
-        name: user.email?.split('@')[0] || `User-${user.uid.substring(0,5)}`,
+        name: name || `User-${user.uid.substring(0,5)}`,
         avatar: `https://placehold.co/100x100.png`,
         online: true,
         lastSeen: serverTimestamp(),

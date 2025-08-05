@@ -7,13 +7,17 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const { login, signup } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -34,8 +38,16 @@ export default function LoginPage() {
   
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!agreedToTerms) {
+        toast({
+            variant: 'destructive',
+            title: 'Agreement Required',
+            description: 'You must agree to the Terms of Use and Privacy Policy.',
+        });
+        return;
+    }
     try {
-      await signup(email, password);
+      await signup(email, password, name);
       router.push('/');
        toast({
           title: 'Welcome!',
@@ -49,6 +61,14 @@ export default function LoginPage() {
       })
     }
   };
+
+  const LegalLinks = () => (
+    <div className="text-center text-xs text-muted-foreground space-x-4">
+        <Link href="/terms-of-use" className="hover:underline" target="_blank">Terms</Link>
+        <Link href="/privacy-policy" className="hover:underline" target="_blank">Privacy</Link>
+        <Link href="/contact-us" className="hover:underline" target="_blank">Contact</Link>
+    </div>
+  );
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
@@ -76,6 +96,9 @@ export default function LoginPage() {
                         <Button type="submit" className="w-full">Login</Button>
                     </form>
                 </CardContent>
+                <CardFooter>
+                    <LegalLinks />
+                </CardFooter>
             </Card>
         </TabsContent>
         <TabsContent value="signup">
@@ -86,17 +109,35 @@ export default function LoginPage() {
                 </CardHeader>
                 <CardContent>
                      <form onSubmit={handleSignup} className="space-y-4">
+                         <div className="space-y-2">
+                            <Label htmlFor="signup-name">Username</Label>
+                            <Input id="signup-name" type="text" placeholder="Choose a username" required value={name} onChange={(e) => setName(e.target.value)} />
+                        </div>
                         <div className="space-y-2">
                             <Label htmlFor="signup-email">Email</Label>
                             <Input id="signup-email" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="signup-password">Password</Label>
-                            <Input id="signup-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                            <Input id="signup-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} />
+                        </div>
+                        <div className="items-top flex space-x-2">
+                            <Checkbox id="terms1" checked={agreedToTerms} onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)} />
+                            <div className="grid gap-1.5 leading-none">
+                                <label
+                                htmlFor="terms1"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                I agree to the <Link href="/terms-of-use" target="_blank" className="underline text-primary">Terms of Use</Link> and <Link href="/privacy-policy" target="_blank" className="underline text-primary">Privacy Policy</Link>.
+                                </label>
+                            </div>
                         </div>
                         <Button type="submit" className="w-full">Sign Up</Button>
                     </form>
                 </CardContent>
+                 <CardFooter>
+                    <LegalLinks />
+                </CardFooter>
             </Card>
         </TabsContent>
       </Tabs>
