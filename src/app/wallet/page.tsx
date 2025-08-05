@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { ArrowLeft, Coins, Landmark, DollarSign, CreditCard } from 'lucide-react';
+import AdComponent from '@/components/ad-component';
 
 const ServiceCard = ({ icon, title, description, action, disabled }: { icon: React.ReactNode, title: string, description: string, action?: () => void, disabled?: boolean }) => (
     <Card>
@@ -28,7 +29,7 @@ const ServiceCard = ({ icon, title, description, action, disabled }: { icon: Rea
 );
 
 export default function WalletPage() {
-    const { currentUser } = useAuth();
+    const { currentUser, updateCurrentUser } = useAuth();
     const router = useRouter();
 
     if (!currentUser) {
@@ -62,6 +63,11 @@ export default function WalletPage() {
                             <p>Use your coins to redeem exciting rewards or deposit more.</p>
                         </CardContent>
                     </Card>
+
+                    <AdComponent
+                        currentUser={currentUser}
+                        onReward={(amount) => updateCurrentUser({ coins: (currentUser.coins || 0) + amount })}
+                    />
 
                     <div className="space-y-4">
                         <h2 className="text-2xl font-bold tracking-tight">Services</h2>
