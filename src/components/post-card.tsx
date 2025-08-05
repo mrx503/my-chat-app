@@ -7,7 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from './ui/card';
 import { Button } from './ui/button';
-import { Heart, MessageCircle, MoreHorizontal, Flag, Gift, Trash2, Edit } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Flag, Gift, Trash2, Edit, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import {
@@ -57,7 +57,10 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
           <AvatarFallback>{post.uploaderName?.[0]}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <p className="font-semibold">{post.uploaderName}</p>
+          <p className="font-semibold flex items-center gap-1.5">
+            {post.uploaderName}
+            {post.isUploaderVerified && <ShieldCheck className="h-4 w-4 text-primary" />}
+          </p>
           <p className="text-xs text-muted-foreground">
             {post.timestamp && formatDistanceToNow(post.timestamp.toDate(), { addSuffix: true })}
           </p>

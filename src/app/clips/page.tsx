@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, ArrowLeft, Video, Plus, Loader2, Play, Gift, Flag, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, ArrowLeft, Video, Plus, Loader2, Play, Gift, Flag, Trash2, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import UploadClipModal from '@/components/upload-clip-modal';
 import { cn } from '@/lib/utils';
@@ -30,7 +30,7 @@ import {
 
 const ClipPlayer = ({ 
     clip, onLike, onComment, onSupport, onReport, onDelete, 
-    currentUser, uploaderName, uploaderAvatar, uploaderId 
+    currentUser, uploaderName, uploaderAvatar, uploaderId, isUploaderVerified
 }: { 
     clip: Clip, 
     onLike: (clip: Clip) => void, 
@@ -41,7 +41,8 @@ const ClipPlayer = ({
     currentUser: (User & {uid: string}) | null, 
     uploaderName: string, 
     uploaderAvatar: string, 
-    uploaderId: string 
+    uploaderId: string,
+    isUploaderVerified?: boolean
 }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(true); // Autoplay by default
@@ -166,7 +167,10 @@ const ClipPlayer = ({
                             <AvatarImage src={uploaderAvatar} alt={uploaderName} />
                             <AvatarFallback>{uploaderName?.[0]}</AvatarFallback>
                         </Avatar>
-                        <p className="font-bold text-lg">{uploaderName}</p>
+                        <p className="font-bold text-lg flex items-center gap-1.5">
+                            {uploaderName}
+                            {isUploaderVerified && <ShieldCheck className="h-5 w-5 text-white" />}
+                        </p>
                     </button>
                     <p className="text-sm">{clip.caption}</p>
                 </div>
@@ -259,11 +263,14 @@ export default function ClipsPage() {
                 
                 const userDoc = await getDoc(doc(db, 'users', clipData.uploaderId));
                 if (userDoc.exists()) {
-                    clipData.uploaderName = userDoc.data().name || 'Unknown';
-                    clipData.uploaderAvatar = userDoc.data().avatar || '';
+                    const uploaderData = userDoc.data();
+                    clipData.uploaderName = uploaderData.name || 'Unknown';
+                    clipData.uploaderAvatar = uploaderData.avatar || '';
+                    clipData.isUploaderVerified = uploaderData.isVerified || false;
                 } else {
                     clipData.uploaderName = 'Unknown User';
                     clipData.uploaderAvatar = '';
+                    clipData.isUploaderVerified = false;
                 }
                 return clipData;
             });
@@ -339,6 +346,7 @@ export default function ClipsPage() {
                 ...newClipData,
                 uploaderName: currentUser.name || currentUser.email!,
                 uploaderAvatar: currentUser.avatar,
+                isUploaderVerified: currentUser.isVerified,
                 timestamp: new Date() 
             } as any; // Cast because serverTimestamp is different from Date
             
@@ -524,6 +532,7 @@ export default function ClipsPage() {
                                 uploaderName={clip.uploaderName}
                                 uploaderAvatar={clip.uploaderAvatar}
                                 uploaderId={clip.uploaderId}
+                                isUploaderVerified={clip.isUploaderVerified}
                             />
                         </div>
                     ))}

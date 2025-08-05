@@ -31,6 +31,7 @@ export type User = {
   pushSubscription?: PushSubscription | null;
   isBanned?: boolean;
   bannedUntil?: Timestamp | null;
+  isVerified?: boolean; // For the blue checkmark
 };
 
 export type Message = {
@@ -112,6 +113,7 @@ export type Clip = {
   // Denormalized fields for performance
   uploaderName: string; 
   uploaderAvatar: string;
+  isUploaderVerified?: boolean;
   timestamp: Timestamp;
   likes: string[]; // Array of user IDs who liked the clip
   commentsCount: number;
@@ -168,6 +170,7 @@ export type Post = {
   // Denormalized fields
   uploaderName: string;
   uploaderAvatar: string;
+  isUploaderVerified?: boolean;
 }
 
 export type PostComment = {

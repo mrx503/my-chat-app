@@ -9,7 +9,7 @@ import type { User, Clip, Chat, AppNotification } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MessageCircle, Video, Loader2, Play, UserPlus, UserCheck, Camera, Edit } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Video, Loader2, Play, UserPlus, UserCheck, Camera, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import Lightbox from '@/components/lightbox';
@@ -257,7 +257,10 @@ export default function UserProfilePage() {
                     <Button variant="ghost" size="icon" onClick={() => router.back()}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <h1 className="text-xl font-bold ml-4">{profileUser.name}</h1>
+                    <h1 className="text-xl font-bold ml-4 flex items-center gap-1.5">
+                        {profileUser.name}
+                        {profileUser.isVerified && <ShieldCheck className="h-5 w-5 text-primary" />}
+                    </h1>
                 </header>
 
                 <main className="p-4 md:p-6">
@@ -282,7 +285,10 @@ export default function UserProfilePage() {
                                 )}
                             </div>
                             <div className="flex-1 text-center sm:text-left">
-                                <h2 className="text-2xl sm:text-3xl font-bold">{profileUser.name}</h2>
+                                <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 justify-center sm:justify-start">
+                                    {profileUser.name}
+                                    {profileUser.isVerified && <ShieldCheck className="h-6 w-6 text-primary" />}
+                                </h2>
                                 <p className="text-muted-foreground">@{profileUser.email?.split('@')[0]}</p>
                                 
                                 <div className="flex gap-4 justify-center sm:justify-start mt-2">

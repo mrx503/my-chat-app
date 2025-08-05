@@ -75,6 +75,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (userData.coins === undefined || userData.coins === null || isNaN(userData.coins)) userData.coins = 0; // SOURCE OF FIX
             if (userData.systemMessagesQueue === undefined) userData.systemMessagesQueue = [];
             if (userData.isBanned === undefined) userData.isBanned = false;
+            if (userData.isVerified === undefined) userData.isVerified = false;
             
             // Convert Firestore Timestamp to Date object for client-side use
             if (userData.bannedUntil && typeof (userData.bannedUntil as any).toDate === 'function') {
@@ -99,6 +100,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 systemMessagesQueue: [],
                 isBanned: false,
                 bannedUntil: null,
+                isVerified: false,
                 id: user.uid
              };
             setCurrentUser(newUser);
@@ -146,6 +148,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         pushSubscription: null,
         isBanned: false,
         bannedUntil: null,
+        isVerified: false,
     };
     await setDoc(doc(db, "users", user.uid), userDocData);
     return userCredential;

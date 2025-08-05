@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 import AppHeader from '@/components/app-header';
 import Sidebar from '@/components/sidebar';
 import { cn } from '@/lib/utils';
@@ -49,11 +49,14 @@ export default function Home() {
             
             const userDoc = await getDoc(doc(db, 'users', postData.uploaderId));
             if (userDoc.exists()) {
-                postData.uploaderName = userDoc.data().name || 'Unknown';
-                postData.uploaderAvatar = userDoc.data().avatar || '';
+                const uploaderData = userDoc.data();
+                postData.uploaderName = uploaderData.name || 'Unknown';
+                postData.uploaderAvatar = uploaderData.avatar || '';
+                postData.isUploaderVerified = uploaderData.isVerified || false;
             } else {
                 postData.uploaderName = 'Unknown User';
                 postData.uploaderAvatar = '';
+                postData.isUploaderVerified = false;
             }
             return postData;
         });

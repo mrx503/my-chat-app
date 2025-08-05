@@ -159,7 +159,10 @@ export default function ChatHeader({
               <AvatarFallback>{contact.name ? contact.name.charAt(0) : 'U'}</AvatarFallback>
             </Avatar>
             <div>
-              <h2 className="text-lg font-semibold">{contact.name}</h2>
+              <h2 className="text-lg font-semibold flex items-center gap-1.5">
+                {contact.name}
+                {contact.isVerified && <ShieldCheck className="h-4 w-4 text-primary" />}
+              </h2>
               <p className="text-sm text-muted-foreground">{status}</p>
             </div>
           </div>

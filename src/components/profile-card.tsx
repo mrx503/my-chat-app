@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Copy, Wallet, Clapperboard, User as UserIcon, Shield, MessageSquare } from 'lucide-react';
+import { Copy, Wallet, Clapperboard, User as UserIcon, Shield, MessageSquare, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@/lib/types';
 import { getAdminUids } from '@/lib/admin';
@@ -39,7 +39,10 @@ export default function ProfileCard({ currentUser }: ProfileCardProps) {
                     <AvatarFallback>{currentUser.email?.[0].toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
-                    <CardTitle className="text-base">{currentUser.name || currentUser.email}</CardTitle>
+                    <CardTitle className="text-base flex items-center gap-1.5">
+                        <span>{currentUser.name || currentUser.email}</span>
+                        {currentUser.isVerified && <ShieldCheck className="h-4 w-4 text-primary" />}
+                    </CardTitle>
                     <CardDescription className="text-xs">Welcome back!</CardDescription>
                 </div>
             </CardHeader>
@@ -70,6 +73,12 @@ export default function ProfileCard({ currentUser }: ProfileCardProps) {
                         <Wallet className="mr-2 h-4 w-4"/>
                         Wallet
                     </Button>
+                     {!currentUser.isVerified && (
+                        <Button className="w-full justify-start" variant="ghost" onClick={() => router.push('/verify')}>
+                            <ShieldCheck className="mr-2 h-4 w-4"/>
+                            Verify Account
+                        </Button>
+                    )}
                     {isAdmin && (
                         <Button className="w-full justify-start" variant="ghost" onClick={() => router.push('/admin')}>
                             <Shield className="mr-2 h-4 w-4"/>
