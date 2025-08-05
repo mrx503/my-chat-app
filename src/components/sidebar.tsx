@@ -65,9 +65,12 @@ export default function Sidebar({ currentUser, updateCurrentUser, logout, isOpen
                                 <LogOut className="mr-2 h-4 w-4"/>
                                 <span>Logout</span>
                             </Button>
-                             <div className="text-center mt-4">
+                             <div className="text-center mt-4 space-x-4">
                                 <Link href="/privacy-policy" className="text-xs text-muted-foreground hover:underline">
                                     سياسة الخصوصية
+                                </Link>
+                                <Link href="/terms-of-use" className="text-xs text-muted-foreground hover:underline">
+                                    شروط الاستخدام
                                 </Link>
                             </div>
                         </div>

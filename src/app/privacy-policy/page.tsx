@@ -35,7 +35,7 @@ export default function PrivacyPolicyPage() {
             <main className="p-4 md:p-6">
                 <Card className="max-w-4xl mx-auto">
                     <CardHeader>
-                        <CardTitle>سياسة الخصوصية لتطبيق Murrasil</CardTitle>
+                        <CardTitle>سياسة الخصوصية لتطبيق duck</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <Section title="1. مقدمة">
