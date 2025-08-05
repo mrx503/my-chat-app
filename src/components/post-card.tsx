@@ -31,6 +31,7 @@ import {
 import CreatePostModal from './create-post-modal';
 import { isAdmin } from '@/lib/admin';
 import Link from 'next/link';
+import AdComponent from './ad-component';
 
 interface PostCardProps {
   post: Post;
@@ -140,7 +141,7 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
         )}
       </CardContent>
 
-      <CardFooter className="flex justify-between items-center p-1 border-t">
+      <CardFooter className="flex justify-around items-center p-1 border-t">
           <Button variant="ghost" className="flex-1 text-xs sm:text-sm" onClick={() => onLike(post.id)}>
               <Heart className={cn("mr-2 h-4 w-4", isLiked && "fill-red-500 text-red-500")} />
               <span>{post.likes.length} Like</span>
@@ -156,6 +157,11 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
               </Button>
           )}
       </CardFooter>
+      <AdComponent 
+        adId={`post-ad-${post.id}`} 
+        viewerId={currentUser?.uid} 
+        postOwnerId={post.uploaderId}
+      />
     </Card>
 
     {isEditing && currentUser && (
@@ -173,3 +179,5 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
     </>
   );
 }
+
+    

@@ -19,6 +19,7 @@ import ReportClipModal from '@/components/report-clip-modal';
 import { useToast } from '@/hooks/use-toast';
 import { isAdmin } from '@/lib/admin';
 import Link from 'next/link';
+import AdComponent from '@/components/ad-component';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -213,6 +214,7 @@ export default function Home() {
   };
 
   const handleDeletePost = async (postId: string) => {
+    if (!currentUser) return;
     try {
         await deleteDoc(doc(db, "posts", postId));
         toast({ title: "Post Deleted", description: "The post has been permanently removed."});
@@ -223,6 +225,7 @@ export default function Home() {
   };
   
    const handleEditPost = async (postId: string, newContent: string) => {
+    if (!currentUser) return;
     try {
         const postRef = doc(db, 'posts', postId);
         await updateDoc(postRef, { content: newContent });
@@ -371,19 +374,26 @@ export default function Home() {
                     {currentUser && <CreatePost user={currentUser} onPostCreated={() => {}}/>}
                     
                     {posts.length > 0 ? (
-                      posts.map(post => (
-                        <PostCard 
-                          key={post.id} 
-                          post={post} 
-                          currentUser={currentUser}
-                          onLike={handleLikePost}
-                          onDelete={handleDeletePost}
-                          onComment={handleOpenComments}
-                          onSupport={handleOpenSupport}
-                          onReport={handleOpenReport}
-                          onEdit={handleEditPost}
-                        />
-                      ))
+                      posts.flatMap((post, index) => {
+                        const items = [
+                          <PostCard 
+                            key={post.id} 
+                            post={post} 
+                            currentUser={currentUser}
+                            onLike={handleLikePost}
+                            onDelete={handleDeletePost}
+                            onComment={handleOpenComments}
+                            onSupport={handleOpenSupport}
+                            onReport={handleOpenReport}
+                            onEdit={handleEditPost}
+                          />
+                        ];
+                        // After every 3 posts (index 2, 5, 8...), inject an ad
+                        if ((index + 1) % 3 === 0) {
+                          items.push(<AdComponent key={`ad-${index}`} adId={`feed-ad-${index}`} viewerId={currentUser?.uid}/>);
+                        }
+                        return items;
+                      })
                     ) : (
                       <div className="text-center py-10 border-2 border-dashed rounded-lg mt-6">
                           <p className="text-muted-foreground font-semibold">No posts yet.</p>
@@ -435,3 +445,5 @@ export default function Home() {
     </>
   );
 }
+
+    
