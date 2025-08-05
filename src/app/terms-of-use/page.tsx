@@ -30,67 +30,67 @@ export default function TermsOfUsePage() {
                     <span className="sr-only">Back</span>
                 </Button>
                 <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-                    شروط الاستخدام
+                    Terms of Use
                 </h1>
             </header>
             <main className="p-4 md:p-6">
                 <Card className="max-w-4xl mx-auto">
                     <CardHeader>
-                        <CardTitle>شروط وأحكام استخدام تطبيق duck</CardTitle>
+                        <CardTitle>Terms and Conditions for using duck App</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <Section title="1. ملكية المحتوى والمسؤولية">
-                            <p>عند قيامك برفع أي محتوى (فيديو، صورة، ريلز، تعليق, منشور...) على المنصة، فإنك تُقرّ وتؤكد أن:</p>
+                        <Section title="1. Content Ownership and Responsibility">
+                            <p>When you upload any content (video, image, reel, comment, post...) to the platform, you acknowledge and confirm that:</p>
                              <ul className="list-disc list-inside space-y-1">
-                                <li>المحتوى من إنتاجك الشخصي، أو أنك تمتلك الحقوق القانونية الكاملة لرفعه ونشره.</li>
-                                <li>لا يحتوي المحتوى على أي مواد محمية بحقوق ملكية فكرية لطرف ثالث، إلا إذا كنت مخولاً باستخدامها.</li>
+                                <li>The content is your own creation, or you have the full legal rights to upload and publish it.</li>
+                                <li>The content does not contain any third-party copyrighted material unless you are authorized to use it.</li>
                             </ul>
                             <Alert variant="destructive" className="mt-2">
                                 <ShieldAlert className="h-4 w-4" />
-                                <AlertTitle>تنبيه</AlertTitle>
+                                <AlertTitle>Warning</AlertTitle>
                                 <AlertDescription>
-                                    في حال رفعك لأي محتوى لا تمتلك حقوقه أو بدون إذن قانوني، تتحمل كامل المسؤولية القانونية، وتُعفي إدارة المنصة من أي مطالبات أو شكاوى ناتجة عن ذلك.
+                                    If you upload any content for which you do not own the rights or have legal permission, you bear full legal responsibility and release the platform administration from any claims or complaints arising from it.
                                 </AlertDescription>
                             </Alert>
                         </Section>
 
-                        <Section title="2. المحتوى غير اللائق والمخالف">
-                            <p>يُمنع منعًا باتًا نشر أو رفع أي محتوى يحتوي على:</p>
+                        <Section title="2. Inappropriate and Prohibited Content">
+                            <p>It is strictly forbidden to publish or upload any content that contains:</p>
                             <ul className="list-disc list-inside space-y-1">
-                                <li>مشاهد مخلة بالآداب العامة أو خادشة للحياء.</li>
-                                <li>عنف، كراهية، تحرش، تهديد، أو انتهاك لحقوق الآخرين.</li>
+                                <li>Scenes that are indecent or offensive to public morals.</li>
+                                <li>Violence, hate speech, harassment, threats, or violation of others' rights.</li>
                             </ul>
-                            <p className="mt-2">تحتفظ إدارة المنصة بالحق الكامل في:</p>
+                            <p className="mt-2">The platform administration reserves the full right to:</p>
                              <ul className="list-disc list-inside space-y-1">
-                                <li>حذف أي محتوى مخالف فورًا وبدون إشعار.</li>
-                                <li>حظر الحساب المخالف بشكل دائم، سواء كان صاحب المحتوى أو مشاركًا فيه.</li>
+                                <li>Delete any infringing content immediately and without notice.</li>
+                                <li>Permanently ban the offending account, whether it belongs to the content owner or a participant.</li>
                             </ul>
                         </Section>
 
-                        <Section title="3. نظام الريلز والفيديوهات">
-                            <p>تتيح المنصة للمستخدمين رفع فيديوهات قصيرة (ريلز) مشابهة لتطبيقات الفيديو الاجتماعية.</p>
-                            <p>باستخدام هذه الميزة، فإنك توافق على:</p>
+                        <Section title="3. Reels and Videos System">
+                            <p>The platform allows users to upload short videos (reels) similar to social video applications.</p>
+                            <p>By using this feature, you agree that:</p>
                             <ul className="list-disc list-inside space-y-1">
-                                <li>أن تكون الفيديوهات أصلية، لا تنتهك حقوق الغير.</li>
-                                <li>إمكانية خضوع الفيديو للمراجعة قبل النشر أو الحذف في حال المخالفة.</li>
-                                <li>أن المنصة غير مسؤولة عن المحتوى الذي يرفعه المستخدمون، ولكنها تحتفظ بحق التدخل والحذف في أي وقت.</li>
+                                <li>The videos are original and do not infringe on the rights of others.</li>
+                                <li>The video may be subject to review before publication or deletion in case of violation.</li>
+                                <li>The platform is not responsible for the content uploaded by users but reserves the right to intervene and delete it at any time.</li>
                             </ul>
                         </Section>
 
-                        <Section title="4. نظام البلاغات">
-                            <p>تتيح المنصة زرًا للإبلاغ عن أي محتوى مخالف.</p>
-                            <p>ستتم مراجعة البلاغات بعناية، واتخاذ الإجراء المناسب، بما في ذلك الحذف أو الحظر الفوري.</p>
+                        <Section title="4. Reporting System">
+                            <p>The platform provides a button to report any infringing content.</p>
+                            <p>Reports will be reviewed carefully, and appropriate action will be taken, including immediate deletion or banning.</p>
                         </Section>
                         
-                        <Section title="5. الموافقة على الشروط">
-                           <p>باستخدامك للمنصة أو رفعك لأي محتوى، فأنت توافق تلقائيًا على هذه الشروط وتقرّ بمسؤوليتك الكاملة.</p>
+                        <Section title="5. Acceptance of Terms">
+                           <p>By using the platform or uploading any content, you automatically agree to these terms and acknowledge your full responsibility.</p>
                         </Section>
 
                         <Alert>
                            <ShieldAlert className="h-4 w-4" />
-                           <AlertTitle>تنبيه قانوني</AlertTitle>
+                           <AlertTitle>Legal Disclaimer</AlertTitle>
                            <AlertDescription>
-                                إدارة المنصة غير مسؤولة عن أي محتوى يتم رفعه من قبل المستخدمين، والمسؤولية تقع بالكامل على الطرف الذي قام بالنشر.
+                               The platform administration is not responsible for any content uploaded by users. The responsibility lies entirely with the party who published the content.
                            </AlertDescription>
                        </Alert>
 

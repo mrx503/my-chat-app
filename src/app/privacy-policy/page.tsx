@@ -29,71 +29,71 @@ export default function PrivacyPolicyPage() {
                     <span className="sr-only">Back</span>
                 </Button>
                 <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-                    سياسة الخصوصية
+                    Privacy Policy
                 </h1>
             </header>
             <main className="p-4 md:p-6">
                 <Card className="max-w-4xl mx-auto">
                     <CardHeader>
-                        <CardTitle>سياسة الخصوصية لتطبيق duck</CardTitle>
+                        <CardTitle>Privacy Policy for duck App</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <Section title="1. مقدمة">
-                            <p>نحن نقدر ثقتك بنا، ونعمل على حماية خصوصيتك وبياناتك الشخصية.</p>
-                            <p>توضح هذه السياسة كيفية جمع واستخدام وتخزين المعلومات التي تقدمها عند استخدام تطبيقنا.</p>
+                        <Section title="1. Introduction">
+                            <p>We value your trust and are committed to protecting your privacy and personal data.</p>
+                            <p>This policy explains how we collect, use, and store the information you provide when using our application.</p>
                         </Section>
                         
-                        <Section title="2. المعلومات التي نجمعها">
-                            <p>عند استخدامك للتطبيق، قد نقوم بجمع المعلومات التالية:</p>
+                        <Section title="2. Information We Collect">
+                            <p>When you use the app, we may collect the following information:</p>
                             <ul className="list-disc list-inside space-y-1">
-                                <li>الاسم، البريد الإلكتروني، أو رقم الهاتف (عند التسجيل).</li>
-                                <li>معلومات فنية مثل: نوع الجهاز، نظام التشغيل، اللغة، عنوان IP.</li>
-                                <li>سلوك الاستخدام داخل التطبيق (مثل الصفحات التي تزورها).</li>
-                                <li>بيانات الإعلانات (في حالة تفعيل الإعلانات لاحقًا).</li>
+                                <li>Name, email, or phone number (upon registration).</li>
+                                <li>Technical information such as device type, operating system, language, and IP address.</li>
+                                <li>Usage behavior within the app (e.g., pages you visit).</li>
+                                <li>Advertising data (if ads are activated later).</li>
                             </ul>
                         </Section>
 
-                        <Section title="3. استخدام المعلومات">
-                            <p>نستخدم البيانات التي نجمعها من أجل:</p>
+                        <Section title="3. Use of Information">
+                            <p>We use the data we collect to:</p>
                             <ul className="list-disc list-inside space-y-1">
-                                <li>إنشاء حسابك وتسجيل الدخول.</li>
-                                <li>تحسين تجربة المستخدم داخل التطبيق.</li>
-                                <li>تخصيص المحتوى والإعلانات لك بشكل أفضل.</li>
-                                <li>الحفاظ على أمان الحسابات والنظام.</li>
+                                <li>Create and manage your account.</li>
+                                <li>Improve the user experience within the app.</li>
+                                <li>Better personalize content and ads for you.</li>
+                                <li>Maintain the security of accounts and the system.</li>
                             </ul>
                         </Section>
 
-                        <Section title="4. مشاركة البيانات">
+                        <Section title="4. Data Sharing">
                            <ul className="list-disc list-inside space-y-1">
-                                <li>لا نقوم ببيع أو تأجير بياناتك لأي جهة خارجية.</li>
-                                <li>قد نتعاون مع شركات إعلانات (مثل Google AdMob) التي قد تستخدم بعض البيانات (مثل نوع الجهاز أو الاهتمامات العامة) لعرض إعلانات مخصصة.</li>
-                                <li>نحن لا نشارك بياناتك الشخصية مع أي طرف ثالث بدون موافقتك.</li>
+                                <li>We do not sell or rent your data to any third party.</li>
+                                <li>We may partner with advertising companies (like Google AdMob) that may use some data (such as device type or general interests) to display personalized ads.</li>
+                                <li>We do not share your personal data with any third party without your consent.</li>
                             </ul>
                         </Section>
 
-                        <Section title="5. حماية البيانات">
-                            <p>نحن نستخدم تدابير أمان تقنية وإدارية لحماية بياناتك من الوصول أو التعديل أو الإتلاف غير المصرح به.</p>
+                        <Section title="5. Data Protection">
+                            <p>We use technical and administrative security measures to protect your data from unauthorized access, modification, or destruction.</p>
                         </Section>
 
-                        <Section title="6. محتوى المستخدم">
+                        <Section title="6. User Content">
                             <ul className="list-disc list-inside space-y-1">
-                                <li>أنت مسؤول عن أي محتوى تقوم برفعه على التطبيق.</li>
-                                <li>يُمنع نشر أي محتوى يحتوي على مواد خادشة للحياء أو مخالفة للأخلاق أو القوانين.</li>
-                                <li>يحق للإدارة حذف المحتوى أو حظر الحساب المخالف فورًا دون إشعار مسبق.</li>
+                                <li>You are responsible for any content you upload to the application.</li>
+                                <li>Publishing any content that contains indecent, unethical, or illegal materials is prohibited.</li>
+                                <li>The administration has the right to delete content or ban the offending account immediately without prior notice.</li>
                             </ul>
                         </Section>
 
-                        <Section title="7. المكافآت مقابل مشاهدة الإعلانات">
+                        <Section title="7. Rewards for Watching Ads">
                            <ul className="list-disc list-inside space-y-1">
-                                <li>قد نقدم نظامًا تحفيزيًا يحصل فيه المستخدم على مكافآت رمزية (مثل نقاط أو رصيد افتراضي) مقابل مشاهدة الإعلانات حتى نهايتها.</li>
-                                <li>تُمنح المكافآت تلقائيًا بعد التحقق من مشاهدة الإعلان كاملًا.</li>
-                                <li>هذه المكافآت لا تُعد التزامًا ماليًا مباشرًا أو حقًا قانونيًا.</li>
-                                <li>لا يتم منح مكافآت في حال تم تخطي الإعلان أو الخروج منه قبل نهايته.</li>
+                                <li>We may offer an incentive system where the user receives symbolic rewards (like points or virtual credit) for watching ads to completion.</li>
+                                <li>Rewards are granted automatically after verifying the ad was watched in its entirety.</li>
+                                <li>These rewards are not a direct financial obligation or a legal right.</li>
+                                <li>No rewards are given if the ad is skipped or exited before it ends.</li>
                             </ul>
                         </Section>
 
-                         <Section title="8. التعديلات">
-                            <p>قد نقوم بتحديث هذه السياسة من وقت لآخر، وسيتم إخطار المستخدم بأي تغييرات داخل التطبيق أو عبر البريد الإلكتروني.</p>
+                         <Section title="8. Modifications">
+                            <p>We may update this policy from time to time, and users will be notified of any changes within the app or via email.</p>
                         </Section>
                     </CardContent>
                 </Card>
