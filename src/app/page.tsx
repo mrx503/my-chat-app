@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { isAdmin } from '@/lib/admin';
 import Link from 'next/link';
 import AdComponent from '@/components/ad-component';
+import SocialBarAd from '@/components/social-bar-ad';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -395,11 +396,10 @@ export default function Home() {
                             onEdit={handleEditPost}
                           />
                           {currentUser && (index + 1) % 3 === 0 && (
-                            <AdComponent 
+                            <SocialBarAd 
                                 currentUser={currentUser} 
                                 onReward={handleReward}
-                                adId={`interstitial-${index}`}
-                                isInterstitial
+                                adId={`social-bar-${index}`}
                             />
                           )}
                         </React.Fragment>
