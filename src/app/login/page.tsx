@@ -62,6 +62,14 @@ export default function LoginPage() {
     }
   };
 
+  const handleCheckedChange = (checked: boolean) => {
+    // Wrap the state update in a timeout to defer it slightly,
+    // preventing the flushSync error from Radix UI component internals.
+    setTimeout(() => {
+        setAgreedToTerms(checked);
+    }, 0);
+  };
+
   const LegalLinks = () => (
     <div className="text-center text-xs text-muted-foreground space-x-4">
         <Link href="/terms-of-use" className="hover:underline" target="_blank">Terms</Link>
@@ -122,7 +130,7 @@ export default function LoginPage() {
                             <Input id="signup-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} />
                         </div>
                         <div className="items-top flex space-x-2">
-                            <Checkbox id="terms1" checked={agreedToTerms} onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)} />
+                            <Checkbox id="terms1" checked={agreedToTerms} onCheckedChange={(checked) => handleCheckedChange(checked as boolean)} />
                             <div className="grid gap-1.5 leading-none">
                                 <label
                                 htmlFor="terms1"
