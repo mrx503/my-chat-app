@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2, ShieldCheck } from 'lucide-react';
@@ -9,15 +9,17 @@ import AppHeader from '@/components/app-header';
 import Sidebar from '@/components/sidebar';
 import { cn } from '@/lib/utils';
 import CreatePost from '@/components/create-post';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc, getDoc, addDoc, serverTimestamp, where, getDocs, setDoc, increment, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Post, Report } from '@/lib/types';
+import type { Post, Report, User, AppNotification, Chat } from '@/lib/types';
 import PostCard from '@/components/post-card';
 import CommentsModal from '@/components/comments-modal';
 import SupportModal from '@/components/support-modal';
 import ReportClipModal from '@/components/report-clip-modal';
 import { useToast } from '@/hooks/use-toast';
 import { isAdmin } from '@/lib/admin';
+
+const SYSTEM_BOT_UID = 'system-bot-uid';
 
 export default function Home() {
   const { currentUser, logout, updateCurrentUser } = useAuth();
@@ -31,6 +33,14 @@ export default function Home() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
+  // --- State moved from chats/page.tsx ---
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [systemChat, setSystemChat] = useState<Chat | null>(null);
+  const [systemUnreadCount, setSystemUnreadCount] = useState(0);
+  const processedMessagesRef = useRef<string[]>([]);
+
+
   useEffect(() => {
     if (!currentUser) {
       router.push('/login');
@@ -42,8 +52,9 @@ export default function Home() {
   useEffect(() => {
     if (!currentUser) return;
 
-    const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
+    // --- Post subscription ---
+    const qPosts = query(collection(db, "posts"), orderBy("timestamp", "desc"));
+    const unsubscribePosts = onSnapshot(qPosts, async (snapshot) => {
         const postsDataPromises = snapshot.docs.map(async (docSnapshot) => {
             const postData = { id: docSnapshot.id, ...docSnapshot.data() } as Post;
             
@@ -60,13 +71,124 @@ export default function Home() {
             }
             return postData;
         });
-
         const newPosts = await Promise.all(postsDataPromises);
         setPosts(newPosts);
     });
 
-    return () => unsubscribe();
+    // --- Notification subscription (moved from chats) ---
+    const unsubscribeNotifications = onSnapshot(
+        query(collection(db, 'notifications'), where('recipientId', '==', currentUser.uid)),
+        (snapshot) => {
+            const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
+            notifs.sort((a, b) => (b.timestamp?.toMillis() ?? 0) - (a.timestamp?.toMillis() ?? 0));
+            setNotifications(notifs);
+            setUnreadNotificationsCount(notifs.filter(n => !n.read).length);
+        }
+    );
+    
+    // --- System Chat subscription (moved from chats) ---
+    const systemChatQuery = query(
+        collection(db, 'chats'), 
+        where('users', 'array-contains', currentUser.uid)
+    );
+    const unsubscribeSystemChat = onSnapshot(systemChatQuery, (snapshot) => {
+        let foundSystemChat = false;
+        snapshot.forEach((doc) => {
+            if (doc.data().users.includes(SYSTEM_BOT_UID)) {
+                const chatData = { id: doc.id, ...doc.data() } as Chat;
+                setSystemChat(chatData);
+                setSystemUnreadCount(chatData.unreadCount?.[currentUser.uid] ?? 0);
+                foundSystemChat = true;
+            }
+        });
+        if (!foundSystemChat) {
+            setSystemChat(null);
+            setSystemUnreadCount(0);
+        }
+    });
+
+
+    return () => {
+        unsubscribePosts();
+        unsubscribeNotifications();
+        unsubscribeSystemChat();
+    }
   }, [currentUser]);
+  
+  // --- System Message Queue delivery logic (moved from chats) ---
+  useEffect(() => {
+      const deliverQueuedMessages = async () => {
+          if (!currentUser || !currentUser.systemMessagesQueue || currentUser.systemMessagesQueue.length === 0) {
+              return;
+          }
+
+          const messagesToProcess = currentUser.systemMessagesQueue.filter(
+              msg => !processedMessagesRef.current.includes(msg)
+          );
+
+          if (messagesToProcess.length === 0) {
+              return;
+          }
+
+          processedMessagesRef.current = [...processedMessagesRef.current, ...messagesToProcess];
+
+          try {
+              let chatRef;
+              if (systemChat) {
+                  chatRef = doc(db, 'chats', systemChat.id);
+              } else {
+                  chatRef = doc(collection(db, 'chats'));
+                  const now = serverTimestamp();
+                  await setDoc(chatRef, {
+                      users: [currentUser.uid, SYSTEM_BOT_UID].sort(),
+                      createdAt: now,
+                      encrypted: false,
+                      deletedFor: [],
+                      lastMessageTimestamp: now,
+                      lastMessageText: "Welcome!",
+                      unreadCount: { [currentUser.uid]: 1 }
+                  });
+              }
+              
+              const messagesColRef = collection(chatRef, 'messages');
+              for (const messageText of messagesToProcess) {
+                  const newMessage = {
+                      senderId: SYSTEM_BOT_UID,
+                      text: messageText,
+                      timestamp: serverTimestamp(),
+                      type: 'text',
+                      status: 'sent'
+                  };
+                  await addDoc(messagesColRef, newMessage);
+                  
+                  await updateDoc(chatRef, {
+                      lastMessageText: messageText,
+                      lastMessageTimestamp: newMessage.timestamp,
+                      lastMessageSenderId: SYSTEM_BOT_UID,
+                      [`unreadCount.${currentUser.uid}`]: increment(1)
+                  });
+              }
+              
+              const userDocRef = doc(db, 'users', currentUser.uid);
+              await updateDoc(userDocRef, { systemMessagesQueue: [] });
+              
+              toast({
+                  title: 'You have new system messages!',
+                  description: 'Check your system messages for details.',
+              });
+
+          } catch (error) {
+              console.error("Error delivering queued messages:", error);
+              processedMessagesRef.current = processedMessagesRef.current.filter(
+                  pMsg => !messagesToProcess.includes(pMsg)
+              );
+          }
+      };
+
+      deliverQueuedMessages();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, systemChat]);
+
 
   const handleLikePost = async (postId: string) => {
     if (!currentUser) return;
@@ -76,7 +198,6 @@ export default function Home() {
 
     const isLiked = post.likes.includes(currentUser.uid);
     
-    // Optimistic update
     setPosts(posts.map(p => p.id === postId ? {
       ...p,
       likes: isLiked ? p.likes.filter(uid => uid !== currentUser.uid) : [...p.likes, currentUser.uid]
@@ -89,7 +210,6 @@ export default function Home() {
         await updateDoc(postRef, { likes: arrayUnion(currentUser.uid) });
       }
     } catch (error) {
-      // Revert on error
       setPosts(posts.map(p => p.id === postId ? post : p));
       console.error("Error liking post:", error);
     }
@@ -144,7 +264,7 @@ export default function Home() {
             const reportData: Partial<Report> = {
                 resourceId: selectedPost.id,
                 resourceType: 'post',
-                resourceUrl: selectedPost.mediaUrl || `post/${selectedPost.id}`, // Link to post in future
+                resourceUrl: selectedPost.mediaUrl || `post/${selectedPost.id}`,
                 reporterId: currentUser.uid,
                 reporterEmail: currentUser.email,
                 reportedUserId: selectedPost.uploaderId,
@@ -174,6 +294,26 @@ export default function Home() {
     }));
   };
 
+  const handleMarkNotificationsAsRead = async () => {
+    if (!currentUser || unreadNotificationsCount === 0) return;
+    const batch = writeBatch(db);
+    const notificationsToUpdate = notifications.filter(n => !n.read);
+    notificationsToUpdate.forEach(n => {
+        const notifRef = doc(db, 'notifications', n.id);
+        batch.update(notifRef, { read: true });
+    });
+    await batch.commit();
+  }
+  
+  const handleSystemChatSelect = () => {
+    if (systemChat) {
+        router.push(`/chat/${systemChat.id}`);
+    } else {
+        toast({ title: 'No System Messages Yet' });
+    }
+  };
+
+
   if (loading || !currentUser) {
     return (
         <div className="flex justify-center items-center h-screen bg-background">
@@ -197,11 +337,11 @@ export default function Home() {
           />
           <div className={cn("flex flex-col flex-1 transition-all duration-300", isSidebarOpen ? "md:ml-72" : "ml-0")}>
               <AppHeader 
-                  systemUnreadCount={0} // Placeholder
-                  onSystemChatSelect={() => router.push('/chats')}
-                  notifications={[]} // Placeholder
-                  unreadNotificationsCount={0} // Placeholder
-                  onMarkNotificationsRead={() => {}} // Placeholder
+                  systemUnreadCount={systemUnreadCount}
+                  onSystemChatSelect={handleSystemChatSelect}
+                  notifications={notifications}
+                  unreadNotificationsCount={unreadNotificationsCount}
+                  onMarkNotificationsRead={handleMarkNotificationsAsRead}
                   onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
               />
 
@@ -267,5 +407,3 @@ export default function Home() {
     </>
   );
 }
-
-    

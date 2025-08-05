@@ -17,21 +17,17 @@ import AppHeader from '@/components/app-header';
 import NotificationPermissionHandler from '@/components/notification-permission-handler';
 import Sidebar from '@/components/sidebar';
 import { cn } from '@/lib/utils';
+import SystemChatCard from '@/components/system-chat-card';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
 export default function ChatsPage() {
   const { currentUser, logout, updateCurrentUser } = useAuth();
   const [userChats, setUserChats] = useState<Chat[]>([]);
-  const [systemChat, setSystemChat] = useState<Chat | null>(null);
-  const [systemUnreadCount, setSystemUnreadCount] = useState(0);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchUserId, setSearchUserId] = useState('');
   const { toast } = useToast();
   const router = useRouter();
-  const processedMessagesRef = useRef<string[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
 
@@ -41,20 +37,21 @@ export default function ChatsPage() {
       return;
     }
     
-    // --- Combined Firestore Subscription ---
-    const unsubscribeChats = onSnapshot(
-        query(
-            collection(db, 'chats'), 
-            where('users', 'array-contains', currentUser.uid),
-            orderBy('lastMessageTimestamp', 'desc')
-        ), 
-        async (snapshot) => {
-          const chatsDataPromises = snapshot.docs.map(async (docSnapshot) => {
+    const chatsQuery = query(
+        collection(db, 'chats'), 
+        where('users', 'array-contains', currentUser.uid),
+        orderBy('lastMessageTimestamp', 'desc')
+    );
+    
+    const unsubscribeChats = onSnapshot(chatsQuery, async (snapshot) => {
+        const chatsDataPromises = snapshot.docs.map(async (docSnapshot) => {
             const chatData = { id: docSnapshot.id, ...docSnapshot.data() } as Chat;
             if (chatData.deletedFor?.includes(currentUser.uid)) return null;
 
-            const isSystemChat = chatData.users.includes(SYSTEM_BOT_UID);
-            const contactId = isSystemChat ? SYSTEM_BOT_UID : chatData.users.find(uid => uid !== currentUser.uid);
+            // Skip system chat, it's handled on the main page now
+            if (chatData.users.includes(SYSTEM_BOT_UID)) return null;
+
+            const contactId = chatData.users.find(uid => uid !== currentUser.uid);
 
             if (contactId) {
                 const userDocRef = doc(db, 'users', contactId);
@@ -67,128 +64,28 @@ export default function ChatsPage() {
             const unreadCount = chatData.unreadCount?.[currentUser.uid] ?? 0;
             chatData.unreadMessages = unreadCount;
 
-            if (isSystemChat) setSystemUnreadCount(unreadCount);
             return chatData;
-          });
-      
-          const allChats = (await Promise.all(chatsDataPromises)).filter((c): c is Chat => c !== null);
-          setSystemChat(allChats.find(c => c.users.includes(SYSTEM_BOT_UID)) || null);
-          setUserChats(allChats.filter(c => !c.users.includes(SYSTEM_BOT_UID)));
-          if(loading) setLoading(false);
-        }, (error) => {
-            console.error("Error fetching chats:", error);
-            toast({variant: 'destructive', title: 'Error fetching chats'})
-            setLoading(false);
         });
+    
+        const allChats = (await Promise.all(chatsDataPromises)).filter((c): c is Chat => c !== null);
+        setUserChats(allChats);
 
-    const unsubscribeNotifications = onSnapshot(
-        query(collection(db, 'notifications'), where('recipientId', '==', currentUser.uid)),
-        (snapshot) => {
-            const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
-            // Sort manually to avoid needing a composite index
-            notifs.sort((a, b) => (b.timestamp?.toMillis() ?? 0) - (a.timestamp?.toMillis() ?? 0));
-            setNotifications(notifs);
-            setUnreadNotificationsCount(notifs.filter(n => !n.read).length);
-        }
-    );
+        if(loading) setLoading(false);
+    }, (error) => {
+        console.error("Error fetching chats:", error);
+        toast({variant: 'destructive', title: 'Error fetching chats'})
+        setLoading(false);
+    });
+
 
     return () => {
         unsubscribeChats();
-        unsubscribeNotifications();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, router, toast]);
-  
-  useEffect(() => {
-      const deliverQueuedMessages = async () => {
-          if (!currentUser || !currentUser.systemMessagesQueue || currentUser.systemMessagesQueue.length === 0) {
-              return;
-          }
-
-          const messagesToProcess = currentUser.systemMessagesQueue.filter(
-              msg => !processedMessagesRef.current.includes(msg)
-          );
-
-          if (messagesToProcess.length === 0) {
-              return;
-          }
-
-          processedMessagesRef.current = [...processedMessagesRef.current, ...messagesToProcess];
-
-          try {
-              const chatQuery = query(collection(db, 'chats'), where('users', '==', [currentUser.uid, SYSTEM_BOT_UID].sort()));
-              const chatSnapshot = await getDocs(chatQuery);
-              let chatRef;
-
-              if (!chatSnapshot.empty) {
-                  chatRef = chatSnapshot.docs[0].ref;
-              } else {
-                  chatRef = doc(collection(db, 'chats'));
-                  const now = serverTimestamp();
-                  await setDoc(chatRef, {
-                      users: [currentUser.uid, SYSTEM_BOT_UID].sort(),
-                      createdAt: now,
-                      encrypted: false,
-                      deletedFor: [],
-                      lastMessageTimestamp: now,
-                      lastMessageText: "Welcome!",
-                      unreadCount: { [currentUser.uid]: 1 }
-                  });
-              }
-              
-              const messagesColRef = collection(chatRef, 'messages');
-              for (const messageText of messagesToProcess) {
-                  const newMessage = {
-                      senderId: SYSTEM_BOT_UID,
-                      text: messageText,
-                      timestamp: serverTimestamp(),
-                      type: 'text',
-                      status: 'sent'
-                  };
-                  await addDoc(messagesColRef, newMessage);
-                  
-                  await updateDoc(chatRef, {
-                      lastMessageText: messageText,
-                      lastMessageTimestamp: newMessage.timestamp,
-                      lastMessageSenderId: SYSTEM_BOT_UID,
-                      [`unreadCount.${currentUser.uid}`]: increment(1)
-                  });
-              }
-              
-              const userDocRef = doc(db, 'users', currentUser.uid);
-              await updateDoc(userDocRef, { systemMessagesQueue: [] });
-              
-              toast({
-                  title: 'You have new system messages!',
-                  description: 'Check your system messages for details.',
-              });
-
-          } catch (error) {
-              console.error("Error delivering queued messages:", error);
-              processedMessagesRef.current = processedMessagesRef.current.filter(
-                  pMsg => !messagesToProcess.includes(pMsg)
-              );
-          }
-      };
-
-      deliverQueuedMessages();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, systemChat]);
-
 
   const handleChatSelect = (chat: Chat) => {
     router.push(`/chat/${chat.id}`);
-  };
-  
-   const handleSystemChatSelect = () => {
-    if (systemChat) {
-      router.push(`/chat/${systemChat.id}`);
-    } else {
-      toast({
-        title: 'No System Messages',
-        description: 'You do not have any system messages yet.',
-      });
-    }
   };
 
   const handleSearchAndCreateChat = async () => {
@@ -235,17 +132,6 @@ export default function ChatsPage() {
     }
   };
 
-  const handleMarkNotificationsAsRead = async () => {
-    if (!currentUser || unreadNotificationsCount === 0) return;
-    const batch = writeBatch(db);
-    const notificationsToUpdate = notifications.filter(n => !n.read);
-    notificationsToUpdate.forEach(n => {
-        const notifRef = doc(db, 'notifications', n.id);
-        batch.update(notifRef, { read: true });
-    });
-    await batch.commit();
-  }
-
   if (loading || !currentUser) {
     return (
         <div className="flex justify-center items-center h-screen bg-background">
@@ -267,12 +153,25 @@ export default function ChatsPage() {
             onClose={() => setIsSidebarOpen(false)}
         />
         <div className={cn("flex flex-col flex-1 transition-all duration-300", isSidebarOpen ? "md:ml-72" : "ml-0")}>
+             {/* The AppHeader on this page no longer needs notification/system props */}
             <AppHeader 
-                systemUnreadCount={systemUnreadCount}
-                onSystemChatSelect={handleSystemChatSelect}
-                notifications={notifications}
-                unreadNotificationsCount={unreadNotificationsCount}
-                onMarkNotificationsRead={handleMarkNotificationsAsRead}
+                systemUnreadCount={0}
+                onSystemChatSelect={() => {
+                     // Find the system chat and navigate, logic now primarily on home page
+                    const findAndGo = async () => {
+                        const chatQuery = query(collection(db, 'chats'), where('users', '==', [currentUser.uid, SYSTEM_BOT_UID].sort()));
+                        const chatSnapshot = await getDocs(chatQuery);
+                        if (!chatSnapshot.empty) {
+                           router.push(`/chat/${chatSnapshot.docs[0].id}`);
+                        } else {
+                           toast({ title: 'No System Messages Yet'});
+                        }
+                    }
+                    findAndGo();
+                }}
+                notifications={[]}
+                unreadNotificationsCount={0}
+                onMarkNotificationsRead={() => {}}
                 onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             />
 
