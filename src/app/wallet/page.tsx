@@ -7,7 +7,6 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { ArrowLeft, Coins, Landmark, DollarSign, CreditCard } from 'lucide-react';
-import AdComponent from '@/components/ad-component';
 
 const ServiceCard = ({ icon, title, description, action, disabled }: { icon: React.ReactNode, title: string, description: string, action?: () => void, disabled?: boolean }) => (
     <Card>
@@ -60,14 +59,9 @@ export default function WalletPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p>Use your coins to redeem exciting rewards or deposit more.</p>
+                            <p>You can earn more coins by letting users watch ads on your posts.</p>
                         </CardContent>
                     </Card>
-
-                    <AdComponent
-                        currentUser={currentUser}
-                        onReward={(amount) => updateCurrentUser({ coins: (currentUser.coins || 0) + amount })}
-                    />
 
                     <div className="space-y-4">
                         <h2 className="text-2xl font-bold tracking-tight">Services</h2>

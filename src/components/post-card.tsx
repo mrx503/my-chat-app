@@ -30,6 +30,7 @@ import {
 import CreatePostModal from './create-post-modal';
 import { isAdmin } from '@/lib/admin';
 import Link from 'next/link';
+import AdComponent from './ad-component';
 
 interface PostCardProps {
   post: Post;
@@ -47,6 +48,12 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
   const isUserAdmin = currentUser ? isAdmin(currentUser.uid) : false;
   const isLiked = currentUser ? post.likes.includes(currentUser.uid) : false;
   const [isEditing, setIsEditing] = useState(false);
+
+  const handleReward = (amount: number) => {
+    // This is a placeholder for a more robust state management solution
+    // For now, we rely on the main page to update the user context
+    console.log(`Rewarding ${amount} coins.`);
+  };
 
   return (
     <>
@@ -139,20 +146,32 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
         )}
       </CardContent>
 
-      <CardFooter className="flex justify-around items-center p-1 border-t">
-          <Button variant="ghost" className="flex-1 text-xs sm:text-sm" onClick={() => onLike(post.id)}>
-              <Heart className={cn("mr-2 h-4 w-4", isLiked && "fill-red-500 text-red-500")} />
-              <span>{post.likes.length} Like</span>
-          </Button>
-          <Button variant="ghost" className="flex-1 text-xs sm:text-sm" onClick={() => onComment(post)}>
-              <MessageCircle className="mr-2 h-4 w-4" />
-              <span>{post.commentsCount} Comment</span>
-          </Button>
-          {!isOwnPost && (
-              <Button variant="ghost" className="flex-1 text-xs sm:text-sm" onClick={() => onSupport(post)}>
-                  <Gift className="mr-2 h-4 w-4" />
-                  <span>Support</span>
+      <CardFooter className="flex-col items-stretch p-0">
+          <div className="flex justify-around items-center p-1 border-t">
+              <Button variant="ghost" className="flex-1 text-xs sm:text-sm" onClick={() => onLike(post.id)}>
+                  <Heart className={cn("mr-2 h-4 w-4", isLiked && "fill-red-500 text-red-500")} />
+                  <span>{post.likes.length} Like</span>
               </Button>
+              <Button variant="ghost" className="flex-1 text-xs sm:text-sm" onClick={() => onComment(post)}>
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  <span>{post.commentsCount} Comment</span>
+              </Button>
+              {!isOwnPost && (
+                  <Button variant="ghost" className="flex-1 text-xs sm:text-sm" onClick={() => onSupport(post)}>
+                      <Gift className="mr-2 h-4 w-4" />
+                      <span>Support</span>
+                  </Button>
+              )}
+          </div>
+          {currentUser && !isOwnPost && (
+            <div className="p-2 border-t">
+              <AdComponent 
+                currentUser={currentUser}
+                onReward={handleReward}
+                adId={post.id}
+                uploaderId={post.uploaderId}
+              />
+            </div>
           )}
       </CardFooter>
     </Card>

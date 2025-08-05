@@ -19,6 +19,7 @@ import ReportClipModal from '@/components/report-clip-modal';
 import { useToast } from '@/hooks/use-toast';
 import { isAdmin } from '@/lib/admin';
 import Link from 'next/link';
+import AdComponent from '@/components/ad-component';
 
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
@@ -104,8 +105,10 @@ export default function Home() {
 
     return () => {
         unsubscribePosts();
-        unsubscribeNotifications();
-        unsubscribeSystemChat();
+        if (currentUser) {
+            unsubscribeNotifications();
+            unsubscribeSystemChat();
+        }
     }
   }, [currentUser]);
   
@@ -328,6 +331,12 @@ export default function Home() {
     }
   };
 
+  const handleReward = (amount: number) => {
+    if (currentUser) {
+        updateCurrentUser({ coins: (currentUser.coins || 0) + amount });
+    }
+  }
+
 
   if (loading || postsLoading) {
     return (
@@ -373,18 +382,27 @@ export default function Home() {
                     {currentUser && <CreatePost user={currentUser} onPostCreated={() => {}}/>}
                     
                     {posts.length > 0 ? (
-                      posts.map((post) => (
-                        <PostCard 
-                          key={post.id} 
-                          post={post} 
-                          currentUser={currentUser}
-                          onLike={handleLikePost}
-                          onDelete={handleDeletePost}
-                          onComment={handleOpenComments}
-                          onSupport={handleOpenSupport}
-                          onReport={handleOpenReport}
-                          onEdit={handleEditPost}
-                        />
+                      posts.map((post, index) => (
+                        <React.Fragment key={post.id}>
+                          <PostCard 
+                            post={post} 
+                            currentUser={currentUser}
+                            onLike={handleLikePost}
+                            onDelete={handleDeletePost}
+                            onComment={handleOpenComments}
+                            onSupport={handleOpenSupport}
+                            onReport={handleOpenReport}
+                            onEdit={handleEditPost}
+                          />
+                          {currentUser && (index + 1) % 3 === 0 && (
+                            <AdComponent 
+                                currentUser={currentUser} 
+                                onReward={handleReward}
+                                adId={`interstitial-${index}`}
+                                isInterstitial
+                            />
+                          )}
+                        </React.Fragment>
                       ))
                     ) : (
                       <div className="text-center py-10 border-2 border-dashed rounded-lg mt-6">
