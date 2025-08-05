@@ -3,16 +3,17 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp, setDoc, orderBy, updateDoc, arrayUnion, arrayRemove, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp, setDoc, orderBy, updateDoc, arrayUnion, arrayRemove, runTransaction, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { User, Clip, Chat, AppNotification } from '@/lib/types';
+import type { User, Clip, Chat, AppNotification, Post } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MessageCircle, Video, Loader2, Play, UserPlus, UserCheck, Camera, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Video, Loader2, Play, UserPlus, UserCheck, Camera, ShieldCheck, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import Lightbox from '@/components/lightbox';
+import PostCard from '@/components/post-card';
 
 const CLOUDINARY_CLOUD_NAME = 'dqgchsg6k';
 
@@ -26,6 +27,7 @@ export default function UserProfilePage() {
 
     const [profileUser, setProfileUser] = useState<User | null>(null);
     const [userClips, setUserClips] = useState<Clip[]>([]);
+    const [userPosts, setUserPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [isFollowing, setIsFollowing] = useState(false);
     const [isChatting, setIsChatting] = useState(false);
@@ -42,6 +44,7 @@ export default function UserProfilePage() {
         const fetchUserProfile = async () => {
             setLoading(true);
             try {
+                // Fetch user data
                 const userDocRef = doc(db, 'users', userId);
                 const userDoc = await getDoc(userDocRef);
 
@@ -57,11 +60,20 @@ export default function UserProfilePage() {
                     setIsFollowing(currentUser.following?.includes(userId) ?? false);
                 }
 
+                // Fetch user clips
                 const clipsRef = collection(db, 'clips');
-                const q = query(clipsRef, where('uploaderId', '==', userId), orderBy('timestamp', 'desc'));
-                const clipsSnapshot = await getDocs(q);
-                const clipsData = clipsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Clip));
+                const clipsQuery = query(clipsRef, where('uploaderId', '==', userId), orderBy('timestamp', 'desc'));
+                const clipsSnapshot = await getDocs(clipsQuery);
+                const clipsData = clipsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), uploaderName: userData.name, uploaderAvatar: userData.avatar, isUploaderVerified: userData.isVerified } as Clip));
                 setUserClips(clipsData);
+                
+                // Fetch user posts
+                const postsRef = collection(db, 'posts');
+                const postsQuery = query(postsRef, where('uploaderId', '==', userId), orderBy('timestamp', 'desc'));
+                const postsSnapshot = await getDocs(postsQuery);
+                const postsData = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), uploaderName: userData.name, uploaderAvatar: userData.avatar, isUploaderVerified: userData.isVerified } as Post));
+                setUserPosts(postsData);
+
 
             } catch (error) {
                 console.error("Error fetching user profile:", error);
@@ -226,6 +238,32 @@ export default function UserProfilePage() {
              if (event.target) event.target.value = '';
         }
     };
+    
+    // Handlers for PostCard interactions
+    const handleLikePost = async (postId: string) => {
+        if (!currentUser) return;
+        const postRef = doc(db, 'posts', postId);
+        const post = userPosts.find(p => p.id === postId);
+        if (!post) return;
+        
+        const isLiked = post.likes.includes(currentUser.uid);
+        setUserPosts(userPosts.map(p => p.id === postId ? { ...p, likes: isLiked ? p.likes.filter(uid => uid !== currentUser.uid) : [...p.likes, currentUser.uid] } : p));
+        
+        await updateDoc(postRef, { likes: isLiked ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid) });
+    };
+    
+    const handleDeletePost = async (postId: string) => {
+        await deleteDoc(doc(db, "posts", postId));
+        setUserPosts(userPosts.filter(p => p.id !== postId));
+        toast({ title: "Post Deleted" });
+    };
+
+    const handleEditPost = async (postId: string, newContent: string) => {
+        const postRef = doc(db, 'posts', postId);
+        await updateDoc(postRef, { content: newContent });
+        setUserPosts(userPosts.map(p => p.id === postId ? { ...p, content: newContent } : p));
+        toast({ title: 'Post Updated' });
+    };
 
 
     if (loading) {
@@ -277,7 +315,7 @@ export default function UserProfilePage() {
                                 </Avatar>
                                 {isOwnProfile && (
                                     <>
-                                        <input type="file" ref={avatarInputRef} onChange={handleAvatarChange} className="hidden" />
+                                        <input type="file" ref={avatarInputRef} onChange={handleAvatarChange} className="hidden" accept="image/*" />
                                         <Button size="icon" className="absolute bottom-1 right-1 rounded-full h-9 w-9" onClick={() => avatarInputRef.current?.click()}>
                                             <Camera className="h-5 w-5"/>
                                         </Button>
@@ -292,6 +330,7 @@ export default function UserProfilePage() {
                                 <p className="text-muted-foreground">@{profileUser.email?.split('@')[0]}</p>
                                 
                                 <div className="flex gap-4 justify-center sm:justify-start mt-2">
+                                    <div><span className="font-bold">{userPosts.length}</span> Posts</div>
                                     <div><span className="font-bold">{userClips.length}</span> Clips</div>
                                     <div><span className="font-bold">{profileUser.followers?.length ?? 0}</span> Followers</div>
                                     <div><span className="font-bold">{profileUser.following?.length ?? 0}</span> Following</div>
@@ -313,9 +352,35 @@ export default function UserProfilePage() {
                             </div>
                         )}
 
-                        {/* Clips Grid */}
-                        <div>
-                            <h3 className="text-xl font-bold mb-4 border-b pb-2">Clips</h3>
+                        {/* Posts Section */}
+                        <div className="space-y-6">
+                            <h3 className="text-xl font-bold border-b pb-2">Posts</h3>
+                            {userPosts.length > 0 ? (
+                                <div className="space-y-4 max-w-2xl">
+                                    {userPosts.map(post => (
+                                        <PostCard 
+                                            key={post.id}
+                                            post={post}
+                                            currentUser={currentUser!}
+                                            onLike={handleLikePost}
+                                            onDelete={handleDeletePost}
+                                            onEdit={handleEditPost}
+                                            onComment={() => { /* TODO: Implement comment modal opening */ }}
+                                            onSupport={() => { /* TODO: Implement support modal opening */ }}
+                                            onReport={() => { /* TODO: Implement report modal opening */ }}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-16 text-muted-foreground flex flex-col items-center">
+                                    <FileText className="h-16 w-16 mb-4" />
+                                    <p className="font-semibold">No posts yet</p>
+                                    <p className="text-sm">{profileUser.name} hasn't posted anything.</p>
+                                </div>
+                            )}
+
+                            {/* Clips Grid */}
+                            <h3 className="text-xl font-bold border-b pb-2 pt-8">Clips</h3>
                             {userClips.length > 0 ? (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                                     {userClips.map(clip => (
@@ -347,3 +412,5 @@ export default function UserProfilePage() {
         </>
     );
 }
+
+    

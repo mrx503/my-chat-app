@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import CreatePostModal from './create-post-modal';
 import { isAdmin } from '@/lib/admin';
+import Link from 'next/link';
 
 interface PostCardProps {
   post: Post;
@@ -52,64 +53,68 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
     <>
     <Card>
       <CardHeader className="flex flex-row items-center gap-3 p-4">
-        <Avatar>
-          <AvatarImage src={post.uploaderAvatar} alt={post.uploaderName} />
-          <AvatarFallback>{post.uploaderName?.[0]}</AvatarFallback>
-        </Avatar>
-        <div className="flex-1">
-          <p className="font-semibold flex items-center gap-1.5">
-            {post.uploaderName}
-            {post.isUploaderVerified && <ShieldCheck className="h-4 w-4 text-primary" />}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {post.timestamp && formatDistanceToNow(post.timestamp.toDate(), { addSuffix: true })}
-          </p>
-        </div>
+        <Link href={`/profile/${post.uploaderId}`} className="flex items-center gap-3">
+            <Avatar>
+              <AvatarImage src={post.uploaderAvatar} alt={post.uploaderName} />
+              <AvatarFallback>{post.uploaderName?.[0]}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <p className="font-semibold flex items-center gap-1.5 hover:underline">
+                {post.uploaderName}
+                {post.isUploaderVerified && <ShieldCheck className="h-4 w-4 text-primary" />}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {post.timestamp && formatDistanceToNow(post.timestamp.toDate(), { addSuffix: true })}
+              </p>
+            </div>
+        </Link>
         
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="h-4 w-4" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                {(isOwnPost || isUserAdmin) && (
-                    <>
-                        {isOwnPost && (
-                            <DropdownMenuItem onSelect={() => setIsEditing(true)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                <span>Edit Post</span>
-                            </DropdownMenuItem>
-                        )}
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    <span>Delete Post</span>
+        <div className="ml-auto">
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    {(isOwnPost || isUserAdmin) && (
+                        <>
+                            {isOwnPost && (
+                                <DropdownMenuItem onSelect={() => setIsEditing(true)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    <span>Edit Post</span>
                                 </DropdownMenuItem>
-                             </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>This action cannot be undone. This will permanently delete this post.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => onDelete(post.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                        <DropdownMenuSeparator />
-                    </>
-                )}
-                {!isOwnPost && (
-                    <DropdownMenuItem onSelect={() => onReport(post)}>
-                        <Flag className="mr-2 h-4 w-4" />
-                        <span>Report Post</span>
-                    </DropdownMenuItem>
-                )}
-            </DropdownMenuContent>
-        </DropdownMenu>
+                            )}
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        <span>Delete Post</span>
+                                    </DropdownMenuItem>
+                                 </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>This action cannot be undone. This will permanently delete this post.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => onDelete(post.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                            <DropdownMenuSeparator />
+                        </>
+                    )}
+                    {!isOwnPost && (
+                        <DropdownMenuItem onSelect={() => onReport(post)}>
+                            <Flag className="mr-2 h-4 w-4" />
+                            <span>Report Post</span>
+                        </DropdownMenuItem>
+                    )}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
 
       </CardHeader>
 
@@ -166,3 +171,5 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
     </>
   );
 }
+
+    

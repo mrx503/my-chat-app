@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 interface CommentsModalProps {
   isOpen: boolean;
@@ -130,13 +131,15 @@ export default function CommentsModal({ isOpen, onClose, clipId, clipUploaderId,
                     <div className="p-4 space-y-4">
                         {comments.map(comment => (
                             <div key={comment.id} className="flex gap-3">
-                                <Avatar className="h-9 w-9">
-                                    <AvatarImage src={comment.userAvatar} />
-                                    <AvatarFallback>{comment.userName?.[0]}</AvatarFallback>
-                                </Avatar>
+                                <Link href={`/profile/${comment.userId}`} onClick={onClose}>
+                                    <Avatar className="h-9 w-9">
+                                        <AvatarImage src={comment.userAvatar} />
+                                        <AvatarFallback>{comment.userName?.[0]}</AvatarFallback>
+                                    </Avatar>
+                                </Link>
                                 <div className="flex-1">
                                     <p>
-                                        <span className="font-semibold text-sm">{comment.userName}</span>
+                                        <Link href={`/profile/${comment.userId}`} onClick={onClose} className="font-semibold text-sm hover:underline">{comment.userName}</Link>
                                         <span className="text-xs text-muted-foreground ml-2">
                                             {comment.timestamp && formatDistanceToNow(comment.timestamp.toDate(), { addSuffix: true })}
                                         </span>
@@ -177,3 +180,5 @@ export default function CommentsModal({ isOpen, onClose, clipId, clipUploaderId,
     </Dialog>
   );
 }
+
+    

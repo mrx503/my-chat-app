@@ -28,6 +28,7 @@ import {
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 interface ChatHeaderProps {
   contact: Contact;
@@ -154,17 +155,19 @@ export default function ChatHeader({
                 <ArrowLeft className="h-5 w-5" />
                 <span className="sr-only">Back</span>
             </Button>
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={contact.avatar} alt={contact.name} data-ai-hint="profile picture" />
-              <AvatarFallback>{contact.name ? contact.name.charAt(0) : 'U'}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h2 className="text-lg font-semibold flex items-center gap-1.5">
-                {contact.name}
-                {contact.isVerified && <ShieldCheck className="h-4 w-4 text-primary" />}
-              </h2>
-              <p className="text-sm text-muted-foreground">{status}</p>
-            </div>
+            <Link href={`/profile/${contact.uid}`} className="flex items-center gap-4 group">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={contact.avatar} alt={contact.name} data-ai-hint="profile picture" />
+                  <AvatarFallback>{contact.name ? contact.name.charAt(0) : 'U'}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-1.5 group-hover:underline">
+                    {contact.name}
+                    {contact.isVerified && <ShieldCheck className="h-4 w-4 text-primary" />}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">{status}</p>
+                </div>
+            </Link>
           </div>
           <div className="ml-auto flex items-center gap-2">
             {!isSystemChat && (
@@ -288,3 +291,5 @@ export default function ChatHeader({
     </>
   );
 }
+
+    
