@@ -22,18 +22,17 @@ import { isAdmin } from '@/lib/admin';
 const SYSTEM_BOT_UID = 'system-bot-uid';
 
 export default function Home() {
-  const { currentUser, logout, updateCurrentUser } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const { currentUser, logout, updateCurrentUser, loading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
   const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
-  // --- State moved from chats/page.tsx ---
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [systemChat, setSystemChat] = useState<Chat | null>(null);
@@ -42,17 +41,7 @@ export default function Home() {
 
 
   useEffect(() => {
-    if (!currentUser) {
-      router.push('/login');
-    } else {
-      setLoading(false);
-    }
-  }, [currentUser, router]);
-
-  useEffect(() => {
-    if (!currentUser) return;
-
-    // --- Post subscription ---
+    // Post subscription is public
     const qPosts = query(collection(db, "posts"), orderBy("timestamp", "desc"));
     const unsubscribePosts = onSnapshot(qPosts, async (snapshot) => {
         const postsDataPromises = snapshot.docs.map(async (docSnapshot) => {
@@ -73,9 +62,15 @@ export default function Home() {
         });
         const newPosts = await Promise.all(postsDataPromises);
         setPosts(newPosts);
+        setPostsLoading(false);
     });
 
-    // --- Notification subscription (moved from chats) ---
+    if (!currentUser) {
+      // If no user, we are done here. Public content will show.
+      return () => unsubscribePosts();
+    }
+
+    // Subscriptions for logged-in users
     const unsubscribeNotifications = onSnapshot(
         query(collection(db, 'notifications'), where('recipientId', '==', currentUser.uid)),
         (snapshot) => {
@@ -86,7 +81,6 @@ export default function Home() {
         }
     );
     
-    // --- System Chat subscription (moved from chats) ---
     const systemChatQuery = query(
         collection(db, 'chats'), 
         where('users', 'array-contains', currentUser.uid)
@@ -107,7 +101,6 @@ export default function Home() {
         }
     });
 
-
     return () => {
         unsubscribePosts();
         unsubscribeNotifications();
@@ -115,7 +108,7 @@ export default function Home() {
     }
   }, [currentUser]);
   
-  // --- System Message Queue delivery logic (moved from chats) ---
+  // System Message Queue delivery logic
   useEffect(() => {
       const deliverQueuedMessages = async () => {
           if (!currentUser || !currentUser.systemMessagesQueue || currentUser.systemMessagesQueue.length === 0) {
@@ -191,7 +184,10 @@ export default function Home() {
 
 
   const handleLikePost = async (postId: string) => {
-    if (!currentUser) return;
+    if (!currentUser) {
+        toast({ variant: 'destructive', title: "Login Required", description: "You need to be logged in to like a post." });
+        return;
+    }
     const postRef = doc(db, 'posts', postId);
     const post = posts.find(p => p.id === postId);
     if (!post) return;
@@ -238,12 +234,20 @@ export default function Home() {
 
 
   const handleOpenComments = (post: Post) => {
+    if (!currentUser) {
+        toast({ variant: 'destructive', title: "Login Required", description: "You need to be logged in to comment." });
+        return;
+    }
     setSelectedPost(post);
     setIsCommentsModalOpen(true);
   };
   
   const handleOpenSupport = (post: Post) => {
-    if (!currentUser || post.uploaderId === currentUser.uid) {
+    if (!currentUser) {
+        toast({ variant: 'destructive', title: "Login Required", description: "You need to be logged in to support a creator." });
+        return;
+    }
+    if (post.uploaderId === currentUser.uid) {
         toast({ variant: "destructive", title: "Action not allowed", description: "You cannot support your own post." });
         return;
     }
@@ -252,7 +256,11 @@ export default function Home() {
   };
   
   const handleOpenReport = (post: Post) => {
-    if (!currentUser || post.uploaderId === currentUser.uid) return;
+    if (!currentUser) {
+        toast({ variant: 'destructive', title: "Login Required", description: "You need to be logged in to report a post." });
+        return;
+    }
+    if (post.uploaderId === currentUser.uid) return;
     setSelectedPost(post);
     setIsReportModalOpen(true);
   }
@@ -306,6 +314,10 @@ export default function Home() {
   }
   
   const handleSystemChatSelect = () => {
+    if (!currentUser) {
+        toast({ variant: 'destructive', title: "Login Required" });
+        return;
+    }
     if (systemChat) {
         router.push(`/chat/${systemChat.id}`);
     } else {
@@ -314,12 +326,12 @@ export default function Home() {
   };
 
 
-  if (loading || !currentUser) {
+  if (loading || postsLoading) {
     return (
         <div className="flex justify-center items-center h-screen bg-background">
              <div className="flex flex-col items-center gap-2">
                 <Loader2 className="w-12 h-12 text-primary animate-spin" />
-                <p className="text-muted-foreground">Loading your session...</p>
+                <p className="text-muted-foreground">Loading duck...</p>
             </div>
         </div>
     )
@@ -328,26 +340,34 @@ export default function Home() {
   return (
     <>
       <div className="flex h-screen bg-muted/40 overflow-hidden">
-          <Sidebar 
-              currentUser={currentUser}
-              updateCurrentUser={updateCurrentUser}
-              logout={logout}
-              isOpen={isSidebarOpen}
-              onClose={() => setIsSidebarOpen(false)}
-          />
-          <div className={cn("flex flex-col flex-1 transition-all duration-300", isSidebarOpen ? "md:ml-72" : "ml-0")}>
+          {currentUser && (
+              <Sidebar 
+                  currentUser={currentUser}
+                  updateCurrentUser={updateCurrentUser}
+                  logout={logout}
+                  isOpen={isSidebarOpen}
+                  onClose={() => setIsSidebarOpen(false)}
+              />
+          )}
+          <div className={cn("flex flex-col flex-1 transition-all duration-300", isSidebarOpen && currentUser ? "md:ml-72" : "ml-0")}>
               <AppHeader 
                   systemUnreadCount={systemUnreadCount}
                   onSystemChatSelect={handleSystemChatSelect}
                   notifications={notifications}
                   unreadNotificationsCount={unreadNotificationsCount}
                   onMarkNotificationsRead={handleMarkNotificationsAsRead}
-                  onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                  onToggleSidebar={() => {
+                    if (currentUser) {
+                      setIsSidebarOpen(!isSidebarOpen)
+                    } else {
+                      router.push('/login');
+                    }
+                  }}
               />
 
               <main className="flex-1 overflow-y-auto p-4 md:p-6">
                   <div className="max-w-2xl mx-auto grid grid-cols-1 gap-6">
-                    <CreatePost user={currentUser} onPostCreated={() => {}}/>
+                    {currentUser && <CreatePost user={currentUser} onPostCreated={() => {}}/>}
                     
                     {posts.length > 0 ? (
                       posts.map(post => (

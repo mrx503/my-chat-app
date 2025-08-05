@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Bot, Bell, Menu } from 'lucide-react';
+import { Bot, Bell, Menu, LogIn } from 'lucide-react';
 import NotificationsPopover from './notifications-popover';
 import type { AppNotification } from '@/lib/types';
 import Logo from './logo';

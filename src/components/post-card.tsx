@@ -34,7 +34,7 @@ import Link from 'next/link';
 
 interface PostCardProps {
   post: Post;
-  currentUser: User & { uid: string };
+  currentUser: (User & { uid: string }) | null;
   onLike: (postId: string) => void;
   onDelete: (postId: string) => void;
   onComment: (post: Post) => void;
@@ -44,9 +44,9 @@ interface PostCardProps {
 }
 
 export default function PostCard({ post, currentUser, onLike, onDelete, onComment, onSupport, onReport, onEdit }: PostCardProps) {
-  const isOwnPost = post.uploaderId === currentUser.uid;
-  const isUserAdmin = isAdmin(currentUser.uid);
-  const isLiked = post.likes.includes(currentUser.uid);
+  const isOwnPost = post.uploaderId === currentUser?.uid;
+  const isUserAdmin = currentUser ? isAdmin(currentUser.uid) : false;
+  const isLiked = currentUser ? post.likes.includes(currentUser.uid) : false;
   const [isEditing, setIsEditing] = useState(false);
 
   return (
@@ -69,52 +69,54 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
             </div>
         </Link>
         
-        <div className="ml-auto">
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    {(isOwnPost || isUserAdmin) && (
-                        <>
-                            {isOwnPost && (
-                                <DropdownMenuItem onSelect={() => setIsEditing(true)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    <span>Edit Post</span>
-                                </DropdownMenuItem>
-                            )}
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        <span>Delete Post</span>
-                                    </DropdownMenuItem>
-                                 </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>This action cannot be undone. This will permanently delete this post.</AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => onDelete(post.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                            <DropdownMenuSeparator />
-                        </>
-                    )}
-                    {!isOwnPost && (
-                        <DropdownMenuItem onSelect={() => onReport(post)}>
-                            <Flag className="mr-2 h-4 w-4" />
-                            <span>Report Post</span>
-                        </DropdownMenuItem>
-                    )}
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
+        {currentUser && (
+          <div className="ml-auto">
+              <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                      {(isOwnPost || isUserAdmin) && (
+                          <>
+                              {isOwnPost && (
+                                  <DropdownMenuItem onSelect={() => setIsEditing(true)}>
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      <span>Edit Post</span>
+                                  </DropdownMenuItem>
+                              )}
+                              <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                      <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          <span>Delete Post</span>
+                                      </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                          <AlertDialogDescription>This action cannot be undone. This will permanently delete this post.</AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => onDelete(post.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                  </AlertDialogContent>
+                              </AlertDialog>
+                              <DropdownMenuSeparator />
+                          </>
+                      )}
+                      {!isOwnPost && (
+                          <DropdownMenuItem onSelect={() => onReport(post)}>
+                              <Flag className="mr-2 h-4 w-4" />
+                              <span>Report Post</span>
+                          </DropdownMenuItem>
+                      )}
+                  </DropdownMenuContent>
+              </DropdownMenu>
+          </div>
+        )}
 
       </CardHeader>
 
@@ -139,24 +141,24 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
       </CardContent>
 
       <CardFooter className="flex justify-between items-center p-1 border-t">
-          <Button variant="ghost" className="flex-1 text-sm" onClick={() => onLike(post.id)}>
+          <Button variant="ghost" className="flex-1 text-xs sm:text-sm" onClick={() => onLike(post.id)}>
               <Heart className={cn("mr-2 h-4 w-4", isLiked && "fill-red-500 text-red-500")} />
-              <span className="text-xs sm:text-sm">{post.likes.length} Like</span>
+              <span>{post.likes.length} Like</span>
           </Button>
-          <Button variant="ghost" className="flex-1 text-sm" onClick={() => onComment(post)}>
+          <Button variant="ghost" className="flex-1 text-xs sm:text-sm" onClick={() => onComment(post)}>
               <MessageCircle className="mr-2 h-4 w-4" />
-              <span className="text-xs sm:text-sm">{post.commentsCount} Comment</span>
+              <span>{post.commentsCount} Comment</span>
           </Button>
           {!isOwnPost && (
-              <Button variant="ghost" className="flex-1 text-sm" onClick={() => onSupport(post)}>
+              <Button variant="ghost" className="flex-1 text-xs sm:text-sm" onClick={() => onSupport(post)}>
                   <Gift className="mr-2 h-4 w-4" />
-                  <span className="text-xs sm:text-sm">Support</span>
+                  <span>Support</span>
               </Button>
           )}
       </CardFooter>
     </Card>
 
-    {isEditing && (
+    {isEditing && currentUser && (
         <CreatePostModal 
             isOpen={isEditing}
             onClose={() => setIsEditing(false)}
@@ -171,5 +173,3 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onCommen
     </>
   );
 }
-
-    
