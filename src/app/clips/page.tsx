@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, ArrowLeft, Video, Plus, Loader2, Play, Gift, Flag, Trash2, ShieldCheck } from 'lucide-react';
+import { Heart, MessageCircle, ArrowLeft, Video, Plus, Loader2, Play, Gift, Flag, Trash2, ShieldCheck, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import UploadClipModal from '@/components/upload-clip-modal';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const ClipPlayer = ({ 
     clip, onLike, onComment, onSupport, onReport, onDelete, 
@@ -211,6 +212,36 @@ const ClipPlayer = ({
     );
 };
 
+
+const ClipsAdCard = () => {
+    const AD_LINK = 'https://www.profitableratecpm.com/djfv18xusr?key=c01669cd1ebfe7be30c45793befa9580';
+
+    const handleAdClick = () => {
+        window.open(AD_LINK, '_blank');
+    };
+
+    return (
+        <div className="h-full w-full snap-start bg-gray-900 flex items-center justify-center p-4">
+             <Card className="max-w-sm mx-auto bg-background/90 backdrop-blur-sm border-primary/20">
+                <CardHeader>
+                    <CardTitle>Sponsored Content</CardTitle>
+                    <CardDescription>Check out this special offer from our partners.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground text-sm">
+                        Viewing this offer helps support the platform. Click the button below to learn more.
+                    </p>
+                </CardContent>
+                <CardFooter>
+                    <Button className="w-full" onClick={handleAdClick}>
+                        View Offer
+                        <ExternalLink className="ml-2 h-4 w-4" />
+                    </Button>
+                </CardFooter>
+            </Card>
+        </div>
+    )
+}
 
 export default function ClipsPage() {
     const { currentUser, updateCurrentUser } = useAuth();
@@ -520,21 +551,24 @@ export default function ClipsPage() {
 
                 <div className="h-full w-full snap-y snap-mandatory overflow-y-scroll" id="clips-container">
                     {clips.map((clip, index) => (
-                        <div ref={index === clips.length - 1 ? lastClipElementRef : null} key={clip.id} className="h-full w-full snap-start relative">
-                            <ClipPlayer 
-                                clip={clip} 
-                                onLike={handleLike} 
-                                onComment={handleOpenComments}
-                                onSupport={handleOpenSupport}
-                                onReport={handleOpenReport}
-                                onDelete={handleDeleteClipRequest}
-                                currentUser={currentUser}
-                                uploaderName={clip.uploaderName}
-                                uploaderAvatar={clip.uploaderAvatar}
-                                uploaderId={clip.uploaderId}
-                                isUploaderVerified={clip.isUploaderVerified}
-                            />
-                        </div>
+                        <React.Fragment key={clip.id}>
+                            <div ref={index === clips.length - 1 ? lastClipElementRef : null} className="h-full w-full snap-start relative">
+                                <ClipPlayer 
+                                    clip={clip} 
+                                    onLike={handleLike} 
+                                    onComment={handleOpenComments}
+                                    onSupport={handleOpenSupport}
+                                    onReport={handleOpenReport}
+                                    onDelete={handleDeleteClipRequest}
+                                    currentUser={currentUser}
+                                    uploaderName={clip.uploaderName}
+                                    uploaderAvatar={clip.uploaderAvatar}
+                                    uploaderId={clip.uploaderId}
+                                    isUploaderVerified={clip.isUploaderVerified}
+                                />
+                            </div>
+                            {(index + 1) % 3 === 0 && <ClipsAdCard />}
+                        </React.Fragment>
                     ))}
 
                     {loadingMore && (
