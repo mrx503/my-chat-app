@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 const ClipPlayer = ({ 
     clip, onLike, onComment, onSupport, onReport, onDelete, 
@@ -647,5 +647,7 @@ export default function ClipsPage() {
         </AlertDialog>
     );
 }
+
+    
 
     
