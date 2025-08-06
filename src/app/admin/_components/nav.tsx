@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -11,7 +10,8 @@ import {
   DollarSign,
   Landmark,
   ArrowLeft,
-  Flag
+  Flag,
+  Sparkles
 } from 'lucide-react';
 import {
   Tooltip,
@@ -29,6 +29,7 @@ const navItems = [
   { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals' },
   { href: '/admin/messaging', icon: MessageSquare, label: 'Messaging' },
   { href: '/admin/reports', icon: Flag, label: 'Reports' },
+  { href: '/admin/rewards-tool', icon: Sparkles, label: 'Ad Rewards Tool' },
 ];
 
 export default function AdminNav() {

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -11,6 +10,7 @@ import {
   PanelLeft,
   MessageSquare,
   Flag,
+  Sparkles,
 } from 'lucide-react';
 import {
   Breadcrumb,
@@ -39,6 +39,7 @@ const breadcrumbNameMap: { [key: string]: string } = {
   '/admin/withdrawals': 'Withdrawals',
   '/admin/messaging': 'Messaging',
   '/admin/reports': 'Reports',
+  '/admin/rewards-tool': 'Ad Rewards Tool',
 };
 
 export default function AdminHeader() {
@@ -107,6 +108,13 @@ export default function AdminHeader() {
             >
               <Flag className="h-5 w-5" />
               Reports
+            </Link>
+             <Link
+              href="/admin/rewards-tool"
+              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+            >
+              <Sparkles className="h-5 w-5" />
+              Rewards Tool
             </Link>
           </nav>
         </SheetContent>
