@@ -1,43 +1,16 @@
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
-  output: 'standalone',
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  env: {
-    NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-    NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-    VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
-    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-  },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: "https",
-        hostname: "firebasestorage.googleapis.com",
-      },
-      {
-        protocol: 'https',
-        hostname: 'i.postimg.cc',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
-      }
-    ],
+  webpack: (config, { isServer }) => {
+    // These modules are optional dependencies of genkit and @opentelemetry/sdk-node.
+    // They are not used in the app, so we can ignore them to prevent build warnings.
+    if (isServer) {
+      config.externals.push('@opentelemetry/exporter-jaeger');
+      config.externals.push('@genkit-ai/firebase');
+    }
+    config.resolve.alias['@opentelemetry/exporter-jaeger'] = false;
+    config.resolve.alias['@genkit-ai/firebase'] = false;
+    
+    return config;
   },
 };
 
