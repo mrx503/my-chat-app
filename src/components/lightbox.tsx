@@ -7,15 +7,19 @@ import { X } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface LightboxProps {
-  imageUrl: string | null;
+  imageUrl?: string | null;
+  videoUrl?: string | null;
   onClose: () => void;
 }
 
-export default function Lightbox({ imageUrl, onClose }: LightboxProps) {
+export default function Lightbox({ imageUrl, videoUrl, onClose }: LightboxProps) {
+
+  const mediaUrl = imageUrl || videoUrl;
+  const isVideo = !!videoUrl;
 
   return (
     <AnimatePresence>
-      {imageUrl && (
+      {mediaUrl && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -24,7 +28,11 @@ export default function Lightbox({ imageUrl, onClose }: LightboxProps) {
           onClick={onClose}
         >
           <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-              <img src={imageUrl} alt={"Full-screen view"} className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" onContextMenu={(e) => e.preventDefault()} />
+              {isVideo ? (
+                <video src={mediaUrl} controls autoPlay className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" />
+              ) : (
+                <img src={mediaUrl} alt={"Full-screen view"} className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" onContextMenu={(e) => e.preventDefault()} />
+              )}
           </div>
           <Button
             variant="ghost"

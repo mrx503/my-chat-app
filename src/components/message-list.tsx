@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -82,7 +81,7 @@ const MessageContent = ({ message, isEncrypted, onMediaClick }: { message: Messa
                          <Image
                             src={message.fileURL}
                             alt={message.fileName || 'Sent image'}
-                            layout="fill"
+                            fill
                             className={cn("object-cover rounded-md", isEncrypted && "blur-md")}
                             data-ai-hint="sent image"
                         />
@@ -281,7 +280,8 @@ export default function MessageList({ messages, contactAvatar, isEncrypted, onDe
   return (
     <>
       <Lightbox 
-        message={lightboxMessage}
+        imageUrl={lightboxMessage?.type === 'image' ? lightboxMessage.fileURL ?? null : null}
+        videoUrl={lightboxMessage?.type === 'video' ? lightboxMessage.fileURL ?? null : null}
         onClose={() => setLightboxMessage(null)}
       />
       <ScrollArea className="flex-1" viewportRef={viewportRef}>
