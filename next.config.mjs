@@ -1,14 +1,24 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'i.postimg.cc',
+        port: '',
+        pathname: '**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'placehold.co',
+        port: '',
+        pathname: '**',
+      }
+    ],
+  },
   webpack: (config, { isServer }) => {
-    // These modules are optional dependencies of genkit and @opentelemetry/sdk-node.
-    // They are not used in the app, so we can ignore them to prevent build warnings.
-    if (isServer) {
-      config.externals.push('@opentelemetry/exporter-jaeger');
-      config.externals.push('@genkit-ai/firebase');
-    }
-    config.resolve.alias['@opentelemetry/exporter-jaeger'] = false;
-    config.resolve.alias['@genkit-ai/firebase'] = false;
+    // Add a rule to handle the optional modules
+    config.externals.push('@opentelemetry/exporter-jaeger', '@genkit-ai/firebase');
     
     return config;
   },
